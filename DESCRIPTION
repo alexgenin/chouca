@@ -1,0 +1,16 @@
+Package: pinea
+Title: A probabilistic cellular automaton engine
+Version: 0.0.0.9000
+Authors@R: 
+    person("Alexandre", "Génin", , "alex@lecairn.org", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-3333-1338"))
+Description: What the package does (one paragraph).
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
+LinkingTo: 
+    Rcpp
+Imports: 
+    Rcpp, 
+    plyr
