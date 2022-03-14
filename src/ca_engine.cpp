@@ -58,6 +58,11 @@ void camodel_cpp_engine(const arma::cube trans,
   
   uword iter = 0; 
   
+  // Allocate some things we will reuse later 
+  Col<uword> qs(ns);
+  Col<double> ptrans(ns); 
+  double qs_norm = use_8_nb ? 8.0 : 4.0; 
+  
   while ( iter <= niter ) { 
     
 //     Rcpp::Rcout << iter << "\n"; 
@@ -95,14 +100,11 @@ void camodel_cpp_engine(const arma::cube trans,
           Mat<double> ptable = trans.slice(this_cell_state); 
           
           // Compute local densities 
-          Col<uword> qs(ns);
           get_local_densities(qs, omat, i, j, wrap, use_8_nb); 
-          double qs_norm = use_8_nb ? 8.0 : 4.0; 
           
           // Compute probability transitions 
           // Consider concatenating qs/ps into a long vector that works nice 
           // with matrix algebra
-          Col<double> ptrans(ns); 
           for ( ushort col=0; col<ns; col++ ) { 
 //             Rcpp::Rcout << ptable.col(col) << "\n"; 
             ptrans(col) = ptable(0, col); 
@@ -122,7 +124,10 @@ void camodel_cpp_engine(const arma::cube trans,
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ rn = p1 wins
           // 
-          ptrans = cumsum(ptrans); 
+          // ptrans = cumsum(ptrans); 
+          for ( ushort k=1; k<ptrans.n_elem; k++ ) { 
+            ptrans(k) = ptrans(k-1) + ptrans(k); 
+          }
           
           ushort new_cell_state=0; 
           bool cell_switch = false; 
