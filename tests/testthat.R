@@ -1,4 +1,4 @@
 library(testthat)
-library(pinea)
+library(chouca)
 
-test_check("pinea")
+test_check("chouca")

@@ -12,23 +12,22 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // camodel_cpp_engine
-int camodel_cpp_engine(const arma::cube trans, const Rcpp::List ctrl, const Rcpp::Function console_callback, const Rcpp::Function cover_callback, const Rcpp::Function snapshot_callback);
-RcppExport SEXP _pinea_camodel_cpp_engine(SEXP transSEXP, SEXP ctrlSEXP, SEXP console_callbackSEXP, SEXP cover_callbackSEXP, SEXP snapshot_callbackSEXP) {
+void camodel_cpp_engine(const arma::cube trans, const Rcpp::List ctrl, const Rcpp::Function console_callback, const Rcpp::Function cover_callback, const Rcpp::Function snapshot_callback);
+RcppExport SEXP _chouca_camodel_cpp_engine(SEXP transSEXP, SEXP ctrlSEXP, SEXP console_callbackSEXP, SEXP cover_callbackSEXP, SEXP snapshot_callbackSEXP) {
 BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::cube >::type trans(transSEXP);
     Rcpp::traits::input_parameter< const Rcpp::List >::type ctrl(ctrlSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Function >::type console_callback(console_callbackSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Function >::type cover_callback(cover_callbackSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Function >::type snapshot_callback(snapshot_callbackSEXP);
-    rcpp_result_gen = Rcpp::wrap(camodel_cpp_engine(trans, ctrl, console_callback, cover_callback, snapshot_callback));
-    return rcpp_result_gen;
+    camodel_cpp_engine(trans, ctrl, console_callback, cover_callback, snapshot_callback);
+    return R_NilValue;
 END_RCPP
 }
 // local_dens
 arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m, const arma::uword nstates, const arma::uword i, const arma::uword j, const bool wrap, const bool use_8_nb);
-RcppExport SEXP _pinea_local_dens(SEXP mSEXP, SEXP nstatesSEXP, SEXP iSEXP, SEXP jSEXP, SEXP wrapSEXP, SEXP use_8_nbSEXP) {
+RcppExport SEXP _chouca_local_dens(SEXP mSEXP, SEXP nstatesSEXP, SEXP iSEXP, SEXP jSEXP, SEXP wrapSEXP, SEXP use_8_nbSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -44,12 +43,12 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_pinea_camodel_cpp_engine", (DL_FUNC) &_pinea_camodel_cpp_engine, 5},
-    {"_pinea_local_dens", (DL_FUNC) &_pinea_local_dens, 6},
+    {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 5},
+    {"_chouca_local_dens", (DL_FUNC) &_chouca_local_dens, 6},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_pinea(DllInfo *dll) {
+RcppExport void R_init_chouca(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

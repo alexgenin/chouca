@@ -1,5 +1,5 @@
 ## usethis namespace: start
 #' @importFrom Rcpp sourceCpp
-#' @useDynLib pinea, .registration = TRUE
+#' @useDynLib chouca, .registration = TRUE
 ## usethis namespace: end
 NULL

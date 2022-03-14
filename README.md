@@ -38,11 +38,11 @@ kubo <- camodel(
 )
 ```
 
-Running the model for 1000 iterations on a 100x100 grid is another few lines of code: 
+Running the model for 200 iterations on a 100x100 grid is another few lines of code: 
 
 ```r
-initmat <- generate_initmat(mod, c(0.5, 0.5), 100, 100)
-run_camodel(mod, initmat, niter = 1000)
+initmat <- generate_initmat(kubo, c(0.5, 0.5), 100, 100)
+run_camodel(kubo, initmat, niter = 200)
 ```
 
 At the moment `chouca` only runs cellular automata for which the transition probabilities linear combinations of the global covers of each state `p` and the local covers of each state `q`. In other words a transition rule must follow the following pattern: 

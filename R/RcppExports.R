@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 camodel_cpp_engine <- function(trans, ctrl, console_callback, cover_callback, snapshot_callback) {
-    .Call(`_pinea_camodel_cpp_engine`, trans, ctrl, console_callback, cover_callback, snapshot_callback)
+    invisible(.Call(`_chouca_camodel_cpp_engine`, trans, ctrl, console_callback, cover_callback, snapshot_callback))
 }
 
 local_dens <- function(m, nstates, i, j, wrap, use_8_nb) {
-    .Call(`_pinea_local_dens`, m, nstates, i, j, wrap, use_8_nb)
+    .Call(`_chouca_local_dens`, m, nstates, i, j, wrap, use_8_nb)
 }
 

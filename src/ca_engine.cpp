@@ -14,7 +14,7 @@ inline void get_local_densities(arma::Col<uword>& qs,
 // This file contains the main c++ engine to run CAs 
 // 
 // [[Rcpp::export]]
-int camodel_cpp_engine(const arma::cube trans, 
+void camodel_cpp_engine(const arma::cube trans, 
                         const Rcpp::List ctrl, 
                         const Rcpp::Function console_callback, 
                         const Rcpp::Function cover_callback, 

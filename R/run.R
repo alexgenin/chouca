@@ -176,7 +176,7 @@ load_control_list <- function(l) {
     console_output_every = 10, 
     neighbors = 4, 
     wrap = TRUE, 
-    ca_engine = c("R", "cpp")
+    ca_engine = c("cpp", "r")
   )
   
   for ( nm in names(l) ) { 
