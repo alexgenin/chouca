@@ -103,8 +103,7 @@ void camodel_cpp_engine(const arma::cube trans,
 //           Rcpp::Rcout << rn << "\n"; 
           
           // Get current state and probability table for this state 
-          ushort this_cell_state = omat(i, j); 
-          Mat<double> ptable = trans.slice(this_cell_state); 
+          ushort cstate = omat(i, j); 
           
           // Compute local densities 
           get_local_densities(qs, omat, i, j, wrap, use_8_nb); 
@@ -114,14 +113,14 @@ void camodel_cpp_engine(const arma::cube trans,
           // with matrix algebra
           for ( ushort col=0; col<ns; col++ ) { 
 //             Rcpp::Rcout << ptable.col(col) << "\n"; 
-            ptrans(col) = ptable(0, col); 
+            ptrans(col) = trans(0, col, cstate); 
 //             Rcpp::Rcout << "col: " << col << "\n"; 
             // Add global and local density components
             for ( ushort k=0; k<ns; k++ ) { 
 //               Rcpp::Rcout << "k: " << k << "\n"; 
               
-              ptrans(col) += ptable(1+k, col) * ( ps(k) / n);  
-              ptrans(col) += ptable(1+k+ns, col) * ( qs(k) / qs_norm ); 
+              ptrans(col) += trans(1+k, col, cstate) * ( ps(k) / n);  
+              ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(k) / qs_norm ); 
             }
           }
           ptrans /= substeps; 
