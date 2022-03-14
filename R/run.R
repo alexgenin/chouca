@@ -20,8 +20,12 @@ generate_initmat <- function(mod, pvec, nr, nc) {
   pvec <- pvec / spvec
   
   # Generate the matrix 
-  m <- matrix(sample(seq.int(ns), replace = TRUE, prob = pvec, size = nr*nc), 
+  m <- matrix(sample(mod[["states"]],
+                     replace = TRUE, prob = pvec, size = nr*nc), 
               nrow = nr, ncol = nc)
+  
+  m <- factor(m, levels = mod[["states"]])
+  dim(m) <- c(nr, nc)
   
   return(m)
 }
@@ -31,20 +35,24 @@ run_camodel <- function(mod, initmat, niter,
   
   # Pack transition coefficients into 3D array that RcppArmadillo understands
   ns <- mod[["nstates"]]
-  transitions <- ldply(mod[["transitions"]], function(o) { 
+  states <- mod[["states"]]
+  
+  transitions <- do.call(rbind, lapply(mod[["transitions"]], function(o) { 
     data.frame(from = o[["from"]], to = o[["to"]], 
                vec = c(o[["X0"]], o[["XP"]], o[["XQ"]]))
-  })
+  }))
   ncoefs <- 1 + ns + ns
   transpack <- array(0, dim = list(ncoefs, ns, ns), 
                      dimnames = list(paste0("coef", seq.int(ncoefs)), 
-                                     paste0("from", seq.int(ns)), 
-                                     paste0("to",   seq.int(ns))))
-  for ( cfrom in seq.int(ns) ) { 
-    for ( cto in seq.int(ns) ) { 
+                                     paste0("to", states), 
+                                     paste0("from", states)))
+  for ( cfrom in states ) { 
+    for ( cto in states ) { 
       dat <- subset(transitions, from == cfrom & to == cto) 
+      col_from <- which(states == cfrom)
+      col_to   <- which(states == cto)
       if ( nrow(dat) > 0 ) { 
-        transpack[ , cfrom, cto] <- dat[ ,"vec"]
+        transpack[ , col_to, col_from] <- dat[ ,"vec"]
       }
     }
   }
@@ -56,11 +64,12 @@ run_camodel <- function(mod, initmat, niter,
   cover_callback <- function(t, ...) { }  
   cover_callback_active <- control[["save_covers"]] 
   if ( cover_callback_active ) { 
-    nl <- niter %/% control[["save_covers_every"]]
+    nl <- 1 + niter %/% control[["save_covers_every"]]
     global_covers <- matrix(NA_real_, ncol = 1+ns, nrow = nl)
     cur_line <- 1
-    cover_callback <- function(t, ps) { 
-      global_covers[cur_line, ] <<- c(t, ps)
+    
+    cover_callback <- function(t, ps, n) { 
+      global_covers[cur_line, ] <<- c(t, ps / n)
       cur_line <<- cur_line + 1  
     }
   }
@@ -70,7 +79,11 @@ run_camodel <- function(mod, initmat, niter,
   snapshot_callback_active <- control[["save_snapshots"]]
   if ( snapshot_callback_active ) { 
     snapshots <- list()
+    
     snapshot_callback <- function(t, m) { 
+      d <- dim(m)
+      m <- factor(states[m+1], levels = states)
+      dim(m) <- d
       attr(m, "t") <- t
       snapshots <<- c(snapshots, list(m))
     }
@@ -84,37 +97,52 @@ run_camodel <- function(mod, initmat, niter,
     first_time <- last_time
     last_iter <- 1 
     
-    console_callback <- function(t, ps) { 
+    console_callback <- function(t, ps, n) { 
       new_time <- proc.time()["elapsed"]
       iter_per_s <- (t - last_iter) / (new_time - last_time) 
       
-      cover_string <- paste(seq.int(length(ps)), format(ps, digits = 2), 
+      cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 2), 
                             sep = ":", collapse = " ")
       perc <- paste0(round(100 * (t / niter)), " %")
-      speed <- paste(format(iter_per_s, digits = 2), " iter/s", sep = "")
-      tstring <- sprintf("t = %s", t - 1)
-      cat(paste0(tstring, " (", perc, ") ", cover_string, " [", speed, "]", "\n"))
+      speed <- ifelse(is.nan(iter_per_s), "", 
+                      paste("[", format(iter_per_s, digits = 2), " iter/s]", sep = ""))
+      
+      tstring <- sprintf("t = %03i", t)
+      cat(paste0(tstring, " (", perc, ") ", cover_string, " ", speed, "\n"))
       last_time <<- new_time
       last_iter <<- t 
     }
   }
   
-  cover_callback_every <- control[["save_covers_every"]]
-  snapshot_callback_every <- control[["save_snapshots_every"]]
-  console_callback_every <- control[["console_output_every"]]
+  # Convert initmat to internal representation 
+  d <- dim(initmat)
+  initmat <- as.integer(initmat) - 1
+  dim(initmat) <- d 
   
   control_list <- list(substeps = control[["substeps"]], 
                        wrap     = control[["wrap"]], 
+                       init     = initmat, 
+                       niter    = niter, 
+                       nstates  = ns, 
+                       use_8_neighbors = control[["neighbors"]] == 8,  
                        console_callback_active  = console_callback_active, 
-                       console_callback_every   = console_callback_every, 
+                       console_callback_every   = control[["console_output_every"]], 
                        cover_callback_active    = cover_callback_active, 
-                       cover_callback_every     = cover_callback_every, 
+                       cover_callback_every     = control[["save_covers_every"]], 
                        snapshot_callback_active = snapshot_callback_active, 
-                       snapshot_callback_every  = snapshot_callback_every)
-                       
+                       snapshot_callback_every  = control[["save_snapshots_every"]])
+  
   # NOTE: this function can modify some objects in the current environment... 
-  camodel_r_engine(transpack, initmat, niter, ns, control_list, 
-                   console_callback, cover_callback, snapshot_callback)
+  engine <- control[["ca_engine"]][1]
+  if ( tolower(engine) == "r" ) { 
+    camodel_r_engine(transpack, control_list, 
+                     console_callback, cover_callback, snapshot_callback)
+  } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
+    camodel_cpp_engine(transpack, control_list, 
+                       console_callback, cover_callback, snapshot_callback)
+  } else { 
+    stop(sprintf("%s is an unknown CA engine", engine))
+  }
   
   # Store artefacts and return result 
   results <- list(model = mod, 
@@ -124,7 +152,7 @@ run_camodel <- function(mod, initmat, niter,
                   output = list())
   
   if ( cover_callback_active ) { 
-    results[["output"]][["global_covers"]] <- global_covers
+    results[["output"]][["covers"]] <- global_covers
   }
   
   if ( snapshot_callback_active ) { 
@@ -146,7 +174,9 @@ load_control_list <- function(l) {
     save_snapshots_every = 1, 
     console_output = TRUE, 
     console_output_every = 10, 
-    wrap = TRUE
+    neighbors = 4, 
+    wrap = TRUE, 
+    ca_engine = c("R", "cpp")
   )
   
   for ( nm in names(l) ) { 

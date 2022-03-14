@@ -3,7 +3,23 @@
 # something that is acceptable for the c++ code
 # 
 
-camodel <- function(..., parms, verbose = TRUE) { 
+#' @title Definition of a probabilistic cellular automaton 
+#'
+#' @description  High-level definition of a probabilistic cellular automaton
+#' 
+#' @param ... a number of transition descriptions, as built by the
+#'   \code{\link{transition}} function (see Details)
+#' 
+#' @param parms a named list of parameters, which should be all numeric, single values
+#' 
+#' @param all_states the complete list of states (a character vector). If unspecified,
+#'   it will be guessed from the transition rules, but you should really pass it to 
+#'   make sure your model definition is correct 
+#' 
+#' @param verbose whether information should be printed when parsing the model
+#'   definition
+#' 
+camodel <- function(..., parms, all_states = NULL, verbose = TRUE) { 
   if ( ! is.list(parms) || is.null(names(parms)) || any(names(parms) == "") ) { 
     stop("parms must be a named with all elements named")
   }
@@ -18,21 +34,27 @@ camodel <- function(..., parms, verbose = TRUE) {
   # Read transition objects
   transitions <- list(...)
   
-  states <- ldply(transitions, function(o) as.data.frame(o[c("from", "to")]))
-  uniqstates <- unique(states[ ,"from"], states[ ,"to"])
-  nstates <- length(uniqstates)
-  msg(sprintf("Found %s states\n", nstates))
-  
-  if ( ! all( sort(uniqstates) == seq.int(nstates) ) ) { 
-    stop("all CA states should be numbered from one to the maximum, without gaps")
+  states <- plyr::ldply(transitions, function(o) as.data.frame(o[c("from", "to")]))
+  uniqstates <- unique(c(states[ ,"from"], states[ ,"to"]))
+  if ( is.null(all_states) ) { 
+    nstates <- length(uniqstates)
+    states <- uniqstates
+  } else { 
+    nstates <- length(all_states) 
+    states <- all_states
+    if ( ! all(uniqstates %in% states) ) { 
+      stop("Some cell states defined in transitions are not defined in 'all_states'")
+    }
   }
   
+  msg(sprintf("Using %s cell states: %s\n", nstates, paste(states, collapse = " ")))
+  
   # Compute transition probabilities
-  transitions <- llply(transitions, parse_transition, 
-                       nstates = nstates, parms = parms)
+  transitions <- lapply(transitions, parse_transition, states, parms)
   
   caobj <- list(transitions = transitions, 
-                nstates = nstates)
+                nstates = nstates, 
+                states = factor(states, states))
   
   class(caobj) <- c("ca_model", "list")
   return(caobj)
@@ -43,12 +65,12 @@ unform <- function(form) {
 }
 
 transition <- function(from, to, prob) { 
-  if ( ! is.numeric(from) && length(from) == 1 ) { 
-    stop("from is not a single-length numeric vector")
-  }
-  if ( ! is.numeric(to) && length(to) == 1 ) { 
-    stop("from is not a single-length numeric vector")
-  }
+#   if ( ! is.numeric(from) && length(from) == 1 ) { 
+#     stop("from is not a single-length numeric vector")
+#   }
+#   if ( ! is.numeric(to) && length(to) == 1 ) { 
+#     stop("from is not a single-length numeric vector")
+#   }
   if ( ! inherits(prob, "formula") ) { 
     stop("prob must be a formula")
   }
@@ -61,16 +83,18 @@ transition <- function(from, to, prob) {
   return(o)
 }
 
-parse_transition <- function(tr, nstates, parms) { 
+parse_transition <- function(tr, state_names, parms) { 
   
   if ( ! inherits(tr, "camodel_transition") ) { 
     m <- paste("The transition definition has not been defined using transition().", 
                "Please do using transition(from = ..., to = ..., prob = ~ ...)")
     stop(m)
   }
+  ns <- length(state_names)
   
   pexpr <- unform(tr[["prob"]]) 
-  zero <- rep(0, nstates)
+  zero <- rep(0, ns)
+  names(zero) <- state_names
   
   # Constant probability component (when all the p and q are zero)
   prob_with <- function(p, q) { 
@@ -80,12 +104,12 @@ parse_transition <- function(tr, nstates, parms) {
   X0 <- prob_with(p = zero, q = zero)
   
   # Global and local density probability component 
-  XP <- numeric(nstates)
-  XQ <- numeric(nstates)
-  for ( i in seq.int(nstates) ) { 
+  XP <- numeric(ns)
+  XQ <- numeric(ns)
+  for ( i in seq.int(ns) ) { 
     prob0 <- prob_with(p = zero, q = zero)
     onevec <- zero
-    onevec[i] <- 1
+    onevec[i] <- 1 # density of focal state = full
     prob1 <- prob_with(p = onevec, q = zero)
     XP[i] <- prob1 - prob0
     
