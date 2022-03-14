@@ -1,5 +1,12 @@
+
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
+
 #include <RcppArmadillo.h>
 // using namespace Rcpp;
+
+
 
 using namespace arma;
 
