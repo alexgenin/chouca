@@ -87,8 +87,7 @@ void camodel_cpp_engine(const arma::cube trans,
         for ( uword i=0; i<nr; i++ ) { 
           
           // Get a random number 
-          Rcpp::NumericVector rrs = Rcpp::runif(1); 
-          double rn = rrs(0); 
+          double rn = Rf_runif(0, 1); 
 //           Rcpp::Rcout << rn << "\n"; 
           
           // Get current state and probability table for this state 
