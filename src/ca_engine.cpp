@@ -3,10 +3,9 @@
 #define ARMA_NO_DEBUG
 #endif 
 
+// [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 // using namespace Rcpp;
-
-
 
 using namespace arma;
 
@@ -43,14 +42,13 @@ void camodel_cpp_engine(const arma::cube trans,
   
   bool snapshot_callback_active = ctrl["snapshot_callback_active"]; 
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  uword nr = init.n_rows; 
+  uword nc = init.n_cols; 
+  double n = (double) nr * (double) nc;
   
   // Initialize some things 
   Mat<ushort> omat = init; 
   Mat<ushort> nmat = init; 
-  
-  uword nr = init.n_rows; 
-  uword nc = init.n_cols; 
-  double n = (double) nr * (double) nc;
   
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
@@ -72,24 +70,16 @@ void camodel_cpp_engine(const arma::cube trans,
   
   while ( iter <= niter ) { 
     
-//     Rcpp::Rcout << iter << "\n"; 
-    
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
-//       Rcpp::Rcout << "entering console callback\n"; 
       console_callback(iter, ps, n); 
-//       Rcpp::Rcout << "exiting console callback\n"; 
     }
     
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-//       Rcpp::Rcout << "entering cover callback\n"; 
       cover_callback(iter, ps, n); 
-//       Rcpp::Rcout << "exiting cover callback\n"; 
     }
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
-//       Rcpp::Rcout << "entering snapshot callback\n"; 
       snapshot_callback(iter, omat); 
-//       Rcpp::Rcout << "exiting snapshot callback\n"; 
     }
     
     for ( uword substep = 0; substep < substeps; substep++ ) { 
@@ -100,7 +90,6 @@ void camodel_cpp_engine(const arma::cube trans,
           
           // Get a random number 
           double rn = Rf_runif(0, 1); 
-//           Rcpp::Rcout << rn << "\n"; 
           
           // Get current state and probability table for this state 
           ushort cstate = omat(i, j); 
@@ -112,13 +101,9 @@ void camodel_cpp_engine(const arma::cube trans,
           // Consider concatenating qs/ps into a long vector that works nice 
           // with matrix algebra
           for ( ushort col=0; col<ns; col++ ) { 
-//             Rcpp::Rcout << ptable.col(col) << "\n"; 
             ptrans(col) = trans(0, col, cstate); 
-//             Rcpp::Rcout << "col: " << col << "\n"; 
             // Add global and local density components
             for ( ushort k=0; k<ns; k++ ) { 
-//               Rcpp::Rcout << "k: " << k << "\n"; 
-              
               ptrans(col) += trans(1+k, col, cstate) * ( ps(k) / n);  
               ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(k) / qs_norm ); 
             }
@@ -196,45 +181,68 @@ inline void get_local_densities(arma::Col<uword>& qs,
   // Get neighbors to the left 
   if ( wrap ) { 
     
-    qs( m( i, (nc + j - 1) % nc) )++; // left 
-    qs( m( i, (nc + j + 1) % nc) )++; // right
-    qs( m( (nr + i - 1) % nr, j) )++; // up
-    qs( m( (nr + i + 1) % nr, j) )++; // down
+    ushort state_left = m( i, (nc + j - 1) % nc);
+    qs( state_left )++; // left 
+    
+    ushort state_right = m( i, (nc + j + 1) % nc);
+    qs( state_right )++; // right
+    
+    ushort state_up = m( (nr + i - 1) % nr, j);
+    qs( state_up )++; // up
+    
+    ushort state_down = m( (nr + i + 1) % nr, j);
+    qs( state_down )++; // down
     
     if ( use_8_nb ) { 
-      qs( m( (nr + i - 1) % nr, (nc + j - 1) % nc) )++; // upleft
-      qs( m( (nr + i - 1) % nr, (nc + j + 1) % nc) )++; // upright
-      qs( m( (nr + i + 1) % nr, (nc + j - 1) % nc) )++; // downleft
-      qs( m( (nr + i + 1) % nr, (nc + j + 1) % nc) )++; // downright
+      
+      ushort state_upleft = m( (nr + i - 1) % nr, (nc + j - 1) % nc); 
+      qs( state_upleft )++; // upleft
+      
+      ushort state_upright = m( (nr + i - 1) % nr, (nc + j + 1) % nc); 
+      qs( state_upright )++; // upright
+      
+      ushort state_downleft = m( (nr + i + 1) % nr, (nc + j - 1) % nc); 
+      qs( state_downleft )++; // downleft
+      
+      ushort state_downright = m( (nr + i + 1) % nr, (nc + j + 1) % nc); 
+      qs( state_downright )++; // downright
     }
     
   } else { 
     
     if ( i > 0 ) { 
-      qs( m( i-1, j ) )++; // up
+      ushort state_up = m(i-1, j);
+      qs( state_up )++; // up
     }
-    if ( i < nr ) { 
-      qs( m( i+1, j ) )++; // down
+    if ( i < (nr-1) ) { 
+      ushort state_down = m(i+1, j); 
+      qs( state_down )++; // down
     }
     if ( j > 0 ) { 
-      qs( m( i, j-1 ) )++; // left
+      ushort state_left = m(i, j-1); 
+      qs( state_left )++; // left
     }
     if ( j < (nc-1) ) { 
-      qs( m( i, j+1 ) )++; // right
+      ushort state_right = m(i, j+1); 
+      qs( state_right )++; // right
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
-        qs( m(i-1, j-1) )++; // upleft
+        ushort state_upleft = m(i-1, j-1); 
+        qs( state_upleft )++; // upleft
       }
       if ( i > 0 && j < (nc-1) ) { 
-        qs( m(i-1, j+1) )++; // upright
+        ushort state_upright = m(i-1, j+1); 
+        qs( state_upright )++; // upright
       }
       if ( i < (nr-1) && j > 0 ) { 
-        qs( m(i+1, j-1) )++; // downleft
+        ushort state_downleft = m(i+1, j-1); 
+        qs( state_downleft )++; // downleft
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
-        qs( m(i+1, j+1) )++; // downright
+        ushort state_downright = m(i+1, j+1); 
+        qs( state_downright )++; // downright
       }
     }
     

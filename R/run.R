@@ -32,6 +32,7 @@ generate_initmat <- function(mod, pvec, nr, nc) {
 
 run_camodel <- function(mod, initmat, niter, 
                         control = list()) { 
+  #TODO: make sure states in intimat are contained in the states in mod 
   
   # Pack transition coefficients into 3D array that RcppArmadillo understands
   ns <- mod[["nstates"]]
@@ -140,6 +141,9 @@ run_camodel <- function(mod, initmat, niter,
   } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
     camodel_cpp_engine(transpack, control_list, 
                        console_callback, cover_callback, snapshot_callback)
+  } else if ( tolower(engine) %in% c("compiled") ) { 
+    camodel_compiled_engine(transpack, control_list, 
+                            console_callback, cover_callback, snapshot_callback)
   } else { 
     stop(sprintf("%s is an unknown CA engine", engine))
   }

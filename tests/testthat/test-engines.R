@@ -3,18 +3,7 @@
 # 
 
 # Kubo's forest gap model 
-mod <- camodel( 
-  transition(from = "TREE", 
-             to   = "EMPTY", 
-             prob = ~ d + delta * q["EMPTY"] ), 
-  transition(from = "EMPTY", 
-             to   = "TREE", 
-             prob = ~ alpha), 
-  parms = list(d = 0.125, 
-               delta = 0.5, 
-               alpha = 0.1), 
-  all_states = c("EMPTY", "TREE")
-)
+mod <- forestgap()
 
 nr <- 10
 nc <- 10
@@ -33,15 +22,19 @@ control <- list(substeps = 1,
 # engines. Somehow setting the seed does not 
 init <- generate_initmat(mod, c(0.1, 0.9), 10, 10)
 engines_ts <- replicate(499, { 
+  modcompiled <- run_camodel(mod, initmat, 20, control = { 
+    control[["ca_engine"]] <- "compiled" ; control
+  })
   modcpp <- run_camodel(mod, initmat, 20, control = { 
     control[["ca_engine"]] <- "cpp" ; control
   })
   modr <- run_camodel(mod, initmat, 20, control = { 
     control[["ca_engine"]] <- "r" ; control
   })
-
+  
   # Time series 
-  cbind(modcpp[["output"]][["covers"]][ ,2:3], 
+  cbind(modcompiled[["output"]][["covers"]][ ,2:3], 
+        modcpp[["output"]][["covers"]][ ,2:3], 
         modr[["output"]][["covers"]][ ,2:3])
 })
 
