@@ -17,8 +17,8 @@ camodel_compiled_engine <- function(trans, ctrl,
   # Read file, compile, and write
   cmaxfile <- "./inst/cmax_engine.cpp"
   cmaxlines <- readLines(cmaxfile) 
-  cmaxlines <- gsub("__NR__", format(nrow(initmat)), cmaxlines)
-  cmaxlines <- gsub("__NC__", format(ncol(initmat)), cmaxlines)
+  cmaxlines <- gsub("__NR__", format(nrow(init)), cmaxlines)
+  cmaxlines <- gsub("__NC__", format(ncol(init)), cmaxlines)
   cmaxlines <- gsub("__NS__", format(ns), cmaxlines)
   cmaxlines <- gsub("__NCOEFS__", format(coefs), cmaxlines)
   cmaxlines <- gsub("__WRAP__", ifelse(wrap, "true", "false"), cmaxlines)

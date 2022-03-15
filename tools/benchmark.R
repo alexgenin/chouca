@@ -9,11 +9,9 @@ library(lubridate)
 
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
-TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-14
-                  "9c9fef1b9562cd16860354cf7da6c6ba0ea89258", # 2022-03-14 (2)
-                  "3b1e4c04d979808233dbda077cf1fb51f5d868c3", # 2022-03-14 (3)
-                  "688135410e79f4313cd736fd5139e1f2b5ef08ad", # 2022-03-14 (4)
-                  "c4106a38479b24220950f273ebb2ad96d89cee5b") # 2022-03-14 (5)
+TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
+                  "c4106a38479b24220950f273ebb2ad96d89cee5b", # 2022-03-13 (after 2..5)
+                  "3558b9de5119e32c3bd7c8fa5f3a2cdd7cb5f64b") # 2022-03-14 
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -49,7 +47,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
         control[["ca_engine"]] <- engine
         timings <- system.time({ 
           a <- try(run_camodel(mod, init, niter = tmax, control = control), 
-                   silent = TRUE)
+                   silent = FALSE)
         })
         error <- FALSE
         if ( inherits(a, "try-error") ) { 
@@ -119,5 +117,6 @@ ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = cxxf)) +
   scale_color_brewer(palette = "Set2", name = "commit") + 
   labs(x = "Matrix size", 
        y = "Million cells evaluated per second")
+
 
 
