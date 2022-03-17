@@ -14,6 +14,9 @@ camodel_compiled_engine <- function(trans, ctrl,
   ns       <- ctrl[["nstates"]]
   coefs    <- nrow(trans) 
   
+  # Compiling options 
+  write_to_file <- ctrl[["code_file"]]
+  
   # Read file, compile, and write
   cmaxfile <- "./inst/cmax_engine.cpp"
   cmaxlines <- readLines(cmaxfile) 
@@ -30,16 +33,18 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   
-  # Write code to temporary file 
-  tfile <- paste0(tempfile(), ".cpp")
-  writeLines(cmaxlines, tfile)
   
   # Source cpp 
-  Sys.unsetenv('PKG_CXXFLAGS')
-  funs <- sourceCpp(tfile, verbose = TRUE)
-  
-#   sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
-#             verbose = TRUE)
+  if ( ! is.null(write_to_file) ) { 
+    # Write code to temporary file 
+    tfile <- paste0(write_to_file, ".cpp")
+    writeLines(cmaxlines, tfile)
+    # We compile from the file, so that lines can be put in a debug run
+    funs <- sourceCpp(tfile, verbose = TRUE)
+  } else { 
+    # We compile directly from the read code, letting Rcpp choose its temporary file 
+    funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), verbose = TRUE)
+  }
   
   runf <- get(funs[["functions"]][1])
   runf(trans, ctrl, console_callback, cover_callback, snapshot_callback)

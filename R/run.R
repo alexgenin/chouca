@@ -180,7 +180,9 @@ load_control_list <- function(l) {
     console_output_every = 10, 
     neighbors = 4, 
     wrap = TRUE, 
-    ca_engine = c("cpp", "r")
+    ca_engine = "cpp", 
+    # Compiled engine option 
+    write_to_file = NULL
   )
   
   for ( nm in names(l) ) { 

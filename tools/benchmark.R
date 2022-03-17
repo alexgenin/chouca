@@ -11,22 +11,27 @@ library(lubridate)
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
                   "c4106a38479b24220950f273ebb2ad96d89cee5b", # 2022-03-13 (after 2..5)
-                  "3558b9de5119e32c3bd7c8fa5f3a2cdd7cb5f64b") # 2022-03-14 
+                  "0f292882e5921a6a6e0631ab60ce99acd353a4cb") # 2022-03-14 
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
 dir.create(PKGDIR)
 system(paste0("git clone -b master ", GIT_ORIG, " ", PKGDIR))
 
-BENCH_SIZES <- 2^seq(1, 10)
+BENCH_SIZES <- 2^seq(4, 10)
 NREPS       <- 3
 CXXF <- "-g -O2 -Wall"
-ENGINES <- c("cpp", "compiled") 
+ENGINES <- c("compiled", "cpp") 
 
 mkbench <- function(sizes, nrep, cxxf, commit) { 
   
   # Checkout correct commit in PKGDIR
   system(sprintf("cd '%s' && git checkout %s", PKGDIR, commit))
+  
+  # cd into pkgdir 
+  owd <- getwd()
+  on.exit({ setwd(owd) })
+  setwd(PKGDIR)
   
   # Load devtools, compile and load package 
   clean_dll(PKGDIR)
@@ -37,14 +42,20 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
   
   control <- list(console_output = FALSE)
   
-  ldply(rev(sizes), function(size) { 
-    cat(sprintf("Benching size %s\n", size))
-    ldply(seq.int(NREPS), function(nrep) { 
-      ldply(ENGINES, function(engine) { 
+  ldply(ENGINES, function(engine) { 
+    ldply(rev(sizes), function(size) { 
+      cat(sprintf("Benching engine %s with size %s\n", engine, size))
+      ldply(seq.int(NREPS), function(nrep) { 
         # We use rectangles because we always want to test the package on rectangles
         init <- generate_initmat(mod, c(0.5, 0.5), size, size)
         tmax <- round(1000 * 1 / log(size))
         control[["ca_engine"]] <- engine
+        
+        # We first run a small simulation to warm up the engine (= compile the code)
+        warmup <- system.time({ 
+          run_camodel(mod, init[1:2, 1:2], niter = 10, control = control)
+        })
+        browser()
         timings <- system.time({ 
           a <- try(run_camodel(mod, init, niter = tmax, control = control), 
                    silent = FALSE)
@@ -56,10 +67,12 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
         timings <- as.list(timings)
         mcells_per_s <- (tmax * size^2) / timings[["elapsed"]] / 1e6
         data.frame(nrep = nrep, size = size, tmax = tmax, mcells_per_s = mcells_per_s, 
-                   engine = engine, finished = ! error, timings)
+                  engine = engine, finished = ! error, warmup = warmup["elapsed"], 
+                  timings)
       })
     })
-  }, .progress = "time")
+   }, .progress = "time")
+  
 }
 
 
@@ -102,21 +115,31 @@ ggplot(bench_results, aes(x = size, y = mcells_per_s,
 
 
 # Check the effect of compiling native with O3, or native with Ofast 
-cxxfs <- c(CXXF, 
-           "-O3 -mtune=native -march=native", 
-           "-Ofast -mtune=native -march=native")
+cxxfs <- c(CXXF) # , 
+#            "-O3 -mtune=native -march=native", 
+#            "-Ofast -mtune=native -march=native")
 COMMIT_LAST <- tail(TEST_COMMITS, 1)
 bench_optim <- ldply(cxxfs, function(cxxf) { 
   data.frame(cxxf = cxxf, mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST))
 })
 
-ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = cxxf)) + 
-  geom_smooth() + geom_point() + 
+ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = cxxf, shape = engine)) + 
+  geom_smooth(se = FALSE) + geom_point() + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
   labs(x = "Matrix size", 
        y = "Million cells evaluated per second")
+
+
+ggplot(bench_optim, aes(x = size, y = (elapsed - warmup)/tmax, 
+                        color = cxxf, shape = engine)) + 
+  geom_smooth() + geom_point() + 
+  scale_x_continuous(trans = "log", 
+                     breaks = BENCH_SIZES) + 
+  scale_color_brewer(palette = "Set2", name = "commit") + 
+  labs(x = "Matrix size", 
+       y = "Time per iteration")
 
 
 
