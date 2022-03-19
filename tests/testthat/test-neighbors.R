@@ -14,6 +14,11 @@ nstates <- 4
 testnb <- function(i, j, wrap, use_8_nb) { 
   local_dens(mtest, nstates, i, j, wrap, use_8_nb)
 }
+testnbcol <- function(j, wrap, use_8_nb) { 
+  local_dens_col(mtest, nstates, j, wrap, use_8_nb)
+}
+
+
 
 expect_true(all(
   testnb(1, 1, wrap = FALSE, use_8_nb = FALSE) == c(1, 1, 0, 0)
@@ -49,3 +54,19 @@ expect_true(all(
 
 
 
+# Test the computation of neighbors by columns 
+for ( wrap in c(TRUE, FALSE) ) { 
+  for ( use_8_nb in c(TRUE, FALSE) ) { 
+      
+  cols <- testnbcol(1, wrap, use_8_nb)
+  for ( row in seq(1, nrow(mtest)) ) { 
+    expect_true( all(cols[row, ] == testnb(row, 1, wrap, use_8_nb)) )
+  }
+  }
+}
+
+microbenchmark::microbenchmark( 
+  testnb(1, 1, TRUE, TRUE), 
+  testnbcol(1, TRUE, TRUE), 
+  times = 1000
+)

@@ -59,7 +59,7 @@ camodel_r_engine <- function(trans, ctrl,
           
           # Compute local densities 
           qs <- local_dens(omat, ns, i, j, wrap, use_8_nb)
-          qs <- qs / ifelse(use_8_nb, 8, 4)
+          qs <- qs / sum(qs)
           
           # Compute rates of transitions (probabilities) to other states
           trates <- numeric(ncol(tprobs))

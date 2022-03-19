@@ -14,7 +14,202 @@ inline void get_local_densities(arma::Col<uword>& qs,
                                 const arma::uword i, 
                                 const arma::uword j, 
                                 const bool wrap, 
-                                const bool use_8_nb); 
+                                const bool use_8_nb) { 
+  qs.fill(0); 
+  uword nc = m.n_cols; 
+  uword nr = m.n_rows; 
+  
+  // Get neighbors to the left 
+  if ( wrap ) { 
+    
+    ushort state_left = m( i, (nc + j - 1) % nc);
+    qs( state_left )++; // left 
+    
+    ushort state_right = m( i, (nc + j + 1) % nc);
+    qs( state_right )++; // right
+    
+    ushort state_up = m( (nr + i - 1) % nr, j);
+    qs( state_up )++; // up
+    
+    ushort state_down = m( (nr + i + 1) % nr, j);
+    qs( state_down )++; // down
+    
+    if ( use_8_nb ) { 
+      
+      ushort state_upleft = m( (nr + i - 1) % nr, (nc + j - 1) % nc); 
+      qs( state_upleft )++; // upleft
+      
+      ushort state_upright = m( (nr + i - 1) % nr, (nc + j + 1) % nc); 
+      qs( state_upright )++; // upright
+      
+      ushort state_downleft = m( (nr + i + 1) % nr, (nc + j - 1) % nc); 
+      qs( state_downleft )++; // downleft
+      
+      ushort state_downright = m( (nr + i + 1) % nr, (nc + j + 1) % nc); 
+      qs( state_downright )++; // downright
+    }
+    
+  } else { 
+    
+    if ( j > 0 ) { 
+      ushort state_left = m(i, j-1); 
+      qs( state_left )++; // left
+    }
+    if ( j < (nc-1) ) { 
+      ushort state_right = m(i, j+1); 
+      qs( state_right )++; // right
+    }
+    if ( i > 0 ) { 
+      ushort state_up = m(i-1, j);
+      qs( state_up )++; // up
+    }
+    if ( i < (nr-1) ) { 
+      ushort state_down = m(i+1, j); 
+      qs( state_down )++; // down
+    }
+    
+    if ( use_8_nb ) { 
+      if ( i > 0 && j > 0 ) { 
+        ushort state_upleft = m(i-1, j-1); 
+        qs( state_upleft )++; // upleft
+      }
+      if ( i > 0 && j < (nc-1) ) { 
+        ushort state_upright = m(i-1, j+1); 
+        qs( state_upright )++; // upright
+      }
+      if ( i < (nr-1) && j > 0 ) { 
+        ushort state_downleft = m(i+1, j-1); 
+        qs( state_downleft )++; // downleft
+      }
+      if ( i < (nr-1) && j < (nc-1) ) { 
+        ushort state_downright = m(i+1, j+1); 
+        qs( state_downright )++; // downright
+      }
+    }
+    
+  }
+  
+}
+
+// This is a function that returns the local state counts to R. i and j must be indexed 
+// the R-way (1-indexing)
+// [[Rcpp::export]]
+arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m, 
+                                  const arma::uword nstates, 
+                                  const arma::uword i, 
+                                  const arma::uword j, 
+                                  const bool wrap, 
+                                  const bool use_8_nb) { 
+  arma::Col<uword> newq(nstates);
+  newq.fill(0); 
+  // m, i and j must be adjusted to take into account the way things are stored in R
+  get_local_densities(newq, m, i-1, j-1, wrap, use_8_nb); 
+  
+  return(newq);
+}
+
+inline void get_local_densities_column(arma::Mat<uword>& qs, 
+                                       const arma::Mat<ushort>& m, 
+                                       const arma::uword j, 
+                                       const bool wrap, 
+                                       const bool use_8_nb) { 
+  
+  qs.fill(0); 
+  uword nc = m.n_cols; 
+  uword nr = m.n_rows; 
+  
+  if ( wrap ) { 
+    for ( uword i=0; i<nr; i++ ) { 
+      // left column 
+      ushort state_left = m( i, (nc + j - 1) % nc);
+      qs(i, state_left)++; 
+      
+      // right column 
+      ushort state_right = m( i, (nc + j + 1) % nc);
+      qs(i, state_right)++; 
+    
+      ushort state_up = m( (nr + i - 1) % nr, j);
+      qs(i, state_up)++; // up
+      
+      ushort state_down = m( (nr + i + 1) % nr, j);
+      qs(i, state_down)++; // down
+    }
+    
+    if ( use_8_nb ) { 
+      for ( uword i=0; i<nr; i++ ) { 
+        ushort state_upleft = m( (nr + i - 1) % nr, (nc + j - 1) % nc); 
+        qs(i, state_upleft)++; // upleft
+        
+        ushort state_upright = m( (nr + i - 1) % nr, (nc + j + 1) % nc); 
+        qs(i, state_upright)++; // upright
+        
+        ushort state_downleft = m( (nr + i + 1) % nr, (nc + j - 1) % nc); 
+        qs(i, state_downleft)++; // downleft
+        
+        ushort state_downright = m( (nr + i + 1) % nr, (nc + j + 1) % nc); 
+        qs(i, state_downright)++; // downright
+      }
+    }
+  
+  } else { 
+    for ( uword i=0; i<nr; i++ ) { 
+      if ( j > 0 ) { 
+        ushort state_left = m(i, j-1); 
+        qs(i, state_left)++; // left
+      }
+      if ( j < (nc-1) ) { 
+        ushort state_right = m(i, j+1); 
+        qs(i, state_right)++; // right
+      }
+      if ( i > 0 ) { 
+        ushort state_up = m(i-1, j);
+        qs(i, state_up)++; // up
+      }
+      if ( i < (nr-1) ) { 
+        ushort state_down = m(i+1, j); 
+        qs(i, state_down)++; // down
+      }
+      
+      if ( use_8_nb ) { 
+        if ( i > 0 && j > 0 ) { 
+          ushort state_upleft = m(i-1, j-1); 
+          qs(i, state_upleft)++; // upleft
+        }
+        if ( i > 0 && j < (nc-1) ) { 
+          ushort state_upright = m(i-1, j+1); 
+          qs(i, state_upright)++; // upright
+        }
+        if ( i < (nr-1) && j > 0 ) { 
+          ushort state_downleft = m(i+1, j-1); 
+          qs(i, state_downleft)++; // downleft
+        }
+        if ( i < (nr-1) && j < (nc-1) ) { 
+          ushort state_downright = m(i+1, j+1); 
+          qs(i, state_downright)++; // downright
+        }
+      }
+    }
+    
+  }
+  
+  
+}
+
+// This is a function that returns the local state counts to R, for the full column of 
+// a matrix. j must be indexed the R-way (1-indexing)
+//[[Rcpp::export]]
+arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m, 
+                                      const arma::uword nstates, 
+                                      const arma::uword j, 
+                                      const bool wrap, 
+                                      const bool use_8_nb) { 
+  arma::Mat<uword> newq(m.n_rows, nstates);
+  newq.fill(0); 
+  // m, i and j must be adjusted to take into account the way things are stored in R
+  get_local_densities_column(newq, m, j-1, wrap, use_8_nb); 
+  
+  return(newq);
+}
 
 // 
 // This file contains the main c++ engine to run CAs 
@@ -64,9 +259,9 @@ void camodel_cpp_engine(const arma::cube trans,
   uword iter = 0; 
   
   // Allocate some things we will reuse later 
-  Col<uword> qs(ns);
+  Mat<uword> qs(nr, ns);
+  Col<double> qs_prop(ns);
   Col<double> ptrans(ns); 
-  double qs_norm = use_8_nb ? 8.0 : 4.0; 
   
   while ( iter <= niter ) { 
     
@@ -86,26 +281,29 @@ void camodel_cpp_engine(const arma::cube trans,
       omat = nmat; 
       
       for ( uword j=0; j<nc; j++ ) { 
+        
+        // Get local state counts for the column. Getting it for a column at once is 
+        // slightly more cache-friendly.
+        get_local_densities_column(qs, omat, j, wrap, use_8_nb); 
+        
         for ( uword i=0; i<nr; i++ ) { 
           
           // Get a random number 
           double rn = Rf_runif(0, 1); 
           
-          // Get current state and probability table for this state 
+          // Normalized local densities to proportions
+          double qs_total = accu(qs.row(i)); 
+          
+          // Get current state 
           ushort cstate = omat(i, j); 
           
-          // Compute local densities 
-          get_local_densities(qs, omat, i, j, wrap, use_8_nb); 
-          
           // Compute probability transitions 
-          // Consider concatenating qs/ps into a long vector that works nice 
-          // with matrix algebra
           for ( ushort col=0; col<ns; col++ ) { 
             ptrans(col) = trans(0, col, cstate); 
             // Add global and local density components
             for ( ushort k=0; k<ns; k++ ) { 
-              ptrans(col) += trans(1+k, col, cstate) * ( ps(k) / n);  
-              ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(k) / qs_norm ); 
+              ptrans(col) += trans(1+k, col, cstate) * ( ps(k) / (double) n);  
+              ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(k) / qs_total ); 
             }
           }
           ptrans /= substeps; 
@@ -147,105 +345,6 @@ void camodel_cpp_engine(const arma::cube trans,
     }
     
     iter++; 
-  }
-  
-}
-
-// This is a function that returns the local state counts to R. i and j must be indexed 
-// the R-way (1-indexing)
-// [[Rcpp::export]]
-arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m, 
-                                  const arma::uword nstates, 
-                                  const arma::uword i, 
-                                  const arma::uword j, 
-                                  const bool wrap, 
-                                  const bool use_8_nb) { 
-  arma::Col<uword> newq(nstates);
-  newq.fill(0); 
-  // m, i and j must be adjusted to take into account the way things are stored in R
-  get_local_densities(newq, m, i-1, j-1, wrap, use_8_nb); 
-  
-  return(newq);
-}
-
-inline void get_local_densities(arma::Col<uword>& qs, 
-                                const arma::Mat<ushort>& m, 
-                                const arma::uword i, 
-                                const arma::uword j, 
-                                const bool wrap, 
-                                const bool use_8_nb) { 
-  qs.fill(0); 
-  uword nc = m.n_cols; 
-  uword nr = m.n_rows; 
-  
-  // Get neighbors to the left 
-  if ( wrap ) { 
-    
-    ushort state_left = m( i, (nc + j - 1) % nc);
-    qs( state_left )++; // left 
-    
-    ushort state_right = m( i, (nc + j + 1) % nc);
-    qs( state_right )++; // right
-    
-    ushort state_up = m( (nr + i - 1) % nr, j);
-    qs( state_up )++; // up
-    
-    ushort state_down = m( (nr + i + 1) % nr, j);
-    qs( state_down )++; // down
-    
-    if ( use_8_nb ) { 
-      
-      ushort state_upleft = m( (nr + i - 1) % nr, (nc + j - 1) % nc); 
-      qs( state_upleft )++; // upleft
-      
-      ushort state_upright = m( (nr + i - 1) % nr, (nc + j + 1) % nc); 
-      qs( state_upright )++; // upright
-      
-      ushort state_downleft = m( (nr + i + 1) % nr, (nc + j - 1) % nc); 
-      qs( state_downleft )++; // downleft
-      
-      ushort state_downright = m( (nr + i + 1) % nr, (nc + j + 1) % nc); 
-      qs( state_downright )++; // downright
-    }
-    
-  } else { 
-    
-    if ( i > 0 ) { 
-      ushort state_up = m(i-1, j);
-      qs( state_up )++; // up
-    }
-    if ( i < (nr-1) ) { 
-      ushort state_down = m(i+1, j); 
-      qs( state_down )++; // down
-    }
-    if ( j > 0 ) { 
-      ushort state_left = m(i, j-1); 
-      qs( state_left )++; // left
-    }
-    if ( j < (nc-1) ) { 
-      ushort state_right = m(i, j+1); 
-      qs( state_right )++; // right
-    }
-    
-    if ( use_8_nb ) { 
-      if ( i > 0 && j > 0 ) { 
-        ushort state_upleft = m(i-1, j-1); 
-        qs( state_upleft )++; // upleft
-      }
-      if ( i > 0 && j < (nc-1) ) { 
-        ushort state_upright = m(i-1, j+1); 
-        qs( state_upright )++; // upright
-      }
-      if ( i < (nr-1) && j > 0 ) { 
-        ushort state_downleft = m(i+1, j-1); 
-        qs( state_downleft )++; // downleft
-      }
-      if ( i < (nr-1) && j < (nc-1) ) { 
-        ushort state_downright = m(i+1, j+1); 
-        qs( state_downright )++; // downright
-      }
-    }
-    
   }
   
 }

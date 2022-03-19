@@ -11,7 +11,7 @@ library(lubridate)
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
                   "c4106a38479b24220950f273ebb2ad96d89cee5b", # 2022-03-13 (after 2..5)
-                  "0f292882e5921a6a6e0631ab60ce99acd353a4cb") # 2022-03-14 
+                  "a07407ea3b9d0bfef5658641c4db5c4dad83a92d") # 2022-03-17 
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -45,17 +45,22 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
   ldply(ENGINES, function(engine) { 
     ldply(rev(sizes), function(size) { 
       cat(sprintf("Benching engine %s with size %s\n", engine, size))
-      ldply(seq.int(NREPS), function(nrep) { 
-        # We use rectangles because we always want to test the package on rectangles
-        init <- generate_initmat(mod, c(0.5, 0.5), size, size)
-        tmax <- round(1000 * 1 / log(size))
-        control[["ca_engine"]] <- engine
+      
+      # We use rectangles because we always want to test the package on rectangles
+      init <- generate_initmat(mod, c(0.5, 0.5), size, size)
+      tmax <- round(1000 * 1 / log(size))
+      control[["ca_engine"]] <- engine
+      
+      # We first run a small simulation to warm up the engine (= compile the code)
+      warmup <- system.time({ 
+        try( run_camodel(mod, init, niter = 10, control = control) )
+      })
         
-        # We first run a small simulation to warm up the engine (= compile the code)
-        warmup <- system.time({ 
-          run_camodel(mod, init[1:2, 1:2], niter = 10, control = control)
-        })
-        browser()
+      ldply(seq.int(NREPS), function(nrep) { 
+        
+        # Generate new matrix for each iteration
+        init <- generate_initmat(mod, c(0.5, 0.5), size, size)
+        
         timings <- system.time({ 
           a <- try(run_camodel(mod, init, niter = tmax, control = control), 
                    silent = FALSE)
@@ -74,6 +79,26 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
    }, .progress = "time")
   
 }
+
+
+
+# Benchmark chouca against caspr 
+
+# Check the effect of compiling native with O3, or native with Ofast 
+COMMIT_LAST <- tail(TEST_COMMITS, 1)
+bench_engines <- mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST)
+
+ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
+  geom_point() + geom_line(aes(group = paste(engine, nrep))) + 
+  scale_x_continuous(trans = "log", 
+                     breaks = BENCH_SIZES) + 
+  scale_color_brewer(palette = "Set2", name = "commit") + 
+  labs(x = "Matrix size", 
+       y = "Million cells evaluated per second")
+
+
+
+
 
 
 
@@ -123,8 +148,8 @@ bench_optim <- ldply(cxxfs, function(cxxf) {
   data.frame(cxxf = cxxf, mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST))
 })
 
-ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = cxxf, shape = engine)) + 
-  geom_smooth(se = FALSE) + geom_point() + 
+ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
+  geom_point() + geom_line(aes(group = paste(engine, nrep))) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
@@ -132,14 +157,14 @@ ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = cxxf, shape = engine
        y = "Million cells evaluated per second")
 
 
-ggplot(bench_optim, aes(x = size, y = (elapsed - warmup)/tmax, 
-                        color = cxxf, shape = engine)) + 
-  geom_smooth() + geom_point() + 
+ggplot(bench_optim, aes(x = size, y = (warmup + elapsed) / tmax, 
+                        color = engine, shape = engine)) + 
+  geom_point() + geom_line(aes(group = paste(engine, nrep))) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
+  scale_y_continuous(trans = "log10") + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
-  labs(x = "Matrix size", 
-       y = "Time per iteration")
+  labs(x = "Matrix size")
 
 
 

@@ -5,7 +5,6 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-// using namespace Rcpp;
 
 
 // These strings will be replaced by their values 
@@ -116,6 +115,21 @@ void console_callback_wrap(const arma::uword iter,
   console_callback(iter, ps_arma, n); 
 }
 
+void snapshot_callback_wrap(const arma::uword iter, 
+                            const char omat[nr][nc],
+                            Rcpp::Function snapshot_callback) { 
+    
+  // Make arma array to give back to R
+  Mat<ushort> m(nr, nc);
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      m(i,j) = omat[i][j]; 
+    }
+  }
+  
+  snapshot_callback(iter, m); 
+}
+
 void cover_callback_wrap(const arma::uword iter, 
                          const arma::uword ps[ns], 
                          const double n, 
@@ -128,15 +142,6 @@ void cover_callback_wrap(const arma::uword iter,
 }
 
 
-  /*
-  // Make arma array to give back to R
-  Mat<ushort> m(nr, nc);
-  for ( uword j=0; j<nc; j++ ) { 
-    for ( uword i=0; i<nr; i++ ) { 
-      m(i,j) = omat[i][j]; 
-    }
-  }
-  */
 // 
 // This file contains the main c++ engine to run CAs 
 // 
@@ -161,8 +166,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
   
   // Initialize some things as c arrays
-  char omat[nr][nc];
-  char nmat[nr][nc];
+  // NOTE: we allocate omat/nmat on the heap since they can be big matrices and blow up 
+  // the size of the C stack beyond what is acceptable.
+  auto omat = new char[nr][nc];
+  auto nmat = new char[nr][nc];
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       omat[i][j] = (char) init(i, j);
@@ -189,11 +196,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
   }
   
-//   Rcpp::Rcout << "ns: " << (uword) ns << "\n"; 
-//   for ( char k=0; k<ns; k++ ) { 
-//     Rcpp::Rcout << "ps" << (uword) k << " " << ps[k] << "\n"; 
-//   }
-  
   uword iter = 0; 
   
   // Allocate some things we will reuse later 
@@ -208,20 +210,16 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       console_callback_wrap(iter, ps, n, console_callback); 
     }
     
-    
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
       cover_callback_wrap(iter, ps, n, cover_callback); 
     }
     
-    /*
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
-      snapshot_callback(iter, omat); 
+      snapshot_callback_wrap(iter, omat, snapshot_callback); 
     }
-    */
     
     for ( uword substep = 0; substep < substeps; substep++ ) { 
       
-      // TODO: we should use memset or something like that I guess
       for ( uword i=0; i<nr; i++ ) { 
         for ( uword j=0; j<nc; j++ ) { 
           omat[i][j] = nmat[i][j]; 
@@ -234,14 +232,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           double rn = Rf_runif(0, 1);
           
           char cstate = omat[i][j]; 
-//           Rcpp::Rcout << "i" << i << "/" << nr << " j" << j << "/" << nc << 
-//             " -> " << (uword) cstate << "\n"; 
           
           // Get local densities
           get_local_densities_c(qs, omat, i, j); 
-//           for ( char k=0; k<ns; k++ ) { 
-//             Rcpp::Rcout << "qs" << (uword) k << ": "<< qs[k] << "\n"; 
-//           }
+          uword total_qs = 0;
+          for ( char k=0; k<ns; k++ ) { 
+            total_qs += qs[k]; 
+          }
+          
           // Compute probabilities of transition
           for ( char col=0; col<ns; col++ ) { 
             
@@ -249,27 +247,16 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
             for ( char k=0; k<ns; k++ ) { 
               
               double pcoef = (double) ctrans[1+k][col][cstate]; 
-//               Rcpp::Rcout << "pcoef: " << pcoef << "\n";
-              ptrans[col] += pcoef * ( ps[k] / n ) / substeps; 
+              ptrans[col] += pcoef * ( ps[k] / (double) n ) / substeps; 
               double qcoef = (double) ctrans[1+k+ns][col][cstate]; 
-//               Rcpp::Rcout << "qcoef: " << qcoef << "\n";
-              ptrans[col] += qcoef * ( qs[k] / qs_norm )  / substeps; 
+              ptrans[col] += qcoef * ( qs[k] /  (double) total_qs )  / substeps; 
             }
           }
-          
-//           for ( char col=0; col<ns; col++ ) { 
-//             Rcpp::Rcout << "pt" << (uword)col << ": " << ptrans[col] << "\n"; 
-//           }
-//           return(1);
           
           // Compute cumsum
           for ( char k=1; k<ns; k++ ) { 
             ptrans[k] = ptrans[k-1] + ptrans[k]; 
           }
-          
-//           for ( char col=0; col<ns; col++ ) { 
-//             Rcpp::Rcout << "pt" << (uword)col << ": " << ptrans[col] << "\n"; 
-//           }
           
           // Check if cell switches 
           char new_cell_state = 0; 
@@ -298,8 +285,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
     
     iter++; 
-//     Rcpp::Rcout << "ending iter " << iter << "\n"; 
   }
+  
+  // Free up heap-allocated arrays
+  delete [] omat; 
+  delete [] nmat; 
   
 }
 
