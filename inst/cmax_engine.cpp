@@ -1,11 +1,13 @@
 
+
+
 #ifndef ARMA_NO_DEBUG
 #define ARMA_NO_DEBUG
 #endif 
 
+
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-
 
 // These strings will be replaced by their values 
 constexpr arma::uword nr = __NR__; 
@@ -17,10 +19,43 @@ constexpr bool use_8_nb = __USE_8_NB__;
 constexpr arma::uword substeps = __SUBSTEPS__; 
 constexpr double n = nr * nc; 
 
-//BUG: WHEN wrap is false, the total number of possible neighbors is 2 or 3 and not 4, 
-// so it is more complicated than just deciding whether to divide by 4 or 8... 
-
 using namespace arma;
+
+
+
+
+/* This is xoshiro256+ 
+ * https://prng.di.unimi.it/xoshiro256plus.c 
+ */ 
+static inline uint64_t rotl(const uint64_t x, int k) {
+	return (x << k) | (x >> (64 - k));
+}
+
+static uint64_t s[4];
+
+static uint64_t nextr(void) {
+	const uint64_t result = s[0] + s[3];
+	const uint64_t t = s[1] << 17;
+
+	s[2] ^= s[0];
+	s[3] ^= s[1];
+	s[1] ^= s[2];
+	s[0] ^= s[3];
+
+	s[2] ^= t;
+
+	s[3] = rotl(s[3], 45);
+
+	return result;
+}
+
+static inline double randunif() { 
+  uint64_t x = nextr(); 
+  double xf = (x >> 11) * 0x1.0p-53; 
+  return xf; 
+}
+
+
 
 inline void get_local_densities_c(arma::uword qs[ns], 
                                   const char m[nr][nc], 
@@ -166,7 +201,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
   
   // Initialize some things as c arrays
-  // NOTE: we allocate omat/nmat on the heap since they can be big matrices and blow up 
+  // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
   // the size of the C stack beyond what is acceptable.
   auto omat = new char[nr][nc];
   auto nmat = new char[nr][nc];
@@ -195,6 +230,17 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       ps[ omat[i][j] ]++; 
     }
   }
+  
+  // Initialize random number generator 
+  // Initialize rng state using armadillo random integer function
+  for ( uword i=0; i<4; i++ ) { 
+    s[i] = randi<long>(); 
+  }
+  
+  // The first number returned by the RNG is garbage, probably because randi returns 
+  // something too short for s (64 bits long)
+  // TODO: find a way to feed 64 bits to xoshiro
+  randunif(); 
   
   uword iter = 0; 
   
@@ -229,7 +275,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       for ( uword i=0; i<nr; i++ ) { 
         for ( uword j=0; j<nc; j++ ) { 
           
-          double rn = Rf_runif(0, 1);
+          double rn = randunif();
           
           char cstate = omat[i][j]; 
           

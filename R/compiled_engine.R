@@ -36,9 +36,14 @@ camodel_compiled_engine <- function(trans, ctrl,
   
   # Source cpp if needed 
   if ( ! exists(fname) ) { 
+    
+#     Sys.setenv(CXX11FLAGS = " -O3 -march=native -mtune=native ", 
+#                CXXFLAGS = " -O3 -march=native -mtune=native ")
+#     Sys.setenv(MAKEFLAGS = "CXX11FLAGS='-O3 -march=native -mtune=native'")
+    
     # We compile from the file, so that lines can be put in a debug run
     funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
-                      verbose = TRUE, cacheDir = ".")
+                      verbose = TRUE, cacheDir = ".", cleanupCacheDir = TRUE)
   }
   
   runf <- get(fname)
