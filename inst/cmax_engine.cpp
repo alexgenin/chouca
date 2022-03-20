@@ -5,7 +5,6 @@
 #define ARMA_NO_DEBUG
 #endif 
 
-
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
@@ -55,171 +54,172 @@ static inline double randunif() {
   return xf; 
 }
 
-
-/*
-inline void get_local_densities_c(char qs[ns], 
-                                  const char m[nr][nc], 
-                                  const arma::uword i, 
-                                  const arma::uword j) { 
+inline void get_local_densities(char qs[nr][nc][ns], 
+                                const char m[nr][nc]) { 
   
   // Set all counts to zero
-  for ( char k=0; k<ns; k++ ) { 
-    qs[k] = 0; 
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      for ( char k=0; k<ns; k++ ) { 
+        qs[i][j][k] = 0; 
+      }
+    }
   }
+  
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      // Get neighbors to the left 
+      if ( wrap ) { 
+        
+        char state_left = m[i][(nc + j - 1) % nc];
+        qs[i][j][state_left]++; // left 
+        
+        char state_right = m[i][(nc + j + 1) % nc];
+        qs[i][j][state_right]++; // right
+        
+        char state_up = m[(nr + i - 1) % nr][j];
+        qs[i][j][state_up]++; // up
+        
+        char state_down = m[(nr + i + 1) % nr][j];
+        qs[i][j][state_down]++; // down
+        
+        if ( use_8_nb ) { 
+          
+          char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
+          qs[i][j][state_upleft]++; // upleft
+          
+          char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
+          qs[i][j][state_upright]++; // upright
+          
+          char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
+          qs[i][j][state_downleft]++; // downleft
+          
+          char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
+          qs[i][j][state_downright]++; // downright
+        }
+        
+      } else { 
+        
+        if ( i > 0 ) { 
+          char state_up = m[i-1][j];
+          qs[i][j][state_up]++; // up
+        }
+        if ( i < (nr-1) ) { 
+          char state_down = m[i+1][j]; 
+          qs[i][j][state_down]++; // down
+        }
+        if ( j > 0 ) { 
+          char state_left = m[i][j-1]; 
+          qs[i][j][state_left]++; // left
+        }
+        if ( j < (nc-1) ) { 
+          char state_right = m[i][j+1]; 
+          qs[i][j][state_right]++; // right
+        }
+        
+        if ( use_8_nb ) { 
+          if ( i > 0 && j > 0 ) { 
+            char state_upleft = m[i-1][j-1]; 
+            qs[i][j][state_upleft]++; // upleft
+          }
+          if ( i > 0 && j < (nc-1) ) { 
+            char state_upright = m[i-1][j+1]; 
+            qs[i][j][state_upright]++; // upright
+          }
+          if ( i < (nr-1) && j > 0 ) { 
+            char state_downleft = m[i+1][j-1]; 
+            qs[i][j][state_downleft]++; // downleft
+          }
+          if ( i < (nr-1) && j < (nc-1) ) { 
+            char state_downright = m[i+1][j+1]; 
+            qs[i][j][state_downright]++; // downright
+          }
+        }
+        
+      }
+    }
+  }
+  
+}
+
+inline void adjust_local_densities(char qs[nr][nc][ns], 
+                                   const uword i, 
+                                   const uword j, 
+                                   const char from, 
+                                   const char to) { 
   
   // Get neighbors to the left 
   if ( wrap ) { 
     
-    char state_left = m[i][(nc + j - 1) % nc];
-    qs[ state_left ]++; // left 
+    // left 
+    qs[i][(nc + j - 1) % nc][to]++; 
+    qs[i][(nc + j - 1) % nc][from]--; 
     
-    char state_right = m[i][(nc + j + 1) % nc];
-    qs[ state_right ]++; // right
+    // right
+    qs[i][(nc + j + 1) % nc][to]++; 
+    qs[i][(nc + j + 1) % nc][from]--; 
     
-    char state_up = m[(nr + i - 1) % nr][j];
-    qs[ state_up ]++; // up
+    // up
+    qs[(nr + i - 1) % nr][j][to]++; 
+    qs[(nr + i - 1) % nr][j][from]--; 
     
-    char state_down = m[(nr + i + 1) % nr][j];
-    qs[ state_down ]++; // down
+    // down
+    qs[(nr + i + 1) % nr][j][to]++;
+    qs[(nr + i + 1) % nr][j][from]--;
     
     if ( use_8_nb ) { 
       
-      char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
-      qs[ state_upleft ]++; // upleft
+      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
+      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
       
-      char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
-      qs[ state_upright ]++; // upright
+      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
+      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
       
-      char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
-      qs[ state_downleft ]++; // downleft
+      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
+      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
       
-      char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
-      qs[ state_downright ]++; // downright
+      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
+      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
     }
     
   } else { 
     
     if ( i > 0 ) { 
-      char state_up = m[i-1][j];
-      qs[ state_up ]++; // up
+      qs[i-1][j][to]++; // up
+      qs[i-1][j][from]--;
     }
     if ( i < (nr-1) ) { 
-      char state_down = m[i+1][j]; 
-      qs[ state_down ]++; // down
+      qs[i+1][j][to]++; // down
+      qs[i+1][j][from]--; 
     }
     if ( j > 0 ) { 
-      char state_left = m[i][j-1]; 
-      qs[ state_left ]++; // left
+      qs[i][j-1][to]++; // left
+      qs[i][j-1][from]--; 
     }
     if ( j < (nc-1) ) { 
-      char state_right = m[i][j+1]; 
-      qs[ state_right ]++; // right
+      qs[i][j+1][to]++; // right
+      qs[i][j+1][from]--; 
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
-        char state_upleft = m[i-1][j-1]; 
-        qs[ state_upleft ]++; // upleft
+        qs[i-1][j-1][to]++; // upleft
+        qs[i-1][j-1][from]--; 
       }
       if ( i > 0 && j < (nc-1) ) { 
-        char state_upright = m[i-1][j+1]; 
-        qs[ state_upright ]++; // upright
+        qs[i-1][j+1][to]++; // upright
+        qs[i-1][j+1][from]++; 
       }
       if ( i < (nr-1) && j > 0 ) { 
-        char state_downleft = m[i+1][j-1]; 
-        qs[ state_downleft ]++; // downleft
+        qs[i+1][j-1][from]++; // downleft
+        qs[i+1][j-1][to]--; 
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
-        char state_downright = m[i+1][j+1]; 
-        qs[ state_downright ]++; // downright
+        qs[i+1][j+1][to]++; // downright
+        qs[i+1][j+1][from]--; 
       }
     }
     
-  }
-  
-}*/
-
-inline void get_local_densities_row(char qs[nc][ns], 
-                                    const char m[nr][nc], 
-                                    const arma::uword i) { 
-  
-  // Set all counts to zero
-  for ( uword j=0; j<nc; j++ ) { 
-    for ( char k=0; k<ns; k++ ) { 
-      qs[j][k] = 0; 
-    }
-  }
-  
-  for ( uword j=0; j<nc; j++ ) { 
-    // Get neighbors to the left 
-    if ( wrap ) { 
-      
-      char state_left = m[i][(nc + j - 1) % nc];
-      qs[j][state_left]++; // left 
-      
-      char state_right = m[i][(nc + j + 1) % nc];
-      qs[j][state_right]++; // right
-      
-      char state_up = m[(nr + i - 1) % nr][j];
-      qs[j][state_up]++; // up
-      
-      char state_down = m[(nr + i + 1) % nr][j];
-      qs[j][state_down]++; // down
-      
-      if ( use_8_nb ) { 
-        
-        char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
-        qs[j][state_upleft]++; // upleft
-        
-        char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
-        qs[j][state_upright]++; // upright
-        
-        char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
-        qs[j][state_downleft]++; // downleft
-        
-        char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
-        qs[j][state_downright]++; // downright
-      }
-      
-    } else { 
-      
-      if ( i > 0 ) { 
-        char state_up = m[i-1][j];
-        qs[j][state_up]++; // up
-      }
-      if ( i < (nr-1) ) { 
-        char state_down = m[i+1][j]; 
-        qs[j][state_down]++; // down
-      }
-      if ( j > 0 ) { 
-        char state_left = m[i][j-1]; 
-        qs[j][state_left]++; // left
-      }
-      if ( j < (nc-1) ) { 
-        char state_right = m[i][j+1]; 
-        qs[j][state_right]++; // right
-      }
-      
-      if ( use_8_nb ) { 
-        if ( i > 0 && j > 0 ) { 
-          char state_upleft = m[i-1][j-1]; 
-          qs[j][state_upleft]++; // upleft
-        }
-        if ( i > 0 && j < (nc-1) ) { 
-          char state_upright = m[i-1][j+1]; 
-          qs[j][state_upright]++; // upright
-        }
-        if ( i < (nr-1) && j > 0 ) { 
-          char state_downleft = m[i+1][j-1]; 
-          qs[j][state_downleft]++; // downleft
-        }
-        if ( i < (nr-1) && j < (nc-1) ) { 
-          char state_downright = m[i+1][j+1]; 
-          qs[j][state_downright]++; // downright
-        }
-      }
-      
-    }
   }
   
 }
@@ -316,6 +316,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
   }
   
+  // Compute local densities 
+  char qs[nr][nc][ns]; 
+  get_local_densities(qs, omat); 
+  
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
   for ( uword i=0; i<4; i++ ) { 
@@ -327,12 +331,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // TODO: find a way to feed 64 bits integers to xoshiro
   randunif(); 
   
-  uword iter = 0; 
-  
   // Allocate some things we will reuse later 
-  char qs[nc][ns];
   double ptrans[ns];
   double qs_norm = use_8_nb ? 8.0 : 4.0; 
+  
+  uword iter = 0; 
   
   while ( iter <= niter ) { 
     
@@ -360,7 +363,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       for ( uword i=0; i<nr; i++ ) { 
         
         // Get local densities for this row
-        get_local_densities_row(qs, omat, i); 
+//         get_local_densities_row(qs, omat, i); 
         
         for ( uword j=0; j<nc; j++ ) { 
           
@@ -371,7 +374,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Get local densities
           uword total_qs = 0;
           for ( char k=0; k<ns; k++ ) { 
-            total_qs += qs[j][k]; 
+            total_qs += qs[i][j][k]; 
           }
           
           // Compute probabilities of transition
@@ -379,12 +382,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
             
             ptrans[col] = (double) ctrans[0][col][cstate] / substeps; 
             for ( char k=0; k<ns; k++ ) { 
-              
+              // 40% time spent here
               double pcoef = (double) ctrans[1+k][col][cstate]; 
               ptrans[col] += pcoef * ( ps[k] / (double) n ) / substeps; 
               double qcoef = (double) ctrans[1+k+ns][col][cstate]; 
-              ptrans[col] += qcoef * ( qs[j][k] /  (double) total_qs )  / substeps; 
+              ptrans[col] += qcoef * ( qs[i][j][k] /  (double) total_qs )  / substeps; 
             }
+            
           }
           
           // Compute cumsum
@@ -400,6 +404,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
             cell_switch = true; 
           } else { 
             for ( char newstate=1; newstate<ns; newstate++ ) { 
+              // Very bad branch prediction, consider predicating (6% time spent)
               if ( rn > ptrans[newstate-1] && rn < ptrans[newstate] ) { 
                 new_cell_state = newstate;
                 cell_switch = true; 
@@ -408,9 +413,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           }
           
           if ( cell_switch ) {
-            char old_cell_state = nmat[i][j];
-            ps[new_cell_state]++; 
+            char old_cell_state = nmat[i][j]; // nmat is omat at this point, this is cache-friendly ?
+            ps[new_cell_state]++;
             ps[old_cell_state]--;
+            adjust_local_densities(qs, i, j, old_cell_state, new_cell_state); 
             nmat[i][j] = new_cell_state; 
           }
         }
