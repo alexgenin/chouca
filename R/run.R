@@ -105,7 +105,7 @@ run_camodel <- function(mod, initmat, niter,
       cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 2), 
                             sep = ":", collapse = " ")
       perc <- paste0(round(100 * (t / niter)), " %")
-      speed <- ifelse(is.nan(iter_per_s), "", 
+      speed <- ifelse(is.nan(iter_per_s) | iter_per_s < 0, "", 
                       paste("[", format(iter_per_s, digits = 2), " iter/s]", sep = ""))
       
       tstring <- sprintf("t = %03i", t)

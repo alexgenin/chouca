@@ -22,3 +22,9 @@ definition}
 \description{
 High-level definition of a probabilistic cellular automaton
 }
+\details{
+This function allows defining a cellular automaton model by its set of transition
+rules. These are defined by a set of calls to the \code{transition()} function. Each
+of these calls defines the two states of the transition, and the probability (as a
+one-sided formula involving constants and p, q, etc.).
+}

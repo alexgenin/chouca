@@ -11,7 +11,8 @@ library(lubridate)
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
                   "c4106a38479b24220950f273ebb2ad96d89cee5b", # 2022-03-13 (after 2..5)
-                  "a07407ea3b9d0bfef5658641c4db5c4dad83a92d") # 2022-03-17 
+                  "a07407ea3b9d0bfef5658641c4db5c4dad83a92d", # 2022-03-17 
+                  "e6fa0817bd8ce74bb264fee71688662158b6f060")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -82,17 +83,18 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
 
 
 
-# Benchmark chouca against caspr 
+# Benchmark chouca 
 
 # Check the effect of compiling native with O3, or native with Ofast 
 COMMIT_LAST <- tail(TEST_COMMITS, 1)
 bench_engines <- mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST)
 
-ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
+ggplot(subset(bench_engines, finished), 
+       aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
   geom_point() + geom_line(aes(group = paste(engine, nrep))) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
-  scale_color_brewer(palette = "Set2", name = "commit") + 
+  scale_color_brewer(palette = "Set2") + 
   labs(x = "Matrix size", 
        y = "Million cells evaluated per second")
 
@@ -104,7 +106,7 @@ ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = engine, shape = engi
 
 
 
-bench_results <- ldply(TEST_COMMITS, function(commit) { 
+bench_commits <- ldply(TEST_COMMITS, function(commit) { 
   
   this_results <- mkbench(BENCH_SIZES, NREPS, CXXF, commit)
   
@@ -121,21 +123,31 @@ bench_results <- ldply(TEST_COMMITS, function(commit) {
              this_results, row.names = NULL)
 })
 
-
-
-# Print Mcells/s
-bench <- mutate(bench_results, 
-                mcells_per_s = (tmax * size^2) / elapsed / 1e6)
-
-ggplot(bench_results, aes(x = size, y = mcells_per_s, 
-                          color = paste(substr(commit, 1, 6), commit_msg, sep = " "))) + 
+ggplot(subset(bench_commits, finished), 
+       aes(x = size, y = mcells_per_s, 
+           color = paste(substr(commit, 1, 6), commit_msg, sep = " "))) + 
   geom_point() + 
+  geom_line(aes(group = paste(nrep, commit))) + 
   facet_grid( ~ engine ) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
   labs(x = "Matrix size", 
        y = "Million cells evaluated per second")
+
+
+ggplot(subset(bench_commits, finished), 
+       aes(x = size, y = tmax / elapsed / 1e3, color = engine)) + 
+  geom_point() + 
+  geom_line(aes(group = paste(nrep, commit, engine))) + 
+#   facet_grid( ~ engine ) + 
+  scale_x_continuous(trans = "log", 
+                     breaks = BENCH_SIZES) + 
+#   scale_y_continuous(trans = "log10") + 
+  scale_color_brewer(palette = "Set2", name = "commit") + 
+  
+  labs(x = "Matrix size", 
+       y = "kIter/s")
 
 
 
@@ -147,6 +159,14 @@ COMMIT_LAST <- tail(TEST_COMMITS, 1)
 bench_optim <- ldply(cxxfs, function(cxxf) { 
   data.frame(cxxf = cxxf, mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST))
 })
+
+ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
+  geom_point() + geom_line(aes(group = paste(engine, nrep))) + 
+  scale_x_continuous(trans = "log", 
+                     breaks = BENCH_SIZES) + 
+  scale_color_brewer(palette = "Set2", name = "commit") + 
+  labs(x = "Matrix size", 
+       y = "Million cells evaluated per second")
 
 ggplot(bench_optim, aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
   geom_point() + geom_line(aes(group = paste(engine, nrep))) + 

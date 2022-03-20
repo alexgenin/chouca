@@ -19,6 +19,17 @@
 #' @param verbose whether information should be printed when parsing the model
 #'   definition
 #' 
+#' @details 
+#' 
+#' This function allows defining a cellular automaton model by its set of transition 
+#' rules. These are defined by a set of calls to the \code{transition()} function. Each 
+#' of these calls defines the two states of the transition, and the probability (as a 
+#' one-sided formula involving constants and p, q, etc.). 
+#' 
+#' 
+#' 
+#' 
+#' 
 camodel <- function(..., parms, all_states = NULL, verbose = TRUE) { 
   if ( ! is.list(parms) || is.null(names(parms)) || any(names(parms) == "") ) { 
     stop("parms must be a named with all elements named")
