@@ -56,8 +56,8 @@ static inline double randunif() {
 }
 
 
-
-inline void get_local_densities_c(arma::uword qs[ns], 
+/*
+inline void get_local_densities_c(char qs[ns], 
                                   const char m[nr][nc], 
                                   const arma::uword i, 
                                   const arma::uword j) { 
@@ -135,6 +135,91 @@ inline void get_local_densities_c(arma::uword qs[ns],
       }
     }
     
+  }
+  
+}*/
+
+inline void get_local_densities_row(char qs[nc][ns], 
+                                    const char m[nr][nc], 
+                                    const arma::uword i) { 
+  
+  // Set all counts to zero
+  for ( uword j=0; j<nc; j++ ) { 
+    for ( char k=0; k<ns; k++ ) { 
+      qs[j][k] = 0; 
+    }
+  }
+  
+  for ( uword j=0; j<nc; j++ ) { 
+    // Get neighbors to the left 
+    if ( wrap ) { 
+      
+      char state_left = m[i][(nc + j - 1) % nc];
+      qs[j][state_left]++; // left 
+      
+      char state_right = m[i][(nc + j + 1) % nc];
+      qs[j][state_right]++; // right
+      
+      char state_up = m[(nr + i - 1) % nr][j];
+      qs[j][state_up]++; // up
+      
+      char state_down = m[(nr + i + 1) % nr][j];
+      qs[j][state_down]++; // down
+      
+      if ( use_8_nb ) { 
+        
+        char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
+        qs[j][state_upleft]++; // upleft
+        
+        char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
+        qs[j][state_upright]++; // upright
+        
+        char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
+        qs[j][state_downleft]++; // downleft
+        
+        char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
+        qs[j][state_downright]++; // downright
+      }
+      
+    } else { 
+      
+      if ( i > 0 ) { 
+        char state_up = m[i-1][j];
+        qs[j][state_up]++; // up
+      }
+      if ( i < (nr-1) ) { 
+        char state_down = m[i+1][j]; 
+        qs[j][state_down]++; // down
+      }
+      if ( j > 0 ) { 
+        char state_left = m[i][j-1]; 
+        qs[j][state_left]++; // left
+      }
+      if ( j < (nc-1) ) { 
+        char state_right = m[i][j+1]; 
+        qs[j][state_right]++; // right
+      }
+      
+      if ( use_8_nb ) { 
+        if ( i > 0 && j > 0 ) { 
+          char state_upleft = m[i-1][j-1]; 
+          qs[j][state_upleft]++; // upleft
+        }
+        if ( i > 0 && j < (nc-1) ) { 
+          char state_upright = m[i-1][j+1]; 
+          qs[j][state_upright]++; // upright
+        }
+        if ( i < (nr-1) && j > 0 ) { 
+          char state_downleft = m[i+1][j-1]; 
+          qs[j][state_downleft]++; // downleft
+        }
+        if ( i < (nr-1) && j < (nc-1) ) { 
+          char state_downright = m[i+1][j+1]; 
+          qs[j][state_downright]++; // downright
+        }
+      }
+      
+    }
   }
   
 }
@@ -239,13 +324,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   // The first number returned by the RNG is garbage, probably because randi returns 
   // something too short for s (64 bits long)
-  // TODO: find a way to feed 64 bits to xoshiro
+  // TODO: find a way to feed 64 bits integers to xoshiro
   randunif(); 
   
   uword iter = 0; 
   
   // Allocate some things we will reuse later 
-  uword qs[ns];
+  char qs[nc][ns];
   double ptrans[ns];
   double qs_norm = use_8_nb ? 8.0 : 4.0; 
   
@@ -273,6 +358,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       }
       
       for ( uword i=0; i<nr; i++ ) { 
+        
+        // Get local densities for this row
+        get_local_densities_row(qs, omat, i); 
+        
         for ( uword j=0; j<nc; j++ ) { 
           
           double rn = randunif();
@@ -280,10 +369,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           char cstate = omat[i][j]; 
           
           // Get local densities
-          get_local_densities_c(qs, omat, i, j); 
           uword total_qs = 0;
           for ( char k=0; k<ns; k++ ) { 
-            total_qs += qs[k]; 
+            total_qs += qs[j][k]; 
           }
           
           // Compute probabilities of transition
@@ -295,7 +383,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
               double pcoef = (double) ctrans[1+k][col][cstate]; 
               ptrans[col] += pcoef * ( ps[k] / (double) n ) / substeps; 
               double qcoef = (double) ctrans[1+k+ns][col][cstate]; 
-              ptrans[col] += qcoef * ( qs[k] /  (double) total_qs )  / substeps; 
+              ptrans[col] += qcoef * ( qs[j][k] /  (double) total_qs )  / substeps; 
             }
           }
           

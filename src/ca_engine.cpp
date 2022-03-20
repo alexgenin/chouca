@@ -303,7 +303,7 @@ void camodel_cpp_engine(const arma::cube trans,
             // Add global and local density components
             for ( ushort k=0; k<ns; k++ ) { 
               ptrans(col) += trans(1+k, col, cstate) * ( ps(k) / (double) n);  
-              ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(k) / qs_total ); 
+              ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(i, k) / (double) qs_total ); 
             }
           }
           ptrans /= substeps; 
