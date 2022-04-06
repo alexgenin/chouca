@@ -5,6 +5,8 @@
 #define ARMA_NO_DEBUG
 #endif 
 
+#pragma GCC optimize("O3")
+
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
@@ -19,7 +21,6 @@ constexpr arma::uword substeps = __SUBSTEPS__;
 constexpr double n = nr * nc; 
 
 using namespace arma;
-
 
 
 

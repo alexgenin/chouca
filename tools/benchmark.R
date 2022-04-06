@@ -12,7 +12,9 @@ GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
                   "c4106a38479b24220950f273ebb2ad96d89cee5b", # 2022-03-13 (after 2..5)
                   "a07407ea3b9d0bfef5658641c4db5c4dad83a92d", # 2022-03-17 
-                  "989dde0d1318319aa940f23b391cabf6ec753791") # 2022-03-19
+                  "989dde0d1318319aa940f23b391cabf6ec753791", # 2022-03-19
+                  "db1b2c068945b6a12255754b1794301edc17b06e") # 2022-04-05
+
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
 dir.create(PKGDIR)
