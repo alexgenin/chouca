@@ -312,11 +312,14 @@ void camodel_cpp_engine(const arma::cube trans,
           // Check if we actually transition. We scan all states and switch to the 
           // one with the highest probability. 
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
-          //               ^ rn = p1 wins
+          //               ^ p0 < rn < (p0+p1) => p1 wins
+          // Of course the sum of probabilities must be lower than one, otherwise we are 
+          // making an approximation. 
           // 
-          // ptrans = cumsum(ptrans); 
+          // ptrans = cumsum(ptrans); // alternative code, but slower because it needs
+          //                          // a copy
           for ( ushort k=1; k<ptrans.n_elem; k++ ) { 
-            ptrans(k) = ptrans(k-1) + ptrans(k); 
+            ptrans(k) += ptrans(k-1);
           }
           
           ushort new_cell_state=0; 

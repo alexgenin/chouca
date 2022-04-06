@@ -7,7 +7,7 @@
 
 // We tell gcc to unroll loops, as we have many small loops. This can double 
 // performance (!!!)
-#pragma GCC optimize("unroll-loops")
+// #pragma GCC optimize("unroll-loops")
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
@@ -337,6 +337,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   // Allocate some things we will reuse later 
   double ptrans[ns];
+  
+  // Note: using a constant here will make the sides of the matrix (when wrap = FALSE)
+  // have approximate probabilities
   double qs_norm = use_8_nb ? 8.0 : 4.0; 
   
   uword iter = 0; 
@@ -393,7 +396,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           // Compute cumsum
           for ( char k=1; k<ns; k++ ) { 
-            ptrans[k] = ptrans[k-1] + ptrans[k]; 
+            ptrans[k] += ptrans[k-1];
           }
           
           // Check if cell switches 
@@ -432,7 +435,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       }
       
       
-    }
+    } // end of substep loop
     
     iter++; 
   }

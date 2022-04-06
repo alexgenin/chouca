@@ -14,7 +14,7 @@ TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
                   "a07407ea3b9d0bfef5658641c4db5c4dad83a92d", # 2022-03-17 
                   "989dde0d1318319aa940f23b391cabf6ec753791", # 2022-03-19
                   "db1b2c068945b6a12255754b1794301edc17b06e", # 2022-04-05
-                  "5fe1ee7c870db49cd9464dd7ac41de99b0b0f821") # 2022-04-05
+                  "4e7cdf644a1a0c4bc0424f334f889d32a3dab257") # 2022-04-05
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -22,7 +22,7 @@ dir.create(PKGDIR)
 system(paste0("git clone -b master ", GIT_ORIG, " ", PKGDIR))
 
 BENCH_SIZES <- 2^seq(4, 10)
-NREPS       <- 3
+NREPS       <- 1
 CXXF <- "-g -O2 -Wall"
 ENGINES <- c("compiled", "cpp") 
 
@@ -145,7 +145,7 @@ ggplot(subset(bench_commits, finished),
 #   facet_grid( ~ engine ) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
-#   scale_y_continuous(trans = "log10") + 
+  scale_y_continuous(trans = "log10") + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
   
   labs(x = "Matrix size", 
