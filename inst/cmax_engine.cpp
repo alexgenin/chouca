@@ -7,7 +7,8 @@
 
 // We tell gcc to unroll loops, as we have many small loops. This can double 
 // performance (!!!)
-// #pragma GCC optimize("unroll-loops")
+__OLEVEL__
+__OUNROLL__
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
@@ -20,6 +21,7 @@ constexpr arma::uword ncoefs = __NCOEFS__;
 constexpr bool wrap = __WRAP__; 
 constexpr bool use_8_nb = __USE_8_NB__; 
 constexpr arma::uword substeps = __SUBSTEPS__; 
+constexpr double fsubsteps = __SUBSTEPS__; 
 constexpr double n = nr * nc; 
 
 using namespace arma;
@@ -143,6 +145,45 @@ inline void get_local_densities(char qs[nr][nc][ns],
     }
   }
   
+}
+
+inline double number_of_neighbors(const arma::uword i, 
+                                  const arma::uword j) { 
+  // When we do not wrap, the total number of neighbors depends on where we are 
+  // in the matrix, e.g. first column or last row has missing neighbors. In that 
+  // case, we need to correct for that. When wrapping is on, then the 
+  // number of neighbors is constant.
+  // 
+  // We use a double because this number is then used in math using doubles.
+  // 
+  // The compiler will remove the if{} statements below at compile time if we are 
+  // wrapping, making this function return a constant, defined on the line below:
+  double nnb = use_8_nb ? 8.0 : 4.0; 
+  
+  // If we do not wrap and we use 8 neighbors, then we just need to substract from the 
+  // total (maximum) counts. 
+  if ( ! wrap && ! use_8_nb ) { 
+    if ( i == 0 || i == (nr-1) ) { nnb--; }  // First or last row
+    if ( j == 0 || j == (nc-1) ) { nnb--; }  // First or last column
+  }
+  
+  // If we do not wrap and we use 8 neighbors, then it is a bit more subtle
+  if ( ! wrap && use_8_nb ) { 
+    if ( i == 0 || i == (nr-1) ) { nnb = nnb-3; }  // First or last row
+    if ( j == 0 || j == (nc-1) ) { nnb = nnb-3; }  // First or last column
+    
+    // If we are in the corners, then one removed neighbor is being counted twice, so we
+    // need to add it back
+    if ( (i == 0 && j == 0) || 
+         (i == 0 && j == (nc-1)) || 
+         (i == (nr-1) && j == 0) || 
+         (i == (nr-1) && j == (nc-1)) ) { 
+      nnb++;
+    }
+    
+  }
+  
+  return nnb; 
 }
 
 inline void adjust_local_densities(char qs[nr][nc][ns], 
@@ -338,10 +379,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // Allocate some things we will reuse later 
   double ptrans[ns];
   
-  // Note: using a constant here will make the sides of the matrix (when wrap = FALSE)
-  // have approximate probabilities
-  double qs_norm = use_8_nb ? 8.0 : 4.0; 
-  
   uword iter = 0; 
   
   while ( iter <= niter ) { 
@@ -359,7 +396,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       snapshot_callback_wrap(iter, omat, snapshot_callback); 
     }
     
-    for ( uword substep = 0; substep < substeps; substep++ ) { 
+    for ( uword substep=0; substep < substeps; substep++ ) { 
       
       // Compute local densities
       get_local_densities(qs, omat); 
@@ -373,49 +410,34 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           char cstate = omat[i][j]; 
           
           // Get total of neighbors
-          uword total_qs = 0;
-          for ( char k=0; k<ns; k++ ) { 
-            total_qs += qs[i][j][k]; 
-          }
+          double total_qs = number_of_neighbors(i, j);
           
           // Compute probabilities of transition
           for ( char col=0; col<ns; col++ ) { 
-            
-            ptrans[col] = (double) ctrans[col][cstate][0] / substeps; 
+            ptrans[col] = ctrans[col][cstate][0] / fsubsteps; 
             for ( char k=0; k<ns; k++ ) { 
               // 40% time spent here
               // c(k) * p(k)
-              double pcoef = (double) ctrans[col][cstate][1+k]; 
-              ptrans[col] += pcoef * ( ps[k] / (double) n ) / substeps; 
+              double pcoef = ctrans[col][cstate][1+k]; 
+              ptrans[col] += pcoef * ( ps[k] / n ) / fsubsteps; 
               // c'(k) * q(k)
-              double qcoef = (double) ctrans[col][cstate][1+k+ns]; 
-              ptrans[col] += qcoef * ( qs[i][j][k] /  (double) total_qs ) / substeps; 
+              double qcoef = ctrans[col][cstate][1+k+ns]; 
+              ptrans[col] += qcoef * ( qs[i][j][k] / total_qs ) / fsubsteps; 
             }
             
           }
           
-          // Compute cumsum
-          for ( char k=1; k<ns; k++ ) { 
-            ptrans[k] += ptrans[k-1];
+          // Check if cell switches. TODO: replace this by a simple for/while loop
+          char new_cell_state = cstate; 
+          double left = 0; 
+          double right = 0; 
+          for ( char k=0; k<ns; k++ ) { 
+            right += ptrans[k]; 
+            new_cell_state = ( left < rn && rn < right ) ? k : new_cell_state; 
+            left = right; 
           }
           
-          // Check if cell switches 
-          char new_cell_state = 0; 
-          bool cell_switch = false; 
-          if ( rn < ptrans[0] ) { 
-            new_cell_state = 0;
-            cell_switch = true; 
-          } else { 
-            for ( char newstate=1; newstate<ns; newstate++ ) { 
-              // Very bad branch prediction, consider predicating (6% time spent)
-              if ( rn > ptrans[newstate-1] && rn < ptrans[newstate] ) { 
-                new_cell_state = newstate;
-                cell_switch = true; 
-              }
-            }
-          }
-          
-          if ( cell_switch ) {
+          if ( new_cell_state != cstate ) { 
             delta_ps[new_cell_state]++;
             delta_ps[cstate]--;
             nmat[i][j] = new_cell_state; 

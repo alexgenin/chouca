@@ -106,7 +106,7 @@ run_camodel <- function(mod, initmat, niter,
                             sep = ":", collapse = " ")
       perc <- paste0(round(100 * (t / niter)), " %")
       speed <- ifelse(is.nan(iter_per_s) | iter_per_s < 0, "", 
-                      paste("[", format(iter_per_s, digits = 2), " iter/s]", sep = ""))
+                      paste("[", sprintf("%0.2f", iter_per_s), " iter/s]", sep = ""))
       
       tstring <- sprintf("t = %03i", t)
       cat(paste0(tstring, " (", perc, ") ", cover_string, " ", speed, "\n"))
@@ -131,9 +131,11 @@ run_camodel <- function(mod, initmat, niter,
                        cover_callback_active    = cover_callback_active, 
                        cover_callback_every     = control[["save_covers_every"]], 
                        snapshot_callback_active = snapshot_callback_active, 
-                       snapshot_callback_every  = control[["save_snapshots_every"]])
+                       snapshot_callback_every  = control[["save_snapshots_every"]], 
+                       olevel = control[["olevel"]], 
+                       unroll_loops = control[["unroll_loops"]])
   
-  # NOTE: this function can modify some objects in the current environment... 
+  # NOTE: this function will modify some objects in the current environment. 
   engine <- control[["ca_engine"]][1]
   if ( tolower(engine) == "r" ) { 
     camodel_r_engine(transpack, control_list, 
@@ -182,7 +184,9 @@ load_control_list <- function(l) {
     wrap = TRUE, 
     ca_engine = "cpp", 
     # Compiled engine option 
-    write_to_file = NULL
+    write_to_file = NULL, 
+    olevel = "O2", 
+    unroll_loops = FALSE
   )
   
   for ( nm in names(l) ) { 

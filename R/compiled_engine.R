@@ -27,6 +27,22 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsub("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsub("__SUBSTEPS__", format(substeps), cmaxlines)
   
+  # Set GCC options on command line 
+  olvl <- gsub(" ", "", ctrl[["olevel"]])
+  if ( ! olvl %in% c("O0", "O1", "O2", "O3", "Ofast", "default") ) { 
+    stop("olevel option must be one of 'default', 'O0', 'O1', 'O2', 'O3' or 'Ofast'")
+  }
+  
+  # Emit optimize pragma 
+  olvl_str <- ifelse(olvl == "default", "", 
+                     sprintf('#pragma GCC optimize("%s")', olvl))
+  cmaxlines <- gsub("__OLEVEL__", olvl_str, cmaxlines)
+  
+  # Emit loop unrolling pragma
+  loop_unroll <- ctrl[["unroll_loops"]]
+  loop_unroll_str <- ifelse(loop_unroll, '#pragma GCC optimize("unroll-loops")', "")
+  cmaxlines <- gsub("__OUNROLL__", loop_unroll_str, cmaxlines)
+  
   # Make hash of file and replace function name 
   # We make the hash depend on the model too, just in case the user changes models, but
   # the rest is different. Unlikely, but who knows.
@@ -48,5 +64,42 @@ camodel_compiled_engine <- function(trans, ctrl,
   
   runf <- get(fname)
   runf(trans, ctrl, console_callback, cover_callback, snapshot_callback)
+}
+
+
+
+benchmark_compiled_model <- function(mod, init, niter = 100, 
+                                     olevel = c("O2", "O3", "Ofast"), 
+                                     unroll_loops = c(TRUE, FALSE), 
+                                     control = list(), 
+                                     nrepeats = 1) { 
+  
+  all_combs <- expand.grid(olevel = olevel, 
+                           unroll_loops = unroll_loops, 
+                           rep = seq.int(nrepeats), 
+                           stringsAsFactors = FALSE)
+  
+  timings <- plyr::ldply(seq.int(nrow(all_combs)), function(i) { 
+    control[["olevel"]]       <- all_combs[i, "olevel"]
+    control[["unroll_loops"]] <- all_combs[i, "unroll_loops"]
+    control[["ca_engine"]]       <- "compiled"
+    # warmup for compilation
+    system.time( run_camodel(mod, init, niter, control = control) )
+    # benchmark running time 
+    timings <- system.time( run_camodel(mod, init, niter, control = control) )
+    data.frame(all_combs[i, ], iter_per_s = niter / timings["elapsed"] )
+  })
+  
+  # Make average 
+  timings <- plyr::ddply(timings, ~ olevel + unroll_loops, plyr::summarise, 
+                         iter_per_s = mean(iter_per_s))
+  
+  # Order timings 
+  timings <- timings[order(timings[ ,"iter_per_s"]), ]
+  
+  # Compute speedups 
+  timings <- plyr::mutate(timings, speedup = iter_per_s / min(iter_per_s))
+  
+  return(timings)
 }
 

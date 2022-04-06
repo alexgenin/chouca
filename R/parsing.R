@@ -71,6 +71,9 @@ camodel <- function(..., parms, all_states = NULL, verbose = TRUE) {
     stop("NAs in computed coefficients, please make sure your model definition is correct")
   }
   
+  # Compute some model information 
+  # TODO: does the model has non-zero XQ/XP/XQSP/XPSQ/XQP ?
+  
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
                 states = factor(states, states))
@@ -84,12 +87,12 @@ unform <- function(form) {
 }
 
 transition <- function(from, to, prob) { 
-#   if ( ! is.numeric(from) && length(from) == 1 ) { 
-#     stop("from is not a single-length numeric vector")
-#   }
-#   if ( ! is.numeric(to) && length(to) == 1 ) { 
-#     stop("from is not a single-length numeric vector")
-#   }
+  if ( length(from) != 1 ) { 
+    stop("from is not a single-length vector")
+  }
+  if ( length(to) != 1 ) { 
+    stop("from is not a single-length vector")
+  }
   if ( ! inherits(prob, "formula") ) { 
     stop("prob must be a one-sided formula ('~ <expr>')")
   }
@@ -142,7 +145,9 @@ parse_transition <- function(tr, state_names, parms) {
               rep(0, ns), # XP
               rep(0, ns)) # XQ
   
-  allcovers <- do.call(expand.grid, lapply(seq.int(ns), function(i) seq(0, 1, l = 3)))
+  allcovers <- do.call(expand.grid, lapply(seq.int(ns), function(i) { 
+    seq(0, 1, l = 3) 
+  }))
   names(allcovers) <- state_names
   
   total_points <- nrow(allcovers)
