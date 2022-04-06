@@ -5,7 +5,9 @@
 #define ARMA_NO_DEBUG
 #endif 
 
-#pragma GCC optimize("O3")
+// We tell gcc to unroll loops, as we have many small loops. This can double 
+// performance (!!!)
+#pragma GCC optimize("unroll-loops")
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
