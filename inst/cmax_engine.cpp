@@ -263,8 +263,6 @@ void cover_callback_wrap(const arma::uword iter,
 
 
 // 
-// This file contains the main c++ engine to run CAs 
-// 
 // [[Rcpp::export]]
 void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans, 
                                            const Rcpp::List ctrl, 
@@ -297,11 +295,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
   }
   
-  double ctrans[ncoefs][ns][ns];
+  // Convert armadillo array to c-style array. Note that we change the order things are 
+  // stored so that coefficients are contiguous in memory.
+  double ctrans[ns][ns][ncoefs];
   for ( uword i=0; i<ns; i++ ) { 
     for ( uword j=0; j<ns; j++ ) { 
-      for ( uword k=0; k<ncoefs; k++ ) { 
-        ctrans[k][i][j] = (double) trans(k, i, j);
+      for ( uword coef=0; coef<ncoefs; coef++ ) { 
+        ctrans[i][j][coef] = (double) trans(coef, i, j);
       }
     }
   }
@@ -309,7 +309,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
   uword ps[ns];
+  int delta_ps[ns]; // Needs to be a signed integer
   memset(ps, 0, sizeof(ps));
+  memset(delta_ps, 0, sizeof(ps));
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       ps[ omat[i][j] ]++; 
@@ -318,7 +320,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   // Compute local densities 
   char qs[nr][nc][ns]; 
-  get_local_densities(qs, omat); 
   
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
@@ -354,16 +355,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     
     for ( uword substep = 0; substep < substeps; substep++ ) { 
       
-      for ( uword i=0; i<nr; i++ ) { 
-        for ( uword j=0; j<nc; j++ ) { 
-          omat[i][j] = nmat[i][j]; 
-        }
-      }
+      // Compute local densities
+      get_local_densities(qs, omat); 
       
       for ( uword i=0; i<nr; i++ ) { 
-        
-        // Get local densities for this row
-//         get_local_densities_row(qs, omat, i); 
         
         for ( uword j=0; j<nc; j++ ) { 
           
@@ -371,7 +366,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           char cstate = omat[i][j]; 
           
-          // Get local densities
+          // Get total of neighbors
           uword total_qs = 0;
           for ( char k=0; k<ns; k++ ) { 
             total_qs += qs[i][j][k]; 
@@ -380,13 +375,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Compute probabilities of transition
           for ( char col=0; col<ns; col++ ) { 
             
-            ptrans[col] = (double) ctrans[0][col][cstate] / substeps; 
+            ptrans[col] = (double) ctrans[col][cstate][0] / substeps; 
             for ( char k=0; k<ns; k++ ) { 
               // 40% time spent here
-              double pcoef = (double) ctrans[1+k][col][cstate]; 
+              // c(k) * p(k)
+              double pcoef = (double) ctrans[col][cstate][1+k]; 
               ptrans[col] += pcoef * ( ps[k] / (double) n ) / substeps; 
-              double qcoef = (double) ctrans[1+k+ns][col][cstate]; 
-              ptrans[col] += qcoef * ( qs[i][j][k] /  (double) total_qs )  / substeps; 
+              // c'(k) * q(k)
+              double qcoef = (double) ctrans[col][cstate][1+k+ns]; 
+              ptrans[col] += qcoef * ( qs[i][j][k] /  (double) total_qs ) / substeps; 
             }
             
           }
@@ -413,14 +410,24 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           }
           
           if ( cell_switch ) {
-            char old_cell_state = nmat[i][j]; // nmat is omat at this point, this is cache-friendly ?
-            ps[new_cell_state]++;
-            ps[old_cell_state]--;
-            adjust_local_densities(qs, i, j, old_cell_state, new_cell_state); 
+            delta_ps[new_cell_state]++;
+            delta_ps[cstate]--;
             nmat[i][j] = new_cell_state; 
           }
         }
       }
+      
+      // Apply changes in global densities 
+      for ( char k=0; k<ns; k++ ) { 
+        ps[k] += delta_ps[k]; 
+        delta_ps[k] = 0; 
+      }
+      for ( uword i=0; i<nr; i++ ) { 
+        for ( uword j=0; j<nc; j++ ) { 
+          omat[i][j] = nmat[i][j]; 
+        }
+      }
+      
       
     }
     

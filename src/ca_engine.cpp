@@ -247,8 +247,10 @@ void camodel_cpp_engine(const arma::cube trans,
   
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
-  Col<uword> ps(ns); 
+  Col<int> ps(ns); 
+  Col<int> delta_ps(ns); 
   ps.fill(0); 
+  delta_ps.fill(0); 
   
   for ( uword j=0; j<nc; j++ ) { 
     for ( uword i=0; i<nr; i++ ) { 
@@ -278,8 +280,7 @@ void camodel_cpp_engine(const arma::cube trans,
     }
     
     for ( uword substep = 0; substep < substeps; substep++ ) { 
-      omat = nmat; 
-      
+            
       for ( uword j=0; j<nc; j++ ) { 
         
         // Get local state counts for the column. Getting it for a column at once is 
@@ -334,15 +335,22 @@ void camodel_cpp_engine(const arma::cube trans,
           
           if ( cell_switch ) {
             ushort old_cell_state = nmat(i, j);
-            ps(new_cell_state)++; 
-            ps(old_cell_state)--;
+            delta_ps(new_cell_state)++; 
+            delta_ps(old_cell_state)--;
             nmat(i, j) = new_cell_state; 
           }
           
         }
       }
       
-    }
+      // Apply iteration changes in global densities and matrix state
+      for ( ushort k=0; k<ns; k++ ) { 
+        ps(k) += delta_ps(k); 
+        delta_ps(k) = 0; 
+      }
+      omat = nmat; 
+      
+    } // end of substep loop
     
     iter++; 
   }

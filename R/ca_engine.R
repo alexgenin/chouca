@@ -24,10 +24,10 @@ camodel_r_engine <- function(trans, ctrl,
   
   # Compute global densities
   ps <- get_global_counts(omat, ns) 
+  delta_ps <- rep(0, ns)
   
   t <- 0 
   while ( t <= niter ) { 
-    
     
     # Make callback to progress display 
     if ( ctrl[["console_callback_active"]] && 
@@ -48,8 +48,6 @@ camodel_r_engine <- function(trans, ctrl,
     }
     
     for ( s in seq.int(substeps) ) { 
-      
-      omat <- nmat 
       
       for ( i in seq.int(nr) ) { 
         for ( j in seq.int(nc) ) { 
@@ -82,13 +80,18 @@ camodel_r_engine <- function(trans, ctrl,
             nmat[i, j] <- new_state
             
             # Adjust counts of cell states
-            ps[old_state+1] <- ps[old_state+1] - 1 
-            ps[new_state+1] <- ps[new_state+1] + 1 
+            delta_ps[old_state+1] <- delta_ps[old_state+1] - 1 
+            delta_ps[new_state+1] <- delta_ps[new_state+1] + 1 
           }
           
         }
           
       }
+      
+      # Apply changes
+      omat <- nmat 
+      ps <- ps + delta_ps
+      delta_ps <- delta_ps * 0
       
     }
     

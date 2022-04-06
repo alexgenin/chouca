@@ -12,8 +12,8 @@
 # 180 (3): 229–46.
 # 
 forestgap <- function(parms = list(d = 0.125, 
-                                    delta = 0.5, 
-                                    alpha = 0.2)) { 
+                                   delta = 0.5, 
+                                   alpha = 0.2)) { 
   camodel( 
     transition(from = "TREE", 
                to   = "EMPTY", 
@@ -42,12 +42,13 @@ musselbed <- function(parms = list(d = 0.1,
                                    delta = 0.25, 
                                    alpha = 0.4)) { 
   camodel( 
-    transition("E", "M", ~ alpha * q["M"]), 
-    transition("D", "E", ~ 1), 
-    transition("M", "D", ~ d + delta * q["D"]), 
+    transition("EMPTY",   "MUSSEL",  ~ alpha * q["MUSSEL"]), 
+    transition("DISTURB", "EMPTY",   ~ 1), 
+    transition("MUSSEL",  "DISTURB", ~ d + delta * q["DISTURB"]), 
     parms = parms, 
-    all_states = c("M", "E", "D")
+    all_states = c("MUSSEL", "EMPTY", "DISTURB")
   )
 }
+
 
 
