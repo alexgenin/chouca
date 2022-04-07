@@ -37,7 +37,7 @@ plyr::llply(models, function(modinfo) {
 
   # Check that we reproduce well the variance and mean of time series between the two 
   # engines. Somehow setting the seed does not 
-  engines_ts <- replicate(99, { 
+  engines_ts <- replicate(499, { 
     modcompiled <- run_camodel(mod, initmat, 20, control = { 
       control[["ca_engine"]] <- "compiled" ; control
     })
@@ -58,7 +58,7 @@ plyr::llply(models, function(modinfo) {
   evars <- apply(engines_ts, c(1, 2), var)
 
   # Display results 
-  # plot(emeans[ ,3], type = "n")
+  # plot(emeans[ ,1], type = "n")
   # lines(emeans[ ,1], col = "red")
   # lines(emeans[ ,3], col = "black")
   # lines(emeans[ ,5], col = "green")

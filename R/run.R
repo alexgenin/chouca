@@ -141,8 +141,6 @@ run_camodel <- function(mod, initmat, niter,
     camodel_r_engine(transpack, control_list, 
                      console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
-#     camodel_cpp_engine(transpack, control_list, 
-#                        console_callback, cover_callback, snapshot_callback)
     camodel_cpp_engine(transpack, control_list, 
                        console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("compiled") ) { 
