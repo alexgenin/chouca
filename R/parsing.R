@@ -141,46 +141,44 @@ parse_transition <- function(tr, state_names, parms) {
   }
   
   # Get the polynomial coefficients for this transition
-  theta0 <- c(0, # constant
-              rep(0, ns), # XP
-              rep(0, ns)) # XQ
-  
-  allcovers <- do.call(expand.grid, lapply(seq.int(ns), function(i) { 
-    seq(0, 1, l = 3) 
-  }))
-  names(allcovers) <- state_names
-  
-  total_points <- nrow(allcovers)
-  
-  # Make a grid of parameters, and get the internal polynomial coefficients
-  lossf <- function(theta) { 
-    
-    totsq <- sum(apply(allcovers, 1, function(p) { 
-      apply(allcovers, 1, function(q) { 
-        
-        ypred <- theta[1] + 
-                   sum(p * theta[2:(2+ns-1)]) + # XP
-                   sum(q * theta[(2+ns):(2+ns+ns-1)]) # XQ
-        prob <- eval(pexpr, envir = c(parms, list(q, p)))
-        
-        sum( (prob - ypred)^2 ) 
-      })
-    }))
-    
-    return(totsq)
-  }
-  
-  # Get parameters 
-  pars <- optim(theta0, lossf, method = "BFGS", 
-                control = list(abstol = .Machine$double.eps))
-  theta_final <- ifelse(pars$par < sqrt(.Machine$double.eps), 0, pars$par)
+#   theta0 <- c(0, # constant
+#               rep(0, ns), # XP
+#               rep(0, ns)) # XQ
+#   
+#   allcovers <- do.call(expand.grid, lapply(seq.int(ns), function(i) { 
+#     seq(0, 1, l = 3) 
+#   }))
+#   names(allcovers) <- state_names
+#   
+#   # Make a grid of parameters, and get the internal polynomial coefficients
+#   lossf <- function(theta) { 
+#     
+#     totsq <- sum(apply(allcovers, 1, function(p) { 
+#       apply(allcovers, 1, function(q) { 
+#         
+#         ypred <- theta[1] + 
+#                    sum(p * theta[2:(2+ns-1)]) + # XP
+#                    sum(q * theta[(2+ns):(2+ns+ns-1)]) # XQ
+#         prob <- eval(pexpr, envir = c(parms, list(q, p)))
+#         
+#         sum( (prob - ypred)^2 ) 
+#       })
+#     }))
+#     
+#     return(totsq)
+#   }
+#   
+#   # Get parameters 
+#   pars <- optim(theta0, lossf, method = "BFGS", 
+#                 control = list(abstol = .Machine$double.eps))
+#   theta_final <- ifelse(pars$par < sqrt(.Machine$double.eps), 0, pars$par)
 #   stopifnot({ 
 #     sum((c(X0, XP, XQ) - theta_final)^2) < .Machine[["double.eps"]]
 #   })
   
-  if ( pars[["value"]] > .Machine$double.eps ) { 
-    warning("Residual error when trying to determine internal coefficients, model is probably mispecified or is not appropriate for chouca")
-  }
+#   if ( pars[["value"]] > .Machine$double.eps ) { 
+#     warning("Residual error when trying to determine internal coefficients, model is probably mispecified or is not appropriate for chouca")
+#   }
   
   c(tr, list(X0 = X0, XP = XP, XQ = XQ))
 }

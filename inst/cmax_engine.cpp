@@ -59,94 +59,6 @@ static inline double randunif() {
   return xf; 
 }
 
-inline void get_local_densities(char qs[nr][nc][ns], 
-                                const char m[nr][nc]) { 
-  
-  // Set all counts to zero
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      for ( char k=0; k<ns; k++ ) { 
-        qs[i][j][k] = 0; 
-      }
-    }
-  }
-  
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      // Get neighbors to the left 
-      if ( wrap ) { 
-        
-        char state_left = m[i][(nc + j - 1) % nc];
-        qs[i][j][state_left]++; // left 
-        
-        char state_right = m[i][(nc + j + 1) % nc];
-        qs[i][j][state_right]++; // right
-        
-        char state_up = m[(nr + i - 1) % nr][j];
-        qs[i][j][state_up]++; // up
-        
-        char state_down = m[(nr + i + 1) % nr][j];
-        qs[i][j][state_down]++; // down
-        
-        if ( use_8_nb ) { 
-          
-          char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
-          qs[i][j][state_upleft]++; // upleft
-          
-          char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
-          qs[i][j][state_upright]++; // upright
-          
-          char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
-          qs[i][j][state_downleft]++; // downleft
-          
-          char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
-          qs[i][j][state_downright]++; // downright
-        }
-        
-      } else { 
-        
-        if ( i > 0 ) { 
-          char state_up = m[i-1][j];
-          qs[i][j][state_up]++; // up
-        }
-        if ( i < (nr-1) ) { 
-          char state_down = m[i+1][j]; 
-          qs[i][j][state_down]++; // down
-        }
-        if ( j > 0 ) { 
-          char state_left = m[i][j-1]; 
-          qs[i][j][state_left]++; // left
-        }
-        if ( j < (nc-1) ) { 
-          char state_right = m[i][j+1]; 
-          qs[i][j][state_right]++; // right
-        }
-        
-        if ( use_8_nb ) { 
-          if ( i > 0 && j > 0 ) { 
-            char state_upleft = m[i-1][j-1]; 
-            qs[i][j][state_upleft]++; // upleft
-          }
-          if ( i > 0 && j < (nc-1) ) { 
-            char state_upright = m[i-1][j+1]; 
-            qs[i][j][state_upright]++; // upright
-          }
-          if ( i < (nr-1) && j > 0 ) { 
-            char state_downleft = m[i+1][j-1]; 
-            qs[i][j][state_downleft]++; // downleft
-          }
-          if ( i < (nr-1) && j < (nc-1) ) { 
-            char state_downright = m[i+1][j+1]; 
-            qs[i][j][state_downright]++; // downright
-          }
-        }
-        
-      }
-    }
-  }
-  
-}
-
 inline double number_of_neighbors(const arma::uword i, 
                                   const arma::uword j) { 
   // When we do not wrap, the total number of neighbors depends on where we are 
@@ -186,84 +98,148 @@ inline double number_of_neighbors(const arma::uword i,
   return nnb; 
 }
 
-inline void adjust_local_densities(char qs[nr][nc][ns], 
-                                   const uword i, 
-                                   const uword j, 
-                                   const char from, 
-                                   const char to) { 
+inline void get_local_counts(char qs[ns], 
+                             const char m[nr][nc], 
+                             arma::uword i, 
+                             arma::uword j) { 
+  
+  // Set all counts to zero
+  for ( char k=0; k<ns; k++ ) { 
+    qs[k] = 0; 
+  }
   
   // Get neighbors to the left 
   if ( wrap ) { 
     
-    // left 
-    qs[i][(nc + j - 1) % nc][to]++; 
-    qs[i][(nc + j - 1) % nc][from]--; 
+    char state_left = m[i][(nc + j - 1) % nc];
+    qs[state_left]++; // left 
     
-    // right
-    qs[i][(nc + j + 1) % nc][to]++; 
-    qs[i][(nc + j + 1) % nc][from]--; 
+    char state_right = m[i][(nc + j + 1) % nc];
+    qs[state_right]++; // right
     
-    // up
-    qs[(nr + i - 1) % nr][j][to]++; 
-    qs[(nr + i - 1) % nr][j][from]--; 
+    char state_up = m[(nr + i - 1) % nr][j];
+    qs[state_up]++; // up
     
-    // down
-    qs[(nr + i + 1) % nr][j][to]++;
-    qs[(nr + i + 1) % nr][j][from]--;
+    char state_down = m[(nr + i + 1) % nr][j];
+    qs[state_down]++; // down
     
     if ( use_8_nb ) { 
       
-      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
-      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
+      char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
+      qs[state_upleft]++; // upleft
       
-      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
-      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
+      char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
+      qs[state_upright]++; // upright
       
-      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
-      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
+      char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
+      qs[state_downleft]++; // downleft
       
-      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
-      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
+      char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
+      qs[state_downright]++; // downright
     }
     
   } else { 
     
     if ( i > 0 ) { 
-      qs[i-1][j][to]++; // up
-      qs[i-1][j][from]--;
+      char state_up = m[i-1][j];
+      qs[state_up]++; // up
     }
     if ( i < (nr-1) ) { 
-      qs[i+1][j][to]++; // down
-      qs[i+1][j][from]--; 
+      char state_down = m[i+1][j]; 
+      qs[state_down]++; // down
     }
     if ( j > 0 ) { 
-      qs[i][j-1][to]++; // left
-      qs[i][j-1][from]--; 
+      char state_left = m[i][j-1]; 
+      qs[state_left]++; // left
     }
     if ( j < (nc-1) ) { 
-      qs[i][j+1][to]++; // right
-      qs[i][j+1][from]--; 
+      char state_right = m[i][j+1]; 
+      qs[state_right]++; // right
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
-        qs[i-1][j-1][to]++; // upleft
-        qs[i-1][j-1][from]--; 
+        char state_upleft = m[i-1][j-1]; 
+        qs[state_upleft]++; // upleft
       }
       if ( i > 0 && j < (nc-1) ) { 
-        qs[i-1][j+1][to]++; // upright
-        qs[i-1][j+1][from]++; 
+        char state_upright = m[i-1][j+1]; 
+        qs[state_upright]++; // upright
       }
       if ( i < (nr-1) && j > 0 ) { 
-        qs[i+1][j-1][from]++; // downleft
-        qs[i+1][j-1][to]--; 
+        char state_downleft = m[i+1][j-1]; 
+        qs[state_downleft]++; // downleft
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
-        qs[i+1][j+1][to]++; // downright
-        qs[i+1][j+1][from]--; 
+        char state_downright = m[i+1][j+1]; 
+        qs[state_downright]++; // downright
       }
     }
     
+  }
+  
+}
+
+void adjust_XQproba_at_ij(double XQproba[nr][nc][ns], 
+                          const char m[nr][nc], 
+                          const arma::uword i, 
+                          const arma::uword j, 
+                          const double ctrans[ns][ns][ncoefs]) { 
+  
+  // Compute local densities, etc. 
+  char qs[ns]; 
+  get_local_counts(qs, m, i, j); 
+  double qs_total = number_of_neighbors(i, j); 
+  
+  // Make sum of local density components for transition to state 'to'
+  char cstate = m[i][j]; 
+//   Rcpp::Rcout << "current state at " << i << "/" << j << ": " << cstate << "\n"; 
+  
+  for ( char to=0; to<ns; to++ ) { 
+    XQproba[i][j][to] = 0; 
+    // Loop over coefficients to be added
+    for ( char k=0; k<ns; k++ ) { 
+//       Rcpp::Rcout << "neighbors of " << (int) k << ": " << (int) qs[k] << "\n"; 
+//       Rcpp::Rcout << "coef of " << (int)k << ": " << ctrans[to][cstate][1+k+ns] << "\n"; 
+      XQproba[i][j][to] += ctrans[to][cstate][1+k+ns] * 
+                             ( (double) qs[k] / qs_total ) / fsubsteps; 
+    }
+//     Rcpp::Rcout << "proba to " << (int) to << ": " << XQproba[i][j][to] << "\n"; 
+  }
+  
+}
+
+void adjust_XQproba_around_ij(double XQproba[nr][nc][ns], 
+                              const char m[nr][nc], 
+                              const arma::uword i, 
+                              const arma::uword j, 
+                              const double ctrans[ns][ns][ncoefs]) { 
+  
+  // Adjust probability on the cell itself, which just changed state
+  adjust_XQproba_at_ij(XQproba, m, i, j, ctrans); 
+  
+  if ( wrap ) { 
+    uword col_left = (nc + j - 1) % nc; 
+    adjust_XQproba_at_ij(XQproba, m, i, col_left, ctrans); 
+    
+    uword col_right = (nc + j + 1) % nc; 
+    adjust_XQproba_at_ij(XQproba, m, i, col_right, ctrans); 
+    
+    uword row_up = (nr + i - 1) % nr; 
+    adjust_XQproba_at_ij(XQproba, m, row_up, j, ctrans); 
+    
+    uword row_down = (nr + i + 1) % nr; 
+    adjust_XQproba_at_ij(XQproba, m, row_down, j, ctrans); 
+    
+    if ( use_8_nb ) { 
+      adjust_XQproba_at_ij(XQproba, m, row_up,   col_left,  ctrans); 
+      adjust_XQproba_at_ij(XQproba, m, row_up,   col_right, ctrans); 
+      adjust_XQproba_at_ij(XQproba, m, row_down, col_left,  ctrans); 
+      adjust_XQproba_at_ij(XQproba, m, row_down, col_right, ctrans); 
+    }
+  
+  } else { 
+    Rcpp::Rcout << "not implemented\n";
   }
   
 }
@@ -282,7 +258,7 @@ void console_callback_wrap(const arma::uword iter,
 void snapshot_callback_wrap(const arma::uword iter, 
                             const char omat[nr][nc],
                             Rcpp::Function snapshot_callback) { 
-    
+  
   // Make arma array to give back to R
   Mat<ushort> m(nr, nc);
   for ( uword i=0; i<nr; i++ ) { 
@@ -362,9 +338,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
   }
   
-  // Compute local densities 
-  char qs[nr][nc][ns]; 
-  
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
   for ( uword i=0; i<4; i++ ) { 
@@ -375,6 +348,21 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // something too short for s (64 bits long)
   // TODO: find a way to feed 64 bits integers to xoshiro
   randunif(); 
+  
+  // Initialize XQ component of probability 
+  auto XQproba_old = new double [nr][nc][ns]; 
+  auto XQproba_new = new double [nr][nc][ns]; 
+  
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      adjust_XQproba_at_ij(XQproba_old, omat, i, j, ctrans); 
+      adjust_XQproba_at_ij(XQproba_new, omat, i, j, ctrans); 
+//       for ( char k=0; k<ns; k++ ) { 
+//         Rcpp::Rcout << "XQproba_old: " << i << " " << j << " " << (int)k << ": " << 
+//           XQproba_old[i][j][k] << "\n"; 
+//       }
+    }
+  }
   
   // Allocate some things we will reuse later 
   double ptrans[ns];
@@ -398,9 +386,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
       
-      // Compute local densities
-      get_local_densities(qs, omat); 
-      
       for ( uword i=0; i<nr; i++ ) { 
         
         for ( uword j=0; j<nc; j++ ) { 
@@ -409,25 +394,22 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           char cstate = omat[i][j]; 
           
-          // Get total of neighbors
-          double total_qs = number_of_neighbors(i, j);
-          
           // Compute probabilities of transition
           for ( char col=0; col<ns; col++ ) { 
             ptrans[col] = ctrans[col][cstate][0] / fsubsteps; 
+            // We already computed the sum of the c'(k) * q(k), so just add it here
+            ptrans[col] += XQproba_old[i][j][col]; 
+            // Add the coefficients linked to global densities c(k) * p(k). Here we need
+            // the sum as there is no precomputed value. 
             for ( char k=0; k<ns; k++ ) { 
-              // 40% time spent here
-              // c(k) * p(k)
               double pcoef = ctrans[col][cstate][1+k]; 
               ptrans[col] += pcoef * ( ps[k] / n ) / fsubsteps; 
-              // c'(k) * q(k)
-              double qcoef = ctrans[col][cstate][1+k+ns]; 
-              ptrans[col] += qcoef * ( qs[i][j][k] / total_qs ) / fsubsteps; 
             }
-            
+//             Rcpp::Rcout << i << "/" << j << ": " << 
+//               "to " << (int)col << ": " << ptrans[col] << "\n"; 
           }
           
-          // Check if cell switches. TODO: replace this by a simple for/while loop
+          // Check if cell switches. 
           char new_cell_state = cstate; 
           double left = 0; 
           double right = 0; 
@@ -437,10 +419,18 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
             left = right; 
           }
           
+          
+          // TODO: Forget precomputing XQproba, too costly, but think about adjusting qs only. 
+          // Copying is cheap.
+          
           if ( new_cell_state != cstate ) { 
             delta_ps[new_cell_state]++;
             delta_ps[cstate]--;
             nmat[i][j] = new_cell_state; 
+            
+            // Adjust changes in local component of probabilities around the cell that
+            // changes
+            adjust_XQproba_around_ij(XQproba_new, nmat, i, j, ctrans); 
           }
         }
       }
@@ -450,12 +440,19 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
         ps[k] += delta_ps[k]; 
         delta_ps[k] = 0; 
       }
+       
       for ( uword i=0; i<nr; i++ ) { 
         for ( uword j=0; j<nc; j++ ) { 
-          omat[i][j] = nmat[i][j]; 
+          omat[i][j] = nmat[i][j];
         }
       }
-      
+      for ( uword i=0; i<nr; i++ ) { 
+        for ( uword j=0; j<nc; j++ ) { 
+          for ( char k=0; k<ns; k++ ) { 
+            XQproba_old[i][j][k] = XQproba_new[i][j][k]; // no memcpy???  
+          }
+        }
+      }
       
     } // end of substep loop
     
@@ -465,6 +462,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // Free up heap-allocated arrays
   delete [] omat; 
   delete [] nmat; 
+  delete [] XQproba_old; 
+  delete [] XQproba_new; 
   
 }
 
