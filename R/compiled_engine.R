@@ -46,7 +46,7 @@ camodel_compiled_engine <- function(trans, ctrl,
   # Make hash of file and replace function name 
   # We make the hash depend on the model too, just in case the user changes models, but
   # the rest is different. Unlikely, but who knows.
-  hash <- digest::digest(list(cmaxlines, trans), algo = "md5")
+  hash <- digest::digest(list(cmaxlines), algo = "md5")
   cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   
@@ -61,6 +61,10 @@ camodel_compiled_engine <- function(trans, ctrl,
     funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
                       verbose = TRUE, cacheDir = ".", cleanupCacheDir = TRUE)
   }
+  
+  # Output file to 
+  file <- paste0("/tmp/ramdisk/", paste(sample(letters), collapse = ""), ".cpp")
+  writeLines(cmaxlines, file)
   
   runf <- get(fname)
   runf(trans, ctrl, console_callback, cover_callback, snapshot_callback)

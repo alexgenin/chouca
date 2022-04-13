@@ -13,6 +13,8 @@ __OUNROLL__
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
+using namespace arma;
+
 // These strings will be replaced by their values 
 constexpr arma::uword nr = __NR__; 
 constexpr arma::uword nc = __NC__; 
@@ -24,8 +26,12 @@ constexpr arma::uword substeps = __SUBSTEPS__;
 constexpr double fsubsteps = __SUBSTEPS__; 
 constexpr double n = nr * nc; 
 
-using namespace arma;
-
+// Components of model 
+// constexpr bool has_X0 = __has_X0__; 
+// constexpr bool has_XP = __has_XP__; 
+// constexpr bool has_XQ = __has_XQ__; 
+// constexpr bool has_XPSQ = __has_XPSQ__; 
+// constexpr bool has_XQSQ = __has_XQSQ__; 
 
 
 /* This is xoshiro256+ 
@@ -363,7 +369,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   }
   
   // Compute local densities 
-  char qs[nr][nc][ns]; 
+  auto qs = new char[nr][nc][ns]; 
   
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
@@ -399,6 +405,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     for ( uword substep=0; substep < substeps; substep++ ) { 
       
       // Compute local densities
+      // TODO: use delta_qs
       get_local_densities(qs, omat); 
       
       for ( uword i=0; i<nr; i++ ) { 
@@ -413,21 +420,33 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           double total_qs = number_of_neighbors(i, j);
           
           // Compute probabilities of transition
+          // TODO: find a way to not compute the transition to self. We could consider 
+          // trans = 0 the self-transition, then go from there?
+          // TODO: find a way to remove the addition of components to the probability 
+          // that the model does not have, e.g. if probas only depend on q, then no 
+          // need to add the p component (easy)
           for ( char col=0; col<ns; col++ ) { 
-            ptrans[col] = ctrans[col][cstate][0] / fsubsteps; 
+            ptrans[col] = ctrans[col][cstate][0]; 
             for ( char k=0; k<ns; k++ ) { 
               // 40% time spent here
-              // c(k) * p(k)
-              double pcoef = ctrans[col][cstate][1+k]; 
-              ptrans[col] += pcoef * ( ps[k] / n ) / fsubsteps; 
-              // c'(k) * q(k)
-              double qcoef = ctrans[col][cstate][1+k+ns]; 
-              ptrans[col] += qcoef * ( qs[i][j][k] / total_qs ) / fsubsteps; 
+              // XP
+              double coef = ctrans[col][cstate][1+k]; 
+              ptrans[col] += coef * ( ps[k] / n ); 
+              // XQ
+              coef = ctrans[col][cstate][1+k+ns]; 
+              ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
+              // XPSQ
+              coef = ctrans[col][cstate][1+k+2*ns]; 
+              ptrans[col] += coef * ( ps[k] / n ) * ( ps[k] / n ); 
+              // XQSQ
+              coef = ctrans[col][cstate][1+k+3*ns]; 
+              ptrans[col] += coef * ( qs[i][j][k] / total_qs ) * ( qs[i][j][k] / total_qs ); 
             }
             
+            ptrans[col] /= fsubsteps; 
           }
           
-          // Check if cell switches. TODO: replace this by a simple for/while loop
+          // Check if cell switches. 
           char new_cell_state = cstate; 
           double left = 0; 
           double right = 0; 
@@ -465,6 +484,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // Free up heap-allocated arrays
   delete [] omat; 
   delete [] nmat; 
+  delete [] qs; 
   
 }
 

@@ -40,9 +40,9 @@ run_camodel <- function(mod, initmat, niter,
   
   transitions <- do.call(rbind, lapply(mod[["transitions"]], function(o) { 
     data.frame(from = o[["from"]], to = o[["to"]], 
-               vec = c(o[["X0"]], o[["XP"]], o[["XQ"]]))
+               vec = c(o[["X0"]], o[["XP"]], o[["XQ"]], o[["XPSQ"]], o[["XQSQ"]]))
   }))
-  ncoefs <- 1 + ns + ns
+  ncoefs <- 1 + ns + ns + ns + ns # X0+XP+XQ+XPSQ+XQSQ
   transpack <- array(0, dim = list(ncoefs, ns, ns), 
                      dimnames = list(paste0("coef", seq.int(ncoefs)), 
                                      paste0("to", states), 

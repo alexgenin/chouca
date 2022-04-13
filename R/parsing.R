@@ -29,11 +29,16 @@
 #' 
 #' 
 #' 
-#' 
-camodel <- function(..., parms, all_states = NULL, verbose = TRUE) { 
-  if ( ! is.list(parms) || is.null(names(parms)) || any(names(parms) == "") ) { 
+#'@export
+camodel <- function(..., parms = list(), all_states = NULL, verbose = TRUE, 
+                    epsilon = sqrt(.Machine[["double.eps"]])) { 
+                      
+  
+  if ( ( ! identical(parms, list()) ) && 
+        ( ! is.list(parms) || is.null(names(parms)) || any(names(parms) == "") ) ) { 
     stop("parms must be a named with all elements named")
   }
+  
   if ( any( c("p", "q") %in% names(parms) ) ) { 
     stop("no parameters must be named 'q' or 'p', these are used to design densities")
   }
@@ -61,7 +66,7 @@ camodel <- function(..., parms, all_states = NULL, verbose = TRUE) {
   msg(sprintf("Using %s cell states: %s\n", nstates, paste(states, collapse = " ")))
   
   # Compute transition probabilities
-  transitions <- lapply(transitions, parse_transition, states, parms)
+  transitions <- lapply(transitions, parse_transition, states, parms, epsilon)
   
   # Check that there is no NA in transition rates 
   allrates <- plyr::laply(transitions, function(o) { 
@@ -86,6 +91,7 @@ unform <- function(form) {
   as.expression( as.list(form)[[2]] )
 }
 
+#'@export
 transition <- function(from, to, prob) { 
   if ( length(from) != 1 ) { 
     stop("from is not a single-length vector")
@@ -105,7 +111,7 @@ transition <- function(from, to, prob) {
   return(o)
 }
 
-parse_transition <- function(tr, state_names, parms) { 
+parse_transition <- function(tr, state_names, parms, epsilon) { 
   
   if ( ! inherits(tr, "camodel_transition") ) { 
     m <- paste("The transition definition has not been defined using transition().", 
@@ -114,10 +120,14 @@ parse_transition <- function(tr, state_names, parms) {
   }
   ns <- length(state_names)
   
+  # Make sure the environment for the formula is set to the empyt environment. Otherwise
+  # it trips up hash computing of the model, which is used to determine whether we have 
+  # to recompile or not when using the 'compiled' engine.
+  environment(tr[["prob"]]) <- emptyenv()
+
   pexpr <- unform(tr[["prob"]]) 
   zero <- rep(0, ns)
   names(zero) <- state_names
-  
   
   # Constant probability component (when all the p and q are zero)
   prob_with <- function(p, q) { 
@@ -125,64 +135,51 @@ parse_transition <- function(tr, state_names, parms) {
   }
   
   X0 <- prob_with(p = zero, q = zero)
+  names(X0) <- NULL 
   
   # Global and local density probability component 
-  XP <- numeric(ns)
-  XQ <- numeric(ns)
+  XP <- XPSQ <- XQ <- XQSQ <- XPQ <- numeric(ns)
+  
+  # See my notes for this
   for ( i in seq.int(ns) ) { 
-    prob0 <- prob_with(p = zero, q = zero)
+    
     onevec <- zero
     onevec[i] <- 1 # density of focal state = full
-    prob1 <- prob_with(p = onevec, q = zero)
-    XP[i] <- prob1 - prob0
     
-    prob1 <- prob_with(p = zero, q = onevec)
-    XQ[i] <- prob1 - prob0
+    p_one_zero  <- prob_with(p = onevec,   q = zero)
+    p_mone_zero <- prob_with(p = - onevec, q = zero)
+    XP[i] <- (p_one_zero - p_mone_zero) / 2
+    XPSQ[i] <- p_one_zero - X0 - XP[i]
+    
+    p_one_zero  <- prob_with(p = zero,  q = onevec)
+    p_mone_zero <- prob_with(p = zero,  q = - onevec)
+
+    XQ[i] <- (p_one_zero - p_mone_zero) / 2
+    XQSQ[i] <- p_one_zero - X0 - XQ[i]
   }
   
-  # Get the polynomial coefficients for this transition
-  theta0 <- c(0, # constant
-              rep(0, ns), # XP
-              rep(0, ns)) # XQ
+  # Make sure to zero things that are zero 
+  eps <- function(x) ifelse(x<epsilon, 0, x)
   
-  allcovers <- do.call(expand.grid, lapply(seq.int(ns), function(i) { 
-    seq(0, 1, l = 3) 
-  }))
-  names(allcovers) <- state_names
-  
-  total_points <- nrow(allcovers)
-  
-  # Make a grid of parameters, and get the internal polynomial coefficients
-  lossf <- function(theta) { 
-    
-    totsq <- sum(apply(allcovers, 1, function(p) { 
-      apply(allcovers, 1, function(q) { 
-        
-        ypred <- theta[1] + 
-                   sum(p * theta[2:(2+ns-1)]) + # XP
-                   sum(q * theta[(2+ns):(2+ns+ns-1)]) # XQ
-        prob <- eval(pexpr, envir = c(parms, list(q, p)))
-        
-        sum( (prob - ypred)^2 ) 
-      })
-    }))
-    
-    return(totsq)
-  }
-  
-  # Get parameters 
-  pars <- optim(theta0, lossf, method = "BFGS", 
-                control = list(abstol = .Machine$double.eps))
-  theta_final <- ifelse(pars$par < sqrt(.Machine$double.eps), 0, pars$par)
-#   stopifnot({ 
-#     sum((c(X0, XP, XQ) - theta_final)^2) < .Machine[["double.eps"]]
-#   })
-  
-  if ( pars[["value"]] > .Machine$double.eps ) { 
-    warning("Residual error when trying to determine internal coefficients, model is probably mispecified or is not appropriate for chouca")
-  }
-  
-  c(tr, list(X0 = X0, XP = XP, XQ = XQ))
+  c(tr, list(X0 = eps(X0), XP = eps(XP), XQ = eps(XQ), 
+             XPSQ = eps(XPSQ), XQSQ = eps(XQSQ)))
 }
 
+#'@export
+print.ca_model <- function(x, ...) { 
+  
+  force(x) # force the evaluation of x before printing
+  cat0 <- function(...) cat(paste0(...), "\n")
+  
+  cat0("Stochastic Cellular Automaton")
+  cat0("")
+  cat0("States: ", paste(x[["states"]], collapse = " "))
+  cat0("")
+  for ( tr in x[["transitions"]] ) { 
+    cat0("Transition: ", tr[["from"]], " -> ", tr[["to"]])
+    cat0("  p = ", as.character(tr[["prob"]])[2] )
+  }
+  
+  return(invisible(x))
+}
 

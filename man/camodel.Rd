@@ -4,7 +4,13 @@
 \alias{camodel}
 \title{Definition of a probabilistic cellular automaton}
 \usage{
-camodel(..., parms, all_states = NULL, verbose = TRUE)
+camodel(
+  ...,
+  parms = list(),
+  all_states = NULL,
+  verbose = TRUE,
+  epsilon = sqrt(.Machine[["double.eps"]])
+)
 }
 \arguments{
 \item{...}{a number of transition descriptions, as built by the

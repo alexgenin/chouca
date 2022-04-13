@@ -21,6 +21,12 @@ model <- musselbed()
 imat <- generate_initmat(model, c(0.5, 0.1, 0.4), nr, nc)
 models[[2]] <- list(model, imat)
 
+# Model with non-zero XPSQ/XQSQ
+model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
+                 transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
+                 parms = list(r = 0.1))
+imat <- generate_initmat(model, c(0.4, 0.6), nr, nc)
+models[[3]] <- list(model, imat)
 
 plyr::llply(models, function(modinfo) { 
   mod <- modinfo[[1]]
@@ -34,10 +40,10 @@ plyr::llply(models, function(modinfo) {
                   save_snapshots = TRUE, 
                   save_snapshots_every = 1000, 
                   ca_engine = "cpp")
-
+  
   # Check that we reproduce well the variance and mean of time series between the two 
   # engines. Somehow setting the seed does not 
-  engines_ts <- replicate(499, { 
+  engines_ts <- replicate(199, { 
     modcompiled <- run_camodel(mod, initmat, 20, control = { 
       control[["ca_engine"]] <- "compiled" ; control
     })
@@ -58,26 +64,26 @@ plyr::llply(models, function(modinfo) {
   evars <- apply(engines_ts, c(1, 2), var)
 
   # Display results 
-  # plot(emeans[ ,1], type = "n")
+  # plot(emeans[ ,5], type = "n")
   # lines(emeans[ ,1], col = "red")
   # lines(emeans[ ,3], col = "black")
   # lines(emeans[ ,5], col = "green")
 
-
+  
   expect_true({ 
-    abs( mean( emeans[ ,1] - emeans[ ,3] ) ) < 1e-2
+    all( abs( emeans[ ,1] - emeans[ ,3] ) < 1e-2 )
   })
 
   expect_true({ 
-    abs( mean( emeans[ ,2] - emeans[ ,4] ) ) < 1e-2
+    all( abs( emeans[ ,2] - emeans[ ,4] ) < 1e-2 )
   })
 
   expect_true({ 
-    abs( mean( evars[ ,1] - evars[ ,3] ) ) < 1e-2
+    all( abs( evars[ ,1] - evars[ ,3] ) < 1e-2 )
   })
 
   expect_true({ 
-    abs( mean( evars[ ,2] - evars[ ,4] ) ) < 1e-2
+    all( abs( evars[ ,2] - evars[ ,4] ) < 1e-2 )
   })
 
 })

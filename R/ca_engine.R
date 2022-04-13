@@ -62,9 +62,12 @@ camodel_r_engine <- function(trans, ctrl,
           # Compute rates of transitions (probabilities) to other states
           trates <- numeric(ncol(tprobs))
           for ( col in seq.int(ncol(tprobs)) ) { 
-            trates[col] <- ( tprobs[1, col] + 
-                            sum(tprobs[2:(2+ns-1), col] * ps/n) + 
-                            sum(tprobs[(2+ns):(2+ns+ns-1), col] * qs) ) / substeps
+            trates[col] <- 
+              ( tprobs[1, col] + # X0
+                  sum(tprobs[2:(2+ns-1), col] * ps/n) + # XP
+                  sum(tprobs[(2+ns):(2+2*ns-1), col] * qs) + # XQ
+                  sum(tprobs[(2+2*ns):(2+3*ns-1), col] * (ps/n)^2) + # XPSQ
+                  sum(tprobs[(2+3*ns):(2+4*ns-1), col] * qs^2) ) / substeps # XQSQ
           }
           ctrates <- cumsum(trates)
           
