@@ -18,14 +18,39 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxfile <- system.file("cmax_engine.cpp", package = "chouca")
   cmaxlines <- readLines(cmaxfile) 
   
+  # 
+  if ( ctrl[["verbose_compilation"]] ) { 
+    cat("Compilation options:\n")
+    gsubf <- function(a, b, lines) { 
+      cat(sprintf("Setting %s to %s\n", a, b))
+      lines <- gsub(a, b, lines)
+    }
+  } else { 
+    gsubf <- gsub
+  }
+  
   # Replace template values
-  cmaxlines <- gsub("__NR__", format(nrow(init)), cmaxlines)
-  cmaxlines <- gsub("__NC__", format(ncol(init)), cmaxlines)
-  cmaxlines <- gsub("__NS__", format(ns), cmaxlines)
-  cmaxlines <- gsub("__NCOEFS__", format(coefs), cmaxlines)
-  cmaxlines <- gsub("__WRAP__", ifelse(wrap, "true", "false"), cmaxlines)
-  cmaxlines <- gsub("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
-  cmaxlines <- gsub("__SUBSTEPS__", format(substeps), cmaxlines)
+  cmaxlines <- gsubf("__NR__", format(nrow(init)), cmaxlines)
+  cmaxlines <- gsubf("__NC__", format(ncol(init)), cmaxlines)
+  cmaxlines <- gsubf("__NS__", format(ns), cmaxlines)
+  cmaxlines <- gsubf("__NCOEFS__", format(coefs), cmaxlines)
+  cmaxlines <- gsubf("__WRAP__", ifelse(wrap, "true", "false"), cmaxlines)
+  cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
+  cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
+  
+  # Probability components: turn on or off in compiled 
+  totX0 <- sum(trans[1, , ]) # X0
+  totXP <- sum(trans[2:(2+ns-1), , ]) # XP
+  totXQ <- sum(trans[(2+ns):(2+2*ns-1), , ]) # XQ
+  totXPSQ <- sum(trans[(2+2*ns):(2+3*ns-1), , ]) # XPSQ
+  totXQSQ <- sum(trans[(2+3*ns):(2+4*ns-1), , ]) # XQSQ
+  
+  boolstr <- function(x) ifelse(x>0, "true", "false")
+  cmaxlines <- gsubf("__HAS_X0__", boolstr(totX0), cmaxlines)
+  cmaxlines <- gsubf("__HAS_XP__", boolstr(totXP), cmaxlines)
+  cmaxlines <- gsubf("__HAS_XQ__", boolstr(totXQ), cmaxlines)
+  cmaxlines <- gsubf("__HAS_XPSQ__", boolstr(totXPSQ), cmaxlines)
+  cmaxlines <- gsubf("__HAS_XQSQ__", boolstr(totXQSQ), cmaxlines)
   
   # Set GCC options on command line 
   olvl <- gsub(" ", "", ctrl[["olevel"]])
@@ -52,7 +77,7 @@ camodel_compiled_engine <- function(trans, ctrl,
   
   # Source cpp if needed 
   if ( ! exists(fname) ) { 
-    
+      
 #     Sys.setenv(CXX11FLAGS = " -O3 -march=native -mtune=native ", 
 #                CXXFLAGS = " -O3 -march=native -mtune=native ")
 #     Sys.setenv(MAKEFLAGS = "CXX11FLAGS='-O3 -march=native -mtune=native'")
@@ -63,8 +88,9 @@ camodel_compiled_engine <- function(trans, ctrl,
   }
   
   # Output file to 
-  file <- paste0("/tmp/ramdisk/", paste(sample(letters), collapse = ""), ".cpp")
-  writeLines(cmaxlines, file)
+#   file <- paste0("/tmp/ramdisk/", paste(sample(letters), collapse = ""), ".cpp")
+#   cat(sprintf("writing to %s\n", file))
+#   writeLines(cmaxlines, file)
   
   runf <- get(fname)
   runf(trans, ctrl, console_callback, cover_callback, snapshot_callback)

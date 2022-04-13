@@ -6,8 +6,8 @@
 # Generate datasets 
 
 # Kubo's forest gap model 
-nr <- 30
-nc <- 20
+nr <- 20
+nc <- 30
 
 models <- list()
 
@@ -27,6 +27,12 @@ model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^
                  parms = list(r = 0.1))
 imat <- generate_initmat(model, c(0.4, 0.6), nr, nc)
 models[[3]] <- list(model, imat)
+
+# If we do not do extended tests, just do the musselbed model and the non-zero XPSQ/XQSQ
+# model
+if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) { 
+  models <- models[c(2, 3)]
+}
 
 plyr::llply(models, function(modinfo) { 
   mod <- modinfo[[1]]

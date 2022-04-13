@@ -133,7 +133,8 @@ run_camodel <- function(mod, initmat, niter,
                        snapshot_callback_active = snapshot_callback_active, 
                        snapshot_callback_every  = control[["save_snapshots_every"]], 
                        olevel = control[["olevel"]], 
-                       unroll_loops = control[["unroll_loops"]])
+                       unroll_loops = control[["unroll_loops"]], 
+                       verbose_compilation = control[["verbose_compilation"]])
   
   # NOTE: this function will modify some objects in the current environment. 
   engine <- control[["ca_engine"]][1]
@@ -186,7 +187,8 @@ load_control_list <- function(l) {
     # Compiled engine option 
     write_to_file = NULL, 
     olevel = "O2", 
-    unroll_loops = FALSE
+    unroll_loops = FALSE, 
+    verbose_compilation = FALSE
   )
   
   for ( nm in names(l) ) { 

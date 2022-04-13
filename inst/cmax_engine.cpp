@@ -27,11 +27,11 @@ constexpr double fsubsteps = __SUBSTEPS__;
 constexpr double n = nr * nc; 
 
 // Components of model 
-// constexpr bool has_X0 = __has_X0__; 
-// constexpr bool has_XP = __has_XP__; 
-// constexpr bool has_XQ = __has_XQ__; 
-// constexpr bool has_XPSQ = __has_XPSQ__; 
-// constexpr bool has_XQSQ = __has_XQSQ__; 
+constexpr bool has_X0 = __HAS_X0__; 
+constexpr bool has_XP = __HAS_XP__; 
+constexpr bool has_XQ = __HAS_XQ__; 
+constexpr bool has_XPSQ = __HAS_XPSQ__; 
+constexpr bool has_XQSQ = __HAS_XQSQ__; 
 
 
 /* This is xoshiro256+ 
@@ -422,25 +422,35 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Compute probabilities of transition
           // TODO: find a way to not compute the transition to self. We could consider 
           // trans = 0 the self-transition, then go from there?
-          // TODO: find a way to remove the addition of components to the probability 
-          // that the model does not have, e.g. if probas only depend on q, then no 
-          // need to add the p component (easy)
           for ( char col=0; col<ns; col++ ) { 
-            ptrans[col] = ctrans[col][cstate][0]; 
+            if ( has_X0 ) { 
+              ptrans[col] = ctrans[col][cstate][0]; 
+            } else { 
+              ptrans[col] = 0.0; 
+            }
             for ( char k=0; k<ns; k++ ) { 
               // 40% time spent here
               // XP
-              double coef = ctrans[col][cstate][1+k]; 
-              ptrans[col] += coef * ( ps[k] / n ); 
+              if ( has_XP ) { 
+                double coef = ctrans[col][cstate][1+k]; 
+                ptrans[col] += coef * ( ps[k] / n ); 
+              }
               // XQ
-              coef = ctrans[col][cstate][1+k+ns]; 
-              ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
+              if ( has_XQ ) { 
+                double coef = ctrans[col][cstate][1+k+ns]; 
+                ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
+              }
               // XPSQ
-              coef = ctrans[col][cstate][1+k+2*ns]; 
-              ptrans[col] += coef * ( ps[k] / n ) * ( ps[k] / n ); 
+              if ( has_XPSQ ) { 
+                double coef = ctrans[col][cstate][1+k+2*ns]; 
+                ptrans[col] += coef * ( ps[k] / n ) * ( ps[k] / n ); 
+              }
               // XQSQ
-              coef = ctrans[col][cstate][1+k+3*ns]; 
-              ptrans[col] += coef * ( qs[i][j][k] / total_qs ) * ( qs[i][j][k] / total_qs ); 
+              if ( has_XQSQ ) { 
+                double coef = ctrans[col][cstate][1+k+3*ns]; 
+                ptrans[col] += coef * ( qs[i][j][k] / total_qs ) * 
+                                        ( qs[i][j][k] / total_qs ); 
+              }
             }
             
             ptrans[col] /= fsubsteps; 
