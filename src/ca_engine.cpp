@@ -260,6 +260,10 @@ void camodel_cpp_engine(const arma::cube trans,
   
   uword iter = 0; 
   
+  // Take into account substeps by dividing rates 
+  arma::cube trans_sub = trans; 
+  trans_sub /= (double) substeps; 
+  
   // Allocate some things we will reuse later 
   Mat<uword> qs(nr, ns);
   Col<double> qs_prop(ns);
@@ -301,22 +305,23 @@ void camodel_cpp_engine(const arma::cube trans,
           // Compute probability transitions 
           for ( ushort col=0; col<ns; col++ ) { 
             // X0
-            ptrans(col) = trans(0, col, cstate); 
+            ptrans(col) = trans_sub(0, col, cstate); 
             // Add global and local density components
             for ( ushort k=0; k<ns; k++ ) { 
               // XP
-              ptrans(col) += trans(1+k, col, cstate) * ( ps(k) / (double) n);  
+              ptrans(col) += trans_sub(1+k, col, cstate) * 
+                               ( ps(k) / (double) n);  
               // XQ
-              ptrans(col) += trans(1+k+ns, col, cstate) * ( qs(i, k) / (double) qs_total ); 
+              ptrans(col) += trans_sub(1+k+ns, col, cstate) * 
+                               ( qs(i, k) / (double) qs_total ); 
               // XPSQ
-              ptrans(col) += trans(1+k+2*ns, col, cstate) * 
+              ptrans(col) += trans_sub(1+k+2*ns, col, cstate) * 
                                ( ps(k) * ps(k) / (double) n / (double) n ); 
               // XQSQ
-              ptrans(col) += trans(1+k+3*ns, col, cstate) * 
+              ptrans(col) += trans_sub(1+k+3*ns, col, cstate) * 
                         ( qs(i, k) * qs(i, k) / (double) qs_total / (double) qs_total);
             }
           }
-          ptrans /= substeps; 
           
           // Check if we actually transition. We scan all states and switch to the 
           // one with the highest probability. 

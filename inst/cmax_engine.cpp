@@ -23,7 +23,6 @@ constexpr arma::uword ncoefs = __NCOEFS__;
 constexpr bool wrap = __WRAP__; 
 constexpr bool use_8_nb = __USE_8_NB__; 
 constexpr arma::uword substeps = __SUBSTEPS__; 
-constexpr double fsubsteps = __SUBSTEPS__; 
 constexpr double n = nr * nc; 
 
 // Components of model 
@@ -435,6 +434,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
   }
   
+  // We divide all coefficients by substep to take that into account 
+  for ( uword i=0; i<ns; i++ ) { 
+    for ( uword j=0; j<ns; j++ ) { 
+      for ( uword coef=0; coef<ncoefs; coef++ ) { 
+        ctrans[i][j][coef] /= (double) substeps; 
+      }
+    }
+  }
+  
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
   uword ps[ns];
@@ -489,6 +497,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
       
       // Compute local densities
       // get_local_densities(qs, omat); 
+      // Adjust changes in local densities to zero 
       for ( uword i=0; i<nr; i++ ) { 
         for ( uword j=0; j<nc; j++ ) { 
           for ( char k=0; k<ns; k++ ) { 
@@ -511,6 +520,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Compute probabilities of transition
           // TODO: find a way to not compute the transition to self. We could consider 
           // trans = 0 the self-transition, then go from there?
+          // TODO: consider pre-computing probability transitions, this solves the above 
+          // problem
           for ( char col=0; col<ns; col++ ) { 
             
             if ( has_X0 ) { 
@@ -547,17 +558,19 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
               }
             }
             
-            ptrans[col] /= fsubsteps; 
           }
           
-          // Check if cell switches. 
+          // Check if we actually transition.  
+          // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
+          //               ^ p0 < rn < (p0+p1) => p1 wins
+          // Of course the sum of probabilities must be lower than one, otherwise we are 
+          // making an approximation since the random number is always below one. 
           char new_cell_state = cstate; 
-          double left = 0; 
-          double right = 0; 
-          for ( char k=0; k<ns; k++ ) { 
-            right += ptrans[k]; 
-            new_cell_state = ( left < rn && rn < right ) ? k : new_cell_state; 
-            left = right; 
+          for ( char k=1; k<ns; k++ ) { // cumsum
+            ptrans[k] += ptrans[k-1]; 
+          }
+          for ( char k=(ns-1); k>=0; k-- ) { 
+            new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
           }
           
           if ( new_cell_state != cstate ) { 

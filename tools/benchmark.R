@@ -14,8 +14,8 @@ TEST_COMMITS <- c("c80479a4a12016226c259a65402ee22085b5a985", # 2022-03-13
                   "a07407ea3b9d0bfef5658641c4db5c4dad83a92d", # 2022-03-17 
                   "989dde0d1318319aa940f23b391cabf6ec753791", # 2022-03-19
                   "245c05834cc67394cf731f47f328aabec033ed5c", # 2022-04-05
-                  "2480a01b2b253c4ae1793f63914411c12d444ed7", # 2022-04-12
-                  "9fcaf03c07da9251eb39b9cc127483177ee25ae0")
+                  "9fcaf03c07da9251eb39b9cc127483177ee25ae0", # 2022-04-12
+                  "58959efce8b69831d78103beee6d4f9eb8477718") # 2022-04-13
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -140,7 +140,8 @@ bench_commits <- ldply(TEST_COMMITS, function(commit) {
 
 ggplot(subset(bench_commits, finished), 
        aes(x = size, y = mcells_per_s, 
-           color = paste0(year(commit_datetime), "-", month(commit_datetime), " ", 
+           color = paste0(year(commit_datetime), "-", month(commit_datetime), 
+                          "-", day(commit_datetime), " ", 
                           substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit))) + 
