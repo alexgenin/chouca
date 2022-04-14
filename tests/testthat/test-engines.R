@@ -48,8 +48,8 @@ plyr::llply(models, function(modinfo) {
                   ca_engine = "cpp")
   
   # Check that we reproduce well the variance and mean of time series between the two 
-  # engines. Somehow setting the seed does not 
-  engines_ts <- replicate(199, { 
+  # engines. Somehow setti the seed does not 
+  engines_ts <- replicate(99, { 
     modcompiled <- run_camodel(mod, initmat, 20, control = { 
       control[["ca_engine"]] <- "compiled" ; control
     })

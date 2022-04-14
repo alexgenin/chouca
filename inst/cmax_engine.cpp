@@ -151,7 +151,86 @@ inline void get_local_densities(char qs[nr][nc][ns],
     }
   }
   
-}
+}/*
+
+inline void adjust_local_densities(char delta_qs[nr][nc][ns],
+                                   const arma::uword i, 
+                                   const arma::uword j, 
+                                   const char ori_state, 
+                                   const char new_state) { 
+  
+    // Get neighbors to the left 
+    if ( wrap ) { 
+      
+      delta_qs[i][(nc + j - 1) % nc][ori_state]--; // left 
+      delta_qs[i][(nc + j - 1) % nc][new_state]++; //  
+      
+      delta_qs[i][(nc + j + 1) % nc][ori_state]--; // right
+      delta_qs[i][(nc + j + 1) % nc][new_state]++; // 
+      
+      delta_qs[(nr + i - 1) % nr][j][ori_state]--; // up
+      delta_qs[(nr + i - 1) % nr][j][new_state]++; // 
+      
+      delta_qs[(nr + i + 1) % nr][j][ori_state]--; // down
+      delta_qs[(nr + i + 1) % nr][j][new_state]++; // 
+      
+      if ( use_8_nb ) { 
+        
+        delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][ori_state]--; // upleft
+        delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][new_state]++; // 
+        
+        delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][ori_state]--; // upright
+        delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][new_state]++; // 
+        
+        delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][ori_state]--; // downleft
+        delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][new_state]++; // 
+        
+        delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][ori_state]--; // downright
+        delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][new_state]++; // 
+        
+      }
+      
+    } else { 
+      
+      if ( i > 0 ) { 
+        delta_qs[i-1][j][ori_state]--; // up
+        delta_qs[i-1][j][new_state]++; // 
+      }
+      if ( i < (nr-1) ) { 
+        delta_qs[i+1][j][ori_state]--; // down
+        delta_qs[i+1][j][new_state]++; // 
+      }
+      if ( j > 0 ) { 
+        delta_qs[i][j-1][ori_state]--; // left
+        delta_qs[i][j-1][new_state]++; // 
+      }
+      if ( j < (nc-1) ) { 
+        delta_qs[i][j+1][ori_state]--; // right
+        delta_qs[i][j+1][new_state]++; // 
+      }
+      
+      if ( use_8_nb ) { 
+        if ( i > 0 && j > 0 ) { 
+          delta_qs[i-1][j-1][ori_state]--; // upleft
+          delta_qs[i-1][j-1][new_state]++; // 
+        }
+        if ( i > 0 && j < (nc-1) ) { 
+          delta_qs[i-1][j+1][ori_state]--; // upright
+          delta_qs[i-1][j+1][new_state]++; // 
+        }
+        if ( i < (nr-1) && j > 0 ) { 
+          delta_qs[i+1][j-1][ori_state]--; // downleft
+          delta_qs[i+1][j-1][new_state]++; // 
+        }
+        if ( i < (nr-1) && j < (nc-1) ) { 
+          delta_qs[i+1][j+1][ori_state]--; // downright
+          delta_qs[i+1][j+1][new_state]++; // 
+        }
+      }
+      
+    }
+  
+}*/
 
 inline double number_of_neighbors(const arma::uword i, 
                                   const arma::uword j) { 
@@ -192,7 +271,7 @@ inline double number_of_neighbors(const arma::uword i,
   return nnb; 
 }
 
-inline void adjust_local_densities(char qs[nr][nc][ns], 
+inline void adjust_local_densities(signed char delta_qs[nr][nc][ns], 
                                    const uword i, 
                                    const uword j, 
                                    const char from, 
@@ -202,71 +281,71 @@ inline void adjust_local_densities(char qs[nr][nc][ns],
   if ( wrap ) { 
     
     // left 
-    qs[i][(nc + j - 1) % nc][to]++; 
-    qs[i][(nc + j - 1) % nc][from]--; 
+    delta_qs[i][(nc + j - 1) % nc][to]++; 
+    delta_qs[i][(nc + j - 1) % nc][from]--; 
     
     // right
-    qs[i][(nc + j + 1) % nc][to]++; 
-    qs[i][(nc + j + 1) % nc][from]--; 
+    delta_qs[i][(nc + j + 1) % nc][to]++; 
+    delta_qs[i][(nc + j + 1) % nc][from]--; 
     
     // up
-    qs[(nr + i - 1) % nr][j][to]++; 
-    qs[(nr + i - 1) % nr][j][from]--; 
+    delta_qs[(nr + i - 1) % nr][j][to]++; 
+    delta_qs[(nr + i - 1) % nr][j][from]--; 
     
     // down
-    qs[(nr + i + 1) % nr][j][to]++;
-    qs[(nr + i + 1) % nr][j][from]--;
+    delta_qs[(nr + i + 1) % nr][j][to]++;
+    delta_qs[(nr + i + 1) % nr][j][from]--;
     
     if ( use_8_nb ) { 
       
-      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
-      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
+      delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
+      delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
       
-      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
-      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
+      delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
+      delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
       
-      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
-      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
+      delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
+      delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
       
-      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
-      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
+      delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
+      delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
     }
     
   } else { 
     
     if ( i > 0 ) { 
-      qs[i-1][j][to]++; // up
-      qs[i-1][j][from]--;
+      delta_qs[i-1][j][to]++; // up
+      delta_qs[i-1][j][from]--;
     }
     if ( i < (nr-1) ) { 
-      qs[i+1][j][to]++; // down
-      qs[i+1][j][from]--; 
+      delta_qs[i+1][j][to]++; // down
+      delta_qs[i+1][j][from]--; 
     }
     if ( j > 0 ) { 
-      qs[i][j-1][to]++; // left
-      qs[i][j-1][from]--; 
+      delta_qs[i][j-1][to]++; // left
+      delta_qs[i][j-1][from]--; 
     }
     if ( j < (nc-1) ) { 
-      qs[i][j+1][to]++; // right
-      qs[i][j+1][from]--; 
+      delta_qs[i][j+1][to]++; // right
+      delta_qs[i][j+1][from]--; 
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
-        qs[i-1][j-1][to]++; // upleft
-        qs[i-1][j-1][from]--; 
+        delta_qs[i-1][j-1][to]++; // upleft
+        delta_qs[i-1][j-1][from]--; 
       }
       if ( i > 0 && j < (nc-1) ) { 
-        qs[i-1][j+1][to]++; // upright
-        qs[i-1][j+1][from]++; 
+        delta_qs[i-1][j+1][to]++; // upright
+        delta_qs[i-1][j+1][from]++; 
       }
       if ( i < (nr-1) && j > 0 ) { 
-        qs[i+1][j-1][from]++; // downleft
-        qs[i+1][j-1][to]--; 
+        delta_qs[i+1][j-1][from]++; // downleft
+        delta_qs[i+1][j-1][to]--; 
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
-        qs[i+1][j+1][to]++; // downright
-        qs[i+1][j+1][from]--; 
+        delta_qs[i+1][j+1][to]++; // downright
+        delta_qs[i+1][j+1][from]--; 
       }
     }
     
@@ -278,7 +357,7 @@ void console_callback_wrap(const arma::uword iter,
                            const arma::uword ps[ns], 
                            const double n, 
                            Rcpp::Function console_callback) { 
-  uvec ps_arma(ns); 
+  uvec ps_arma(ns); // double
   for ( char k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
@@ -293,7 +372,7 @@ void snapshot_callback_wrap(const arma::uword iter,
   Mat<ushort> m(nr, nc);
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
-      m(i,j) = omat[i][j]; 
+      m(i,j) = (ushort) omat[i][j]; 
     }
   }
   
@@ -370,6 +449,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   // Compute local densities 
   auto qs = new char[nr][nc][ns]; 
+  get_local_densities(qs, omat); 
+  
+  // Array that will store changes in local densities
+  auto delta_qs = new signed char[nr][nc][ns]; 
   
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
@@ -405,8 +488,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     for ( uword substep=0; substep < substeps; substep++ ) { 
       
       // Compute local densities
-      // TODO: use delta_qs
-      get_local_densities(qs, omat); 
+      // get_local_densities(qs, omat); 
+      for ( uword i=0; i<nr; i++ ) { 
+        for ( uword j=0; j<nc; j++ ) { 
+          for ( char k=0; k<ns; k++ ) { 
+            delta_qs[i][j][k] = 0; 
+          }
+        }
+      }
       
       for ( uword i=0; i<nr; i++ ) { 
         
@@ -423,28 +512,33 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // TODO: find a way to not compute the transition to self. We could consider 
           // trans = 0 the self-transition, then go from there?
           for ( char col=0; col<ns; col++ ) { 
+            
             if ( has_X0 ) { 
               ptrans[col] = ctrans[col][cstate][0]; 
             } else { 
               ptrans[col] = 0.0; 
             }
+            
             for ( char k=0; k<ns; k++ ) { 
-              // 40% time spent here
+              
               // XP
               if ( has_XP ) { 
                 double coef = ctrans[col][cstate][1+k]; 
                 ptrans[col] += coef * ( ps[k] / n ); 
               }
+              
               // XQ
               if ( has_XQ ) { 
                 double coef = ctrans[col][cstate][1+k+ns]; 
                 ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
               }
+              
               // XPSQ
               if ( has_XPSQ ) { 
                 double coef = ctrans[col][cstate][1+k+2*ns]; 
                 ptrans[col] += coef * ( ps[k] / n ) * ( ps[k] / n ); 
               }
+              
               // XQSQ
               if ( has_XQSQ ) { 
                 double coef = ctrans[col][cstate][1+k+3*ns]; 
@@ -470,6 +564,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
             delta_ps[new_cell_state]++;
             delta_ps[cstate]--;
             nmat[i][j] = new_cell_state; 
+            // Adjust delta_qs of neighbors
+            adjust_local_densities(delta_qs, i, j, cstate, new_cell_state); 
           }
         }
       }
@@ -479,12 +575,25 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
         ps[k] += delta_ps[k]; 
         delta_ps[k] = 0; 
       }
+      
+      // Apply changes in local densities
+      for ( uword i=0; i<nr; i++ ) { 
+        for ( uword j=0; j<nc; j++ ) { 
+          for ( char k=0; k<ns; k++ ) { 
+            qs[i][j][k] += delta_qs[i][j][k]; 
+//             Rcpp::Rcout << "i: " << i << " j: " << j << " k: "  << (int) k << 
+//               "qs: " << (int) qs[i][j][k] << 
+//               " delta_qs: " << (int) delta_qs[i][j][k] << "\n"; 
+          }
+        }
+      }
+      
+      // Apply changes in matrices (TODO: use memcpy)
       for ( uword i=0; i<nr; i++ ) { 
         for ( uword j=0; j<nc; j++ ) { 
           omat[i][j] = nmat[i][j]; 
         }
       }
-      
       
     } // end of substep loop
     
@@ -495,6 +604,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   delete [] omat; 
   delete [] nmat; 
   delete [] qs; 
+  delete [] delta_qs; 
   
 }
 
