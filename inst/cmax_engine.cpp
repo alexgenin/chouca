@@ -34,10 +34,10 @@ constexpr bool has_XQSQ = __HAS_XQSQ__;
 
 // Some things 
 constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
-// Fancy expression for max_nb^ns. The number of permutations in neighbors.
+// Fancy expression for max_nb^ns converted to unsigned integer. 
+// The number of permutations in neighbors.
 constexpr arma::uword tprob_size = (uword) exp( log( (double) (1+max_nb) ) * (double) ns ); 
-
-constexpr arma::uword tprob_increment = wrap ? (use_8_nb ? 8 : 4) : ( use_8_nb ? 2 : 1); 
+constexpr char tprob_interval = wrap ? ( use_8_nb ? 8 : 4 ) : 1; 
 
 /* This is xoshiro256+ 
  * https://prng.di.unimi.it/xoshiro256plus.c 
@@ -285,13 +285,12 @@ inline void adjust_local_densities(signed char delta_qs[nr][nc][ns],
 
 void console_callback_wrap(const arma::uword iter, 
                            const arma::uword ps[ns], 
-                           const double n, 
                            Rcpp::Function console_callback) { 
   uvec ps_arma(ns); // double
   for ( char k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
-  console_callback(iter, ps_arma, n); 
+  console_callback(iter, ps_arma, ndbl); 
 }
 
 void snapshot_callback_wrap(const arma::uword iter, 
@@ -311,13 +310,12 @@ void snapshot_callback_wrap(const arma::uword iter,
 
 void cover_callback_wrap(const arma::uword iter, 
                          const arma::uword ps[ns], 
-                         const double n, 
                          Rcpp::Function cover_callback) { 
   uvec ps_arma(ns); 
   for ( char k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
-  cover_callback(iter, ps_arma, n); 
+  cover_callback(iter, ps_arma, ndbl); 
 }
 
 
@@ -327,7 +325,12 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
                                      const arma::uword ps[ns], 
                                      const char all_qs[tprob_size][ns+1]) { 
   
-  for ( uword l=0; l<tprob_size; l += tprob_increment ) { 
+  // Note tprob_interval here. In all combinations of neighbors, only some of them 
+  // can be observed in the wild. If we wraparound, then the number of neighbors is 
+  // constant, it is either 8 or 4. So we can compute the values in tprobs only at 
+  // indices every 4 or 8 values. 
+  
+  for ( uword l=0; l<tprob_size; l+=tprob_interval ) { 
     // Get total of neighbors = last column of all_qs
     double total_qs = all_qs[l][ns]; 
     
@@ -336,7 +339,7 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
       for ( char to=0; to<ns; to++ ) { 
         
         if ( has_X0 ) { 
-          tprobs[l][from][to] = ctrans[to][from][0]; 
+          tprobs[l][from][to] = ctrans[from][to][0]; 
         } else { 
           tprobs[l][from][to] = 0.0; 
         }
@@ -346,25 +349,25 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
           
           // XP
           if ( has_XP ) { 
-            double coef = ctrans[to][from][1+k]; 
+            double coef = ctrans[from][to][1+k]; 
             tprobs[l][from][to] += coef * ( ps[k] / ndbl ); 
           }
           
           // XQ
           if ( has_XQ ) { 
-            double coef = ctrans[to][from][1+k+ns]; 
+            double coef = ctrans[from][to][1+k+ns]; 
             tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ); 
           }
           
           // XPSQ
           if ( has_XPSQ ) { 
-            double coef = ctrans[to][from][1+k+2*ns]; 
+            double coef = ctrans[from][to][1+k+2*ns]; 
             tprobs[l][from][to] += coef * ( ps[k] / ndbl ) * ( ps[k] / ndbl ); 
           }
           
           // XQSQ
           if ( has_XQSQ ) { 
-            double coef = ctrans[to][from][1+k+3*ns]; 
+            double coef = ctrans[from][to][1+k+3*ns]; 
             tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ) * 
                                      ( all_qs[l][k] / total_qs ); 
           }
@@ -426,21 +429,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   }
   
   // Convert armadillo array to c-style array. Note that we change the order things are 
-  // stored so that coefficients are contiguous in memory.
+  // stored so that coefficients are contiguous in memory. We also divide by substeps 
+  // here so that rates are always under one. 
   double ctrans[ns][ns][ncoefs];
-  for ( uword i=0; i<ns; i++ ) { 
-    for ( uword j=0; j<ns; j++ ) { 
+  for ( uword from=0; from<ns; from++ ) { 
+    for ( uword to=0; to<ns; to++ ) { 
       for ( uword coef=0; coef<ncoefs; coef++ ) { 
-        ctrans[i][j][coef] = (double) trans(coef, i, j);
-      }
-    }
-  }
-  
-  // We divide all coefficients by substep to take that into account 
-  for ( uword i=0; i<ns; i++ ) { 
-    for ( uword j=0; j<ns; j++ ) { 
-      for ( uword coef=0; coef<ncoefs; coef++ ) { 
-        ctrans[i][j][coef] /= (double) substeps; 
+        ctrans[from][to][coef] = trans(coef, to, from) / (double) substeps; 
       }
     }
   }
@@ -485,11 +480,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
-      console_callback_wrap(iter, ps, ndbl, console_callback); 
+      console_callback_wrap(iter, ps, console_callback); 
     }
     
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-      cover_callback_wrap(iter, ps, ndbl, cover_callback); 
+      cover_callback_wrap(iter, ps, cover_callback); 
     }
     
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
@@ -518,11 +513,20 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           char cstate = omat[i][j]; 
           
-          // Read from pre-computed probability
+          // Get line in pre-computed table
           uword line = 0; 
           for ( char k = 0; k<ns; k++ ) { 
             line = line * (1+max_nb) + qs[i][j][k]; 
           }
+          
+          // If we use a constant size neighborhood, then adjust for that 
+          // if ( wrap ) { 
+          //   line /= use_8_nb ? 8 : 4; 
+          //   line--; 
+          // }
+          
+//           Rcpp::Rcout << "qs :" << 
+//             (int) qs[i][j][0] << " " << (int) qs[i][j][1] << " " << (int) qs[i][j][2] << " -> line " << line << "\n"; 
           
           // Check if we actually transition.  
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1

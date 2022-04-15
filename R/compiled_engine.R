@@ -55,10 +55,12 @@ camodel_compiled_engine <- function(trans, ctrl,
   # Make the table with all combinations of qs 
   max_nb <- ifelse(use_8_nb, 8, 4)
   all_qs <- rep( list(seq(0, max_nb) ), each = ns)
-  all_qs <- as.matrix(do.call(expand.grid, all_qs))
-  all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
-  all_qs <- all_qs[ ,c(seq(ns, 1), ns+1)]
+  all_qs <- as.matrix(do.call(expand.grid, all_qs)) # !!! very large matrix
+  all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
   colnames(all_qs) <- rownames(all_qs) <- NULL
+  
+  # Precompute neighbors sum and add it as the last column
+  all_qs <- cbind(all_qs, rowSums(all_qs))
   
   # Set GCC options on command line 
   olvl <- gsub(" ", "", ctrl[["olevel"]])
