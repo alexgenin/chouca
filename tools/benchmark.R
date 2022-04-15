@@ -13,7 +13,8 @@ TEST_COMMITS <- c("989dde0d1318319aa940f23b391cabf6ec753791", # 2022-03-19
                   "245c05834cc67394cf731f47f328aabec033ed5c", # 2022-04-05
                   "9fcaf03c07da9251eb39b9cc127483177ee25ae0", # 2022-04-12
                   "58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
-                  "d30ea4fd9132fa99457b3ff4e242a65a216ea051")
+                  "d30ea4fd9132fa99457b3ff4e242a65a216ea051", 
+                  "ce71841d1f82d5f693dbb601d8e5de1c69fead09")
                   
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")

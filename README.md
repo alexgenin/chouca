@@ -1,4 +1,8 @@
 
+<!-- badges: start -->
+[![Codecov test coverage](https://codecov.io/gh/alexgenin/chouca/branch/master/graph/badge.svg)](https://app.codecov.io/gh/alexgenin/chouca?branch=master)
+<!-- badges: end -->
+
 # Chouca: a probabilistic cellular automaton engine 
 
 Probabilistic cellular automata are a class of models that describe a system in space the 

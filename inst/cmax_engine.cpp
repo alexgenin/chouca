@@ -37,6 +37,8 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 // Fancy expression for max_nb^ns. The number of permutations in neighbors.
 constexpr arma::uword tprob_size = (uword) exp( log( (double) (1+max_nb) ) * (double) ns ); 
 
+constexpr arma::uword tprob_increment = wrap ? (use_8_nb ? 8 : 4) : ( use_8_nb ? 2 : 1); 
+
 /* This is xoshiro256+ 
  * https://prng.di.unimi.it/xoshiro256plus.c 
  */ 
@@ -325,7 +327,7 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
                                      const arma::uword ps[ns], 
                                      const char all_qs[tprob_size][ns+1]) { 
   
-  for ( uword l=0; l<tprob_size; l++ ) { 
+  for ( uword l=0; l<tprob_size; l += tprob_increment ) { 
     // Get total of neighbors = last column of all_qs
     double total_qs = all_qs[l][ns]; 
     
@@ -516,67 +518,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           char cstate = omat[i][j]; 
           
-          // Get total of neighbors
-          double total_qs = number_of_neighbors(i, j);
-          
-          // Compute probabilities of transition
-          // TODO: find a way to not compute the transition to self. We could consider 
-          // trans = 0 the self-transition, then go from there?
-          // TODO: consider pre-computing probability transitions, this solves the above 
-          // problem
-          // for ( char col=0; col<ns; col++ ) { 
-          //   
-          //   if ( has_X0 ) { 
-          //     ptrans[col] = ctrans[col][cstate][0]; 
-          //   } else { 
-          //     ptrans[col] = 0.0; 
-          //   }
-          //   
-          //   for ( char k=0; k<ns; k++ ) { 
-          //     
-          //     // XP
-          //     if ( has_XP ) { 
-          //       double coef = ctrans[col][cstate][1+k]; 
-          //       ptrans[col] += coef * ( ps[k] / ndbl ); 
-          //     }
-          //     
-          //     // XQ
-          //     if ( has_XQ ) { 
-          //       double coef = ctrans[col][cstate][1+k+ns]; 
-          //       ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
-          //     }
-          //     
-          //     // XPSQ
-          //     if ( has_XPSQ ) { 
-          //       double coef = ctrans[col][cstate][1+k+2*ns]; 
-          //       ptrans[col] += coef * ( ps[k] / ndbl ) * ( ps[k] / ndbl ); 
-          //     }
-          //     
-          //     // XQSQ
-          //     if ( has_XQSQ ) { 
-          //       double coef = ctrans[col][cstate][1+k+3*ns]; 
-          //       ptrans[col] += coef * ( qs[i][j][k] / total_qs ) * 
-          //                               ( qs[i][j][k] / total_qs ); 
-          //     }
-          //   }
-          //   
-          //   // Get line in precomputed proba for ptrans[col];  
-          //   // uword line = 0; 
-          //   // for ( char k = 0; k<ns; k++ ) { 
-          //   //   line = line * (1+max_nb) + qs[i][j][k]; 
-          //   // }
-          //   // 
-          //   // double ptrans2 = trans_probs[line][cstate][col]; 
-          //   // Rcpp::Rcout << "i/j:" << i << "/" << j << ": "; 
-          //   // for ( char k = 0; k<ns; k++ ) { 
-          //   //   Rcpp::Rcout << (int) qs[i][j][k] << "(" << (int) all_qs[line][k] << "), " ; 
-          //   // }
-          //   // 
-          //   // Rcpp::Rcout << "\n"; 
-          //   // Rcpp::Rcout << (int) cstate << " to " << (int) col << " old: " << ptrans[col] << 
-          //   //   " new: " << ptrans2 << " (line: " << line << ")\n"; 
-          // }
-          
           // Read from pre-computed probability
           uword line = 0; 
           for ( char k = 0; k<ns; k++ ) { 
@@ -589,13 +530,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
           char new_cell_state = cstate; 
-          // for ( char k=1; k<ns; k++ ) { // cumsum
-          //   ptrans[k] += ptrans[k-1]; 
-          // }
-          // for ( char k=0; k<ns; k++ ) { 
-          //   Rcpp::Rcout << "c: " << trans_probs[line][cstate][k] << " o: " << 
-          //     ptrans[k] << "\n"; 
-          // }
           for ( char k=(ns-1); k>=0; k-- ) { 
             new_cell_state = rn < trans_probs[line][cstate][k] ? k : new_cell_state; 
           }
