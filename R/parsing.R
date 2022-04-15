@@ -149,7 +149,7 @@ parse_transition <- function(tr, state_names, parms, epsilon) {
     p_one_zero  <- prob_with(p = onevec,   q = zero)
     p_mone_zero <- prob_with(p = - onevec, q = zero)
     XP[i] <- (p_one_zero - p_mone_zero) / 2
-    XPSQ[i] <- p_one_zero - X0 - XP[i]
+    XPSQ[i] <- p_one_zero - X0 - XP[i] # TODO: this is wrong
     
     p_one_zero  <- prob_with(p = zero,  q = onevec)
     p_mone_zero <- prob_with(p = zero,  q = - onevec)

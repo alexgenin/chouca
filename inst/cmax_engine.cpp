@@ -23,7 +23,7 @@ constexpr arma::uword ncoefs = __NCOEFS__;
 constexpr bool wrap = __WRAP__; 
 constexpr bool use_8_nb = __USE_8_NB__; 
 constexpr arma::uword substeps = __SUBSTEPS__; 
-constexpr double n = nr * nc; 
+constexpr double ndbl = nr * nc; 
 
 // Components of model 
 constexpr bool has_X0 = __HAS_X0__; 
@@ -32,6 +32,10 @@ constexpr bool has_XQ = __HAS_XQ__;
 constexpr bool has_XPSQ = __HAS_XPSQ__; 
 constexpr bool has_XQSQ = __HAS_XQSQ__; 
 
+// Some things 
+constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
+// Fancy expression for max_nb^ns. The number of permutations in neighbors.
+constexpr arma::uword tprob_size = (uword) exp( log( (double) (1+max_nb) ) * (double) ns ); 
 
 /* This is xoshiro256+ 
  * https://prng.di.unimi.it/xoshiro256plus.c 
@@ -63,6 +67,8 @@ static inline double randunif() {
   double xf = (x >> 11) * 0x1.0p-53; 
   return xf; 
 }
+
+
 
 inline void get_local_densities(char qs[nr][nc][ns], 
                                 const char m[nr][nc]) { 
@@ -150,86 +156,7 @@ inline void get_local_densities(char qs[nr][nc][ns],
     }
   }
   
-}/*
-
-inline void adjust_local_densities(char delta_qs[nr][nc][ns],
-                                   const arma::uword i, 
-                                   const arma::uword j, 
-                                   const char ori_state, 
-                                   const char new_state) { 
-  
-    // Get neighbors to the left 
-    if ( wrap ) { 
-      
-      delta_qs[i][(nc + j - 1) % nc][ori_state]--; // left 
-      delta_qs[i][(nc + j - 1) % nc][new_state]++; //  
-      
-      delta_qs[i][(nc + j + 1) % nc][ori_state]--; // right
-      delta_qs[i][(nc + j + 1) % nc][new_state]++; // 
-      
-      delta_qs[(nr + i - 1) % nr][j][ori_state]--; // up
-      delta_qs[(nr + i - 1) % nr][j][new_state]++; // 
-      
-      delta_qs[(nr + i + 1) % nr][j][ori_state]--; // down
-      delta_qs[(nr + i + 1) % nr][j][new_state]++; // 
-      
-      if ( use_8_nb ) { 
-        
-        delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][ori_state]--; // upleft
-        delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][new_state]++; // 
-        
-        delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][ori_state]--; // upright
-        delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][new_state]++; // 
-        
-        delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][ori_state]--; // downleft
-        delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][new_state]++; // 
-        
-        delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][ori_state]--; // downright
-        delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][new_state]++; // 
-        
-      }
-      
-    } else { 
-      
-      if ( i > 0 ) { 
-        delta_qs[i-1][j][ori_state]--; // up
-        delta_qs[i-1][j][new_state]++; // 
-      }
-      if ( i < (nr-1) ) { 
-        delta_qs[i+1][j][ori_state]--; // down
-        delta_qs[i+1][j][new_state]++; // 
-      }
-      if ( j > 0 ) { 
-        delta_qs[i][j-1][ori_state]--; // left
-        delta_qs[i][j-1][new_state]++; // 
-      }
-      if ( j < (nc-1) ) { 
-        delta_qs[i][j+1][ori_state]--; // right
-        delta_qs[i][j+1][new_state]++; // 
-      }
-      
-      if ( use_8_nb ) { 
-        if ( i > 0 && j > 0 ) { 
-          delta_qs[i-1][j-1][ori_state]--; // upleft
-          delta_qs[i-1][j-1][new_state]++; // 
-        }
-        if ( i > 0 && j < (nc-1) ) { 
-          delta_qs[i-1][j+1][ori_state]--; // upright
-          delta_qs[i-1][j+1][new_state]++; // 
-        }
-        if ( i < (nr-1) && j > 0 ) { 
-          delta_qs[i+1][j-1][ori_state]--; // downleft
-          delta_qs[i+1][j-1][new_state]++; // 
-        }
-        if ( i < (nr-1) && j < (nc-1) ) { 
-          delta_qs[i+1][j+1][ori_state]--; // downright
-          delta_qs[i+1][j+1][new_state]++; // 
-        }
-      }
-      
-    }
-  
-}*/
+}
 
 inline double number_of_neighbors(const arma::uword i, 
                                   const arma::uword j) { 
@@ -352,6 +279,8 @@ inline void adjust_local_densities(signed char delta_qs[nr][nc][ns],
   
 }
 
+
+
 void console_callback_wrap(const arma::uword iter, 
                            const arma::uword ps[ns], 
                            const double n, 
@@ -390,13 +319,76 @@ void cover_callback_wrap(const arma::uword iter,
 }
 
 
+// Compute transition probabilities between all possible qs states 
+void compute_transition_probabilites(double tprobs[tprob_size][ns][ns], 
+                                     const double ctrans[ns][ns][ncoefs], 
+                                     const arma::uword ps[ns], 
+                                     const char all_qs[tprob_size][ns+1]) { 
+  
+  for ( uword l=0; l<tprob_size; l++ ) { 
+    // Get total of neighbors = last column of all_qs
+    double total_qs = all_qs[l][ns]; 
+    
+    for ( char from=0; from<ns; from++ ) { 
+      
+      for ( char to=0; to<ns; to++ ) { 
+        
+        if ( has_X0 ) { 
+          tprobs[l][from][to] = ctrans[to][from][0]; 
+        } else { 
+          tprobs[l][from][to] = 0.0; 
+        }
+        
+        // Loop over coefs
+        for ( char k=0; k<ns; k++ ) { 
+          
+          // XP
+          if ( has_XP ) { 
+            double coef = ctrans[to][from][1+k]; 
+            tprobs[l][from][to] += coef * ( ps[k] / ndbl ); 
+          }
+          
+          // XQ
+          if ( has_XQ ) { 
+            double coef = ctrans[to][from][1+k+ns]; 
+            tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ); 
+          }
+          
+          // XPSQ
+          if ( has_XPSQ ) { 
+            double coef = ctrans[to][from][1+k+2*ns]; 
+            tprobs[l][from][to] += coef * ( ps[k] / ndbl ) * ( ps[k] / ndbl ); 
+          }
+          
+          // XQSQ
+          if ( has_XQSQ ) { 
+            double coef = ctrans[to][from][1+k+3*ns]; 
+            tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ) * 
+                                     ( all_qs[l][k] / total_qs ); 
+          }
+        }
+        
+      }
+      
+      // Compute cumsum 
+      for ( char to=1; to<ns; to++ ) { 
+        tprobs[l][from][to] += tprobs[l][from][to-1];
+      }
+      
+    }
+  }
+  
+  
+}
+
 // 
 // [[Rcpp::export]]
 void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans, 
                                            const Rcpp::List ctrl, 
                                            const Rcpp::Function console_callback, 
                                            const Rcpp::Function cover_callback, 
-                                           const Rcpp::Function snapshot_callback) { 
+                                           const Rcpp::Function snapshot_callback,
+                                           const arma::Mat<ushort> all_qs_combinations) { 
   
   // Unpack control list
   Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
@@ -420,6 +412,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     for ( uword j=0; j<nc; j++ ) { 
       omat[i][j] = (char) init(i, j);
       nmat[i][j] = (char) init(i, j);
+    }
+  }
+  
+  // Convert all_qs_combinations to a c array
+  char all_qs[tprob_size][ns+1]; 
+  for ( uword l=0; l<tprob_size; l++ ) { 
+    for ( uword k=0; k<(ns+1); k++ ) { 
+      all_qs[l][k] = all_qs_combinations(l, k); 
     }
   }
   
@@ -475,6 +475,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   // Allocate some things we will reuse later 
   double ptrans[ns];
+  double trans_probs[tprob_size][ns][ns]; 
   
   uword iter = 0; 
   
@@ -482,11 +483,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
-      console_callback_wrap(iter, ps, n, console_callback); 
+      console_callback_wrap(iter, ps, ndbl, console_callback); 
     }
     
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-      cover_callback_wrap(iter, ps, n, cover_callback); 
+      cover_callback_wrap(iter, ps, ndbl, cover_callback); 
     }
     
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
@@ -495,8 +496,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
       
-      // Compute local densities
-      // get_local_densities(qs, omat); 
+      // Compute transition probabilities 
+      compute_transition_probabilites(trans_probs, ctrans, ps, all_qs); 
+      
       // Adjust changes in local densities to zero 
       for ( uword i=0; i<nr; i++ ) { 
         for ( uword j=0; j<nc; j++ ) { 
@@ -522,42 +524,63 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // trans = 0 the self-transition, then go from there?
           // TODO: consider pre-computing probability transitions, this solves the above 
           // problem
-          for ( char col=0; col<ns; col++ ) { 
-            
-            if ( has_X0 ) { 
-              ptrans[col] = ctrans[col][cstate][0]; 
-            } else { 
-              ptrans[col] = 0.0; 
-            }
-            
-            for ( char k=0; k<ns; k++ ) { 
-              
-              // XP
-              if ( has_XP ) { 
-                double coef = ctrans[col][cstate][1+k]; 
-                ptrans[col] += coef * ( ps[k] / n ); 
-              }
-              
-              // XQ
-              if ( has_XQ ) { 
-                double coef = ctrans[col][cstate][1+k+ns]; 
-                ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
-              }
-              
-              // XPSQ
-              if ( has_XPSQ ) { 
-                double coef = ctrans[col][cstate][1+k+2*ns]; 
-                ptrans[col] += coef * ( ps[k] / n ) * ( ps[k] / n ); 
-              }
-              
-              // XQSQ
-              if ( has_XQSQ ) { 
-                double coef = ctrans[col][cstate][1+k+3*ns]; 
-                ptrans[col] += coef * ( qs[i][j][k] / total_qs ) * 
-                                        ( qs[i][j][k] / total_qs ); 
-              }
-            }
-            
+          // for ( char col=0; col<ns; col++ ) { 
+          //   
+          //   if ( has_X0 ) { 
+          //     ptrans[col] = ctrans[col][cstate][0]; 
+          //   } else { 
+          //     ptrans[col] = 0.0; 
+          //   }
+          //   
+          //   for ( char k=0; k<ns; k++ ) { 
+          //     
+          //     // XP
+          //     if ( has_XP ) { 
+          //       double coef = ctrans[col][cstate][1+k]; 
+          //       ptrans[col] += coef * ( ps[k] / ndbl ); 
+          //     }
+          //     
+          //     // XQ
+          //     if ( has_XQ ) { 
+          //       double coef = ctrans[col][cstate][1+k+ns]; 
+          //       ptrans[col] += coef * ( qs[i][j][k] / total_qs ); 
+          //     }
+          //     
+          //     // XPSQ
+          //     if ( has_XPSQ ) { 
+          //       double coef = ctrans[col][cstate][1+k+2*ns]; 
+          //       ptrans[col] += coef * ( ps[k] / ndbl ) * ( ps[k] / ndbl ); 
+          //     }
+          //     
+          //     // XQSQ
+          //     if ( has_XQSQ ) { 
+          //       double coef = ctrans[col][cstate][1+k+3*ns]; 
+          //       ptrans[col] += coef * ( qs[i][j][k] / total_qs ) * 
+          //                               ( qs[i][j][k] / total_qs ); 
+          //     }
+          //   }
+          //   
+          //   // Get line in precomputed proba for ptrans[col];  
+          //   // uword line = 0; 
+          //   // for ( char k = 0; k<ns; k++ ) { 
+          //   //   line = line * (1+max_nb) + qs[i][j][k]; 
+          //   // }
+          //   // 
+          //   // double ptrans2 = trans_probs[line][cstate][col]; 
+          //   // Rcpp::Rcout << "i/j:" << i << "/" << j << ": "; 
+          //   // for ( char k = 0; k<ns; k++ ) { 
+          //   //   Rcpp::Rcout << (int) qs[i][j][k] << "(" << (int) all_qs[line][k] << "), " ; 
+          //   // }
+          //   // 
+          //   // Rcpp::Rcout << "\n"; 
+          //   // Rcpp::Rcout << (int) cstate << " to " << (int) col << " old: " << ptrans[col] << 
+          //   //   " new: " << ptrans2 << " (line: " << line << ")\n"; 
+          // }
+          
+          // Read from pre-computed probability
+          uword line = 0; 
+          for ( char k = 0; k<ns; k++ ) { 
+            line = line * (1+max_nb) + qs[i][j][k]; 
           }
           
           // Check if we actually transition.  
@@ -566,11 +589,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
           char new_cell_state = cstate; 
-          for ( char k=1; k<ns; k++ ) { // cumsum
-            ptrans[k] += ptrans[k-1]; 
-          }
+          // for ( char k=1; k<ns; k++ ) { // cumsum
+          //   ptrans[k] += ptrans[k-1]; 
+          // }
+          // for ( char k=0; k<ns; k++ ) { 
+          //   Rcpp::Rcout << "c: " << trans_probs[line][cstate][k] << " o: " << 
+          //     ptrans[k] << "\n"; 
+          // }
           for ( char k=(ns-1); k>=0; k-- ) { 
-            new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
+            new_cell_state = rn < trans_probs[line][cstate][k] ? k : new_cell_state; 
           }
           
           if ( new_cell_state != cstate ) { 

@@ -38,7 +38,7 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
   
-  # Probability components: turn on or off in compiled 
+  # Probability components: turn on or off in compiled code as needed
   totX0 <- sum(trans[1, , ]) # X0
   totXP <- sum(trans[2:(2+ns-1), , ]) # XP
   totXQ <- sum(trans[(2+ns):(2+2*ns-1), , ]) # XQ
@@ -51,6 +51,14 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsubf("__HAS_XQ__", boolstr(totXQ), cmaxlines)
   cmaxlines <- gsubf("__HAS_XPSQ__", boolstr(totXPSQ), cmaxlines)
   cmaxlines <- gsubf("__HAS_XQSQ__", boolstr(totXQSQ), cmaxlines)
+  
+  # Make the table with all combinations of qs 
+  max_nb <- ifelse(use_8_nb, 8, 4)
+  all_qs <- rep( list(seq(0, max_nb) ), each = ns)
+  all_qs <- as.matrix(do.call(expand.grid, all_qs))
+  all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
+  all_qs <- all_qs[ ,c(seq(ns, 1), ns+1)]
+  colnames(all_qs) <- rownames(all_qs) <- NULL
   
   # Set GCC options on command line 
   olvl <- gsub(" ", "", ctrl[["olevel"]])
@@ -93,7 +101,8 @@ camodel_compiled_engine <- function(trans, ctrl,
 #   writeLines(cmaxlines, file)
   
   runf <- get(fname)
-  runf(trans, ctrl, console_callback, cover_callback, snapshot_callback)
+  runf(trans, ctrl, console_callback, cover_callback, snapshot_callback, 
+       all_qs)
 }
 
 
