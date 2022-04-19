@@ -1,2 +1,7 @@
 ^LICENSE\.md$
 ^codecov\.yml$
+^.*sourceCpp-x86_64-pc-linux-gnu.*$
+^Rprof.out$
+^draft$
+^notes.txt$
+^lines.out$

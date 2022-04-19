@@ -14,7 +14,8 @@ LinkingTo:
     RcppArmadillo
 Imports: 
     Rcpp, 
-    plyr
+    plyr, 
+    digest
 Suggests: 
     covr,
     testthat (>= 3.0.0)

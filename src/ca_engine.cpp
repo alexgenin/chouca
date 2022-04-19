@@ -198,7 +198,7 @@ inline void get_local_densities_column(arma::Mat<uword>& qs,
 // This is a function that returns the local state counts to R, for the full column of 
 // a matrix. j must be indexed the R-way (1-indexing)
 //[[Rcpp::export]]
-arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m, 
+arma::Mat<arma::uword>local_dens_col(const arma::Mat<ushort> m, 
                                       const arma::uword nstates, 
                                       const arma::uword j, 
                                       const bool wrap, 
