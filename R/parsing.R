@@ -13,24 +13,43 @@
 #' @param parms a named list of parameters, which should be all numeric, single values
 #' 
 #' @param all_states the complete list of states (a character vector). If unspecified,
-#'   it will be guessed from the transition rules, but you should really pass it to 
-#'   make sure your model definition is correct 
+#'   it will be guessed from the transition rules, but you should really pass it here 
+#'   to make sure your model definition is correct 
 #' 
 #' @param verbose whether information should be printed when parsing the model
-#'   definition
+#'   definition. 
 #' 
-#' @details 
+#' @details
 #' 
 #' This function allows defining a cellular automaton model by its set of transition 
 #' rules. These are defined by a set of calls to the \code{transition()} function. Each 
 #' of these calls defines the two states of the transition, and the probability (as a 
-#' one-sided formula involving constants and p, q, etc.). 
+#' one-sided formula involving constants and special values p, q, etc.). 
 #' 
+#' \code{transition()} takes three arguments: the state from which the transition is 
+#' defined, the state to which the transition goes, and a transition probability, defined
+#' as a one-sided formula. This formula can include constants, parameters defined in 
+#' the named list \code{parms}, and any combination of p['a'] and q['b'], which 
+#' respectively represent the proportion of cells in a landscape in state 'a', and the 
+#' proportion of neighbors of a given cell in state 'b'. See section Examples for 
+#' examples of model implementations. 
 #' 
+#' It is important to remember that \code{chouca} only supports model where the 
+#' transition probabilities are polynomials of p and q with maximum degree 2. In other
+#' words, for a model with n states, the transition probabilities must be of the form: 
 #' 
+#' P = \eqn{a_0 + \sum_{k=1}^{n} b_k p_{k} + c_k p^2_{k} + d_k q_{k} + e_k q^2_{k} }
+#' 
+#' where p_{k} and q_{k} are the proportions of cells in the landscape and in the 
+#' cell neighborhood in state k, respectively. \eqn{a_0}, along with the coeffients 
+#' \eqn{b_k}, \eqn{c_k}, \eqn{d_k} and \eqn{e_k} must be all constant. However, they 
+#' can themselve depend on constants defined in the named list \code{parms}. This allows 
+#' defining the model in terms of literal constants that are easy to read, and calculated
+#' on the fly by picking values in the \code{parms} list. 
 #' 
 #'@export
 camodel <- function(..., parms = list(), all_states = NULL, verbose = TRUE, 
+                    check_model = TRUE, 
                     epsilon = sqrt(.Machine[["double.eps"]])) { 
                       
   
@@ -42,6 +61,7 @@ camodel <- function(..., parms = list(), all_states = NULL, verbose = TRUE,
   if ( any( c("p", "q") %in% names(parms) ) ) { 
     stop("no parameters must be named 'q' or 'p', these are used to design densities")
   }
+  
   # Read all possible states 
   msg <- function(txt) if ( verbose ) message(txt, appendLF = FALSE)
   
@@ -63,10 +83,12 @@ camodel <- function(..., parms = list(), all_states = NULL, verbose = TRUE,
     }
   }
   
-  msg(sprintf("Using %s cell states: %s\n", nstates, paste(states, collapse = " ")))
-  
   # Compute transition probabilities
-  transitions <- lapply(transitions, parse_transition, states, parms, epsilon)
+  transitions <- lapply(transitions, parse_transition, states, parms, epsilon, 
+                        check_model)
+  
+  msg(sprintf("Using %s cell states\n", nstates))
+  msg(sprintf("Using %s transitions\n", length(transitions)))
   
   # Check that there is no NA in transition rates 
   allrates <- plyr::laply(transitions, function(o) { 
@@ -75,9 +97,6 @@ camodel <- function(..., parms = list(), all_states = NULL, verbose = TRUE,
   if ( any(is.na(allrates)) ) { 
     stop("NAs in computed coefficients, please make sure your model definition is correct")
   }
-  
-  # Compute some model information 
-  # TODO: does the model has non-zero XQ/XP/XQSP/XPSQ/XQP ?
   
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
@@ -111,7 +130,7 @@ transition <- function(from, to, prob) {
   return(o)
 }
 
-parse_transition <- function(tr, state_names, parms, epsilon) { 
+parse_transition <- function(tr, state_names, parms, epsilon, check_model) { 
   
   if ( ! inherits(tr, "camodel_transition") ) { 
     m <- paste("The transition definition has not been defined using transition().", 
@@ -149,7 +168,7 @@ parse_transition <- function(tr, state_names, parms, epsilon) {
     p_one_zero  <- prob_with(p = onevec,   q = zero)
     p_mone_zero <- prob_with(p = - onevec, q = zero)
     XP[i] <- (p_one_zero - p_mone_zero) / 2
-    XPSQ[i] <- p_one_zero - X0 - XP[i] # TODO: this is wrong
+    XPSQ[i] <- p_one_zero - X0 - XP[i] 
     
     p_one_zero  <- prob_with(p = zero,  q = onevec)
     p_mone_zero <- prob_with(p = zero,  q = - onevec)
@@ -158,8 +177,31 @@ parse_transition <- function(tr, state_names, parms, epsilon) {
     XQSQ[i] <- p_one_zero - X0 - XQ[i]
   }
   
+  # Compute probabilities and make sure there is no residual error 
+  if ( check_model ) { 
+    state_combs <- as.matrix(do.call(expand.grid, 
+                                    rep(list(seq(0, 1, l = 4)), length = 2*ns)))
+    colnames(state_combs) <- c(paste0("p", seq.int(ns)), paste0("q", seq.int(ns)))
+    y <- apply(state_combs, 1, function(v) { 
+      p <- v[1:ns]
+      q <- v[seq(ns+1, ns+ns)]
+      X0 + sum(XP * p) + sum(XPSQ * p^2) + sum(XQ * q) + sum(XQSQ * q^2)
+    })
+    yok <- apply(state_combs, 1, function(v) { 
+      p <- v[seq(1, ns)]
+      names(p) <- state_names
+      q <- v[seq(ns+1, ns+ns)]
+      names(q) <- state_names
+      prob_with(p = p, q = q)
+    })
+    
+    if ( ! all( abs(y - yok) < epsilon ) ) { 
+      stop("There is residual error in the computed probabilities. Your model looks like it is not supported by chouca. Please look at ?camodel for more details about the supported classes of models")
+    }
+  }
+  
   # Make sure to zero things that are zero 
-  eps <- function(x) ifelse(x<epsilon, 0, x)
+  eps <- function(x) ifelse(abs(x)<epsilon, 0, x)
   
   c(tr, list(X0 = eps(X0), XP = eps(XP), XQ = eps(XQ), 
              XPSQ = eps(XPSQ), XQSQ = eps(XQSQ)))
@@ -183,3 +225,11 @@ print.ca_model <- function(x, ...) {
   return(invisible(x))
 }
 
+#'@export
+print.camodel_transition <- function(x, ...) { 
+  cat(sprintf("Transition from %s to %s\n", x[["from"]], x[["to"]]))
+  prob <- paste0(as.character(x[["prob"]]), collapse = " ")
+  cat(sprintf("  %s\n", prob))
+  
+  invisible(x)
+}

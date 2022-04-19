@@ -9,6 +9,7 @@ camodel(
   parms = list(),
   all_states = NULL,
   verbose = TRUE,
+  check_model = TRUE,
   epsilon = sqrt(.Machine[["double.eps"]])
 )
 }
@@ -19,11 +20,11 @@ camodel(
 \item{parms}{a named list of parameters, which should be all numeric, single values}
 
 \item{all_states}{the complete list of states (a character vector). If unspecified,
-it will be guessed from the transition rules, but you should really pass it to
-make sure your model definition is correct}
+it will be guessed from the transition rules, but you should really pass it here
+to make sure your model definition is correct}
 
 \item{verbose}{whether information should be printed when parsing the model
-definition}
+definition.}
 }
 \description{
 High-level definition of a probabilistic cellular automaton
@@ -32,5 +33,26 @@ High-level definition of a probabilistic cellular automaton
 This function allows defining a cellular automaton model by its set of transition
 rules. These are defined by a set of calls to the \code{transition()} function. Each
 of these calls defines the two states of the transition, and the probability (as a
-one-sided formula involving constants and p, q, etc.).
+one-sided formula involving constants and special values p, q, etc.).
+
+\code{transition()} takes three arguments: the state from which the transition is
+defined, the state to which the transition goes, and a transition probability, defined
+as a one-sided formula. This formula can include constants, parameters defined in
+the named list \code{parms}, and any combination of p\link{'a'} and q\link{'b'}, which
+respectively represent the proportion of cells in a landscape in state 'a', and the
+proportion of neighbors of a given cell in state 'b'. See section Examples for
+examples of model implementations.
+
+It is important to remember that \code{chouca} only supports model where the
+transition probabilities are polynomials of p and q with maximum degree 2. In other
+words, for a model with n states, the transition probabilities must be of the form:
+
+P = \eqn{a_0 + \sum_{k=1}^{n} b_k p_{k} + c_k p^2_{k} + d_k q_{k} + e_k q^2_{k} }
+
+where p_{k} and q_{k} are the proportions of cells in the landscape and in the
+cell neighborhood in state k, respectively. \eqn{a_0}, along with the coeffients
+\eqn{b_k}, \eqn{c_k}, \eqn{d_k} and \eqn{e_k} must be all constant. However, they
+can themselve depend on constants defined in the named list \code{parms}. This allows
+defining the model in terms of literal constants that are easy to read, and calculated
+on the fly by picking values in the \code{parms} list.
 }
