@@ -56,11 +56,25 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
+// getline
+arma::uword getline(arma::uvec qs, arma::uword nb, arma::uword ns);
+RcppExport SEXP _chouca_getline(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::uvec >::type qs(qsSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type ns(nsSEXP);
+    rcpp_result_gen = Rcpp::wrap(getline(qs, nb, ns));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_chouca_local_dens", (DL_FUNC) &_chouca_local_dens, 6},
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 5},
+    {"_chouca_getline", (DL_FUNC) &_chouca_getline, 3},
     {NULL, NULL, 0}
 };
 

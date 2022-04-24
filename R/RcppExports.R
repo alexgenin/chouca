@@ -13,3 +13,7 @@ camodel_cpp_engine <- function(trans, ctrl, console_callback, cover_callback, sn
     invisible(.Call(`_chouca_camodel_cpp_engine`, trans, ctrl, console_callback, cover_callback, snapshot_callback))
 }
 
+getline <- function(qs, nb, ns) {
+    .Call(`_chouca_getline`, qs, nb, ns)
+}
+

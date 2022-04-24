@@ -347,6 +347,8 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
         // Loop over coefs
         for ( char k=0; k<ns; k++ ) { 
           
+          // All the if{} blocks below will be removed appropriately by the compiler.
+          
           // XP
           if ( has_XP ) { 
             double coef = ctrans[from][to][1+k]; 
@@ -471,7 +473,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   randunif(); 
   
   // Allocate some things we will reuse later 
-  double ptrans[ns];
   double trans_probs[tprob_size][ns][ns]; 
   
   uword iter = 0; 
@@ -514,16 +515,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           char cstate = omat[i][j]; 
           
           // Get line in pre-computed table
-          uword line = 0; 
-          for ( char k = 0; k<ns; k++ ) { 
-            line = line * (1+max_nb) + qs[i][j][k]; 
-          }
+//           uword line = 0; 
+//           for ( char k = 0; k<ns; k++ ) { 
+//             line = line * (1+max_nb) + qs[i][j][k]; 
+//           }
           
-          // If we use a constant size neighborhood, then adjust for that 
-          // if ( wrap ) { 
-          //   line /= use_8_nb ? 8 : 4; 
-          //   line--; 
-          // }
+          uword line = getline(qs, i, j); 
           
 //           Rcpp::Rcout << "qs :" << 
 //             (int) qs[i][j][0] << " " << (int) qs[i][j][1] << " " << (int) qs[i][j][2] << " -> line " << line << "\n"; 
