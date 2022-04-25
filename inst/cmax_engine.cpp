@@ -39,285 +39,8 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 constexpr arma::uword tprob_size = (uword) exp( log( (double) (1+max_nb) ) * (double) ns ); 
 constexpr char tprob_interval = wrap ? ( use_8_nb ? 8 : 4 ) : 1; 
 
-/* This is xoshiro256+ 
- * https://prng.di.unimi.it/xoshiro256plus.c 
- */ 
-static inline uint64_t rotl(const uint64_t x, int k) {
-	return (x << k) | (x >> (64 - k));
-}
-
-static uint64_t s[4];
-
-static uint64_t nextr(void) {
-	const uint64_t result = s[0] + s[3];
-	const uint64_t t = s[1] << 17;
-
-	s[2] ^= s[0];
-	s[3] ^= s[1];
-	s[1] ^= s[2];
-	s[0] ^= s[3];
-
-	s[2] ^= t;
-
-	s[3] = rotl(s[3], 45);
-
-	return result;
-}
-
-static inline double randunif() { 
-  uint64_t x = nextr(); 
-  double xf = (x >> 11) * 0x1.0p-53; 
-  return xf; 
-}
-
-
-
-inline void get_local_densities(char qs[nr][nc][ns], 
-                                const char m[nr][nc]) { 
-  
-  // Set all counts to zero
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      for ( char k=0; k<ns; k++ ) { 
-        qs[i][j][k] = 0; 
-      }
-    }
-  }
-  
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      // Get neighbors to the left 
-      if ( wrap ) { 
-        
-        char state_left = m[i][(nc + j - 1) % nc];
-        qs[i][j][state_left]++; // left 
-        
-        char state_right = m[i][(nc + j + 1) % nc];
-        qs[i][j][state_right]++; // right
-        
-        char state_up = m[(nr + i - 1) % nr][j];
-        qs[i][j][state_up]++; // up
-        
-        char state_down = m[(nr + i + 1) % nr][j];
-        qs[i][j][state_down]++; // down
-        
-        if ( use_8_nb ) { 
-          
-          char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
-          qs[i][j][state_upleft]++; // upleft
-          
-          char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
-          qs[i][j][state_upright]++; // upright
-          
-          char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
-          qs[i][j][state_downleft]++; // downleft
-          
-          char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
-          qs[i][j][state_downright]++; // downright
-        }
-        
-      } else { 
-        
-        if ( i > 0 ) { 
-          char state_up = m[i-1][j];
-          qs[i][j][state_up]++; // up
-        }
-        if ( i < (nr-1) ) { 
-          char state_down = m[i+1][j]; 
-          qs[i][j][state_down]++; // down
-        }
-        if ( j > 0 ) { 
-          char state_left = m[i][j-1]; 
-          qs[i][j][state_left]++; // left
-        }
-        if ( j < (nc-1) ) { 
-          char state_right = m[i][j+1]; 
-          qs[i][j][state_right]++; // right
-        }
-        
-        if ( use_8_nb ) { 
-          if ( i > 0 && j > 0 ) { 
-            char state_upleft = m[i-1][j-1]; 
-            qs[i][j][state_upleft]++; // upleft
-          }
-          if ( i > 0 && j < (nc-1) ) { 
-            char state_upright = m[i-1][j+1]; 
-            qs[i][j][state_upright]++; // upright
-          }
-          if ( i < (nr-1) && j > 0 ) { 
-            char state_downleft = m[i+1][j-1]; 
-            qs[i][j][state_downleft]++; // downleft
-          }
-          if ( i < (nr-1) && j < (nc-1) ) { 
-            char state_downright = m[i+1][j+1]; 
-            qs[i][j][state_downright]++; // downright
-          }
-        }
-        
-      }
-    }
-  }
-  
-}
-
-inline double number_of_neighbors(const arma::uword i, 
-                                  const arma::uword j) { 
-  // When we do not wrap, the total number of neighbors depends on where we are 
-  // in the matrix, e.g. first column or last row has missing neighbors. In that 
-  // case, we need to correct for that. When wrapping is on, then the 
-  // number of neighbors is constant.
-  // 
-  // We use a double because this number is then used in math using doubles.
-  // 
-  // The compiler will remove the if{} statements below at compile time if we are 
-  // wrapping, making this function return a constant, defined on the line below:
-  double nnb = use_8_nb ? 8.0 : 4.0; 
-  
-  // If we do not wrap and we use 8 neighbors, then we just need to substract from the 
-  // total (maximum) counts. 
-  if ( ! wrap && ! use_8_nb ) { 
-    if ( i == 0 || i == (nr-1) ) { nnb--; }  // First or last row
-    if ( j == 0 || j == (nc-1) ) { nnb--; }  // First or last column
-  }
-  
-  // If we do not wrap and we use 8 neighbors, then it is a bit more subtle
-  if ( ! wrap && use_8_nb ) { 
-    if ( i == 0 || i == (nr-1) ) { nnb = nnb-3; }  // First or last row
-    if ( j == 0 || j == (nc-1) ) { nnb = nnb-3; }  // First or last column
-    
-    // If we are in the corners, then one removed neighbor is being counted twice, so we
-    // need to add it back
-    if ( (i == 0 && j == 0) || 
-         (i == 0 && j == (nc-1)) || 
-         (i == (nr-1) && j == 0) || 
-         (i == (nr-1) && j == (nc-1)) ) { 
-      nnb++;
-    }
-    
-  }
-  
-  return nnb; 
-}
-
-inline void adjust_local_densities(signed char delta_qs[nr][nc][ns], 
-                                   const uword i, 
-                                   const uword j, 
-                                   const char from, 
-                                   const char to) { 
-  
-  // Get neighbors to the left 
-  if ( wrap ) { 
-    
-    // left 
-    delta_qs[i][(nc + j - 1) % nc][to]++; 
-    delta_qs[i][(nc + j - 1) % nc][from]--; 
-    
-    // right
-    delta_qs[i][(nc + j + 1) % nc][to]++; 
-    delta_qs[i][(nc + j + 1) % nc][from]--; 
-    
-    // up
-    delta_qs[(nr + i - 1) % nr][j][to]++; 
-    delta_qs[(nr + i - 1) % nr][j][from]--; 
-    
-    // down
-    delta_qs[(nr + i + 1) % nr][j][to]++;
-    delta_qs[(nr + i + 1) % nr][j][from]--;
-    
-    if ( use_8_nb ) { 
-      
-      delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
-      delta_qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
-      
-      delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
-      delta_qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
-      
-      delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
-      delta_qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
-      
-      delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
-      delta_qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
-    }
-    
-  } else { 
-    
-    if ( i > 0 ) { 
-      delta_qs[i-1][j][to]++; // up
-      delta_qs[i-1][j][from]--;
-    }
-    if ( i < (nr-1) ) { 
-      delta_qs[i+1][j][to]++; // down
-      delta_qs[i+1][j][from]--; 
-    }
-    if ( j > 0 ) { 
-      delta_qs[i][j-1][to]++; // left
-      delta_qs[i][j-1][from]--; 
-    }
-    if ( j < (nc-1) ) { 
-      delta_qs[i][j+1][to]++; // right
-      delta_qs[i][j+1][from]--; 
-    }
-    
-    if ( use_8_nb ) { 
-      if ( i > 0 && j > 0 ) { 
-        delta_qs[i-1][j-1][to]++; // upleft
-        delta_qs[i-1][j-1][from]--; 
-      }
-      if ( i > 0 && j < (nc-1) ) { 
-        delta_qs[i-1][j+1][to]++; // upright
-        delta_qs[i-1][j+1][from]++; 
-      }
-      if ( i < (nr-1) && j > 0 ) { 
-        delta_qs[i+1][j-1][from]++; // downleft
-        delta_qs[i+1][j-1][to]--; 
-      }
-      if ( i < (nr-1) && j < (nc-1) ) { 
-        delta_qs[i+1][j+1][to]++; // downright
-        delta_qs[i+1][j+1][from]--; 
-      }
-    }
-    
-  }
-  
-}
-
-
-
-void console_callback_wrap(const arma::uword iter, 
-                           const arma::uword ps[ns], 
-                           Rcpp::Function console_callback) { 
-  uvec ps_arma(ns); // double
-  for ( char k=0; k<ns; k++ ) { 
-    ps_arma(k) = ps[k]; 
-  }
-  console_callback(iter, ps_arma, ndbl); 
-}
-
-void snapshot_callback_wrap(const arma::uword iter, 
-                            const char omat[nr][nc],
-                            Rcpp::Function snapshot_callback) { 
-    
-  // Make arma array to give back to R
-  Mat<ushort> m(nr, nc);
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      m(i,j) = (ushort) omat[i][j]; 
-    }
-  }
-  
-  snapshot_callback(iter, m); 
-}
-
-void cover_callback_wrap(const arma::uword iter, 
-                         const arma::uword ps[ns], 
-                         Rcpp::Function cover_callback) { 
-  uvec ps_arma(ns); 
-  for ( char k=0; k<ns; k++ ) { 
-    ps_arma(k) = ps[k]; 
-  }
-  cover_callback(iter, ps_arma, ndbl); 
-}
-
+// Include functions 
+#include "__COMMON_HEADER__"
 
 // Compute transition probabilities between all possible qs states 
 void compute_transition_probabilites(double tprobs[tprob_size][ns][ns], 
@@ -387,6 +110,58 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
   
   
 }
+
+constexpr arma::uword factorial(arma::uword n) { 
+  return n > 0 ? n * factorial( n - 1 ) : 1;  
+}
+
+constexpr arma::uword prod_low_base = factorial(ns - 1); 
+
+// Get line in the table of transition probabilities 
+// This was more sweat that I would like to admit 
+inline arma::uword getline(const char qs[nr][nc][ns], 
+                           const arma::uword i, 
+                           const arma::uword j) { 
+  
+  uword lines_before = 0; 
+  uword remaining = max_nb; 
+  
+  // Init choose low 
+  uword choose_low = ns - 1; 
+  // Max prod_low = (ns-1-0)!
+  uword prod_low = prod_low_base; 
+  
+  for ( uword k=1; k<ns; k++ ) { 
+    
+    // Compute choose(remaining - qi + choose_low, choose_low)
+    // Adjust choose low and prod low
+    choose_low--; 
+    prod_low /= (choose_low + 1); 
+    
+    uword curqs = qs[i][j][k-1]; 
+    
+    uword choose_high = remaining + ns - 1 - k + 1; 
+    
+    for ( uword qi=0; qi<curqs; qi++ ) { 
+      choose_high--; //  = remaining - qi + ns - 1 - k; 
+//       Rcpp::Rcout << "clow: " << choose_low << " chigh: " << choose_high << "\n"; 
+//       if ( choose_low > choose_high ) return( 1 ) ; 
+      uword prod_high = 1; 
+      for ( uword l=remaining - qi + 1; l<=choose_high; l++ ) { 
+        prod_high *= l;
+      }
+      // Add to the total of lines seen 
+      // TODO: investigate possible recursion relationship?
+      lines_before += prod_high / prod_low; 
+    }
+    
+    remaining -= curqs; 
+  }
+  
+  // This is the line at which we want to pick up the probability vector
+  return( lines_before ); 
+}
+
 
 // 
 // [[Rcpp::export]]
@@ -515,12 +290,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           char cstate = omat[i][j]; 
           
           // Get line in pre-computed table
-//           uword line = 0; 
+          uword line = getline(qs, i, j); 
 //           for ( char k = 0; k<ns; k++ ) { 
 //             line = line * (1+max_nb) + qs[i][j][k]; 
 //           }
-          
-          uword line = getline(qs, i, j); 
           
 //           Rcpp::Rcout << "qs :" << 
 //             (int) qs[i][j][0] << " " << (int) qs[i][j][1] << " " << (int) qs[i][j][2] << " -> line " << line << "\n"; 

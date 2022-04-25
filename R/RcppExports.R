@@ -17,3 +17,7 @@ getline <- function(qs, nb, ns) {
     .Call(`_chouca_getline`, qs, nb, ns)
 }
 
+simple_sum <- function(qs, nb, ns) {
+    .Call(`_chouca_simple_sum`, qs, nb, ns)
+}
+

@@ -57,15 +57,28 @@ BEGIN_RCPP
 END_RCPP
 }
 // getline
-arma::uword getline(arma::uvec qs, arma::uword nb, arma::uword ns);
+arma::uword getline(const arma::uvec& qs, const arma::uword& nb, const arma::uword& ns);
 RcppExport SEXP _chouca_getline(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< arma::uvec >::type qs(qsSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type nb(nbSEXP);
-    Rcpp::traits::input_parameter< arma::uword >::type ns(nsSEXP);
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qs(qsSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type ns(nsSEXP);
     rcpp_result_gen = Rcpp::wrap(getline(qs, nb, ns));
+    return rcpp_result_gen;
+END_RCPP
+}
+// simple_sum
+arma::uword simple_sum(const arma::uvec& qs, const arma::uword& nb, const arma::uword& ns);
+RcppExport SEXP _chouca_simple_sum(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qs(qsSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type ns(nsSEXP);
+    rcpp_result_gen = Rcpp::wrap(simple_sum(qs, nb, ns));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -75,6 +88,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 5},
     {"_chouca_getline", (DL_FUNC) &_chouca_getline, 3},
+    {"_chouca_simple_sum", (DL_FUNC) &_chouca_simple_sum, 3},
     {NULL, NULL, 0}
 };
 

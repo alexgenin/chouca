@@ -37,7 +37,9 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsubf("__WRAP__", ifelse(wrap, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
-  
+  cmaxlines <- gsubf("__COMMON_HEADER__", 
+                     system.file("common.h", package = "chouca"), cmaxlines)
+                     
   # Probability components: turn on or off in compiled code as needed
   totX0 <- sum(trans[1, , ]) # X0
   totXP <- sum(trans[2:(2+ns-1), , ]) # XP
