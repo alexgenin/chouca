@@ -43,10 +43,10 @@ constexpr char tprob_interval = wrap ? ( use_8_nb ? 8 : 4 ) : 1;
 #include "__COMMON_HEADER__"
 
 // Compute transition probabilities between all possible qs states 
-void compute_transition_probabilites(double tprobs[tprob_size][ns][ns], 
-                                     const double ctrans[ns][ns][ncoefs], 
-                                     const arma::uword ps[ns], 
-                                     const char all_qs[tprob_size][ns+1]) { 
+void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns], 
+                                        const double ctrans[ns][ns][ncoefs], 
+                                        const arma::uword ps[ns], 
+                                        const char all_qs[tprob_size][ns+1]) { 
   
   // Note tprob_interval here. In all combinations of neighbors, only some of them 
   // can be observed in the wild. If we wraparound, then the number of neighbors is 
@@ -60,6 +60,11 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
     for ( char from=0; from<ns; from++ ) { 
       
       for ( char to=0; to<ns; to++ ) { 
+        
+        // Useless
+        // if ( from == to ) { 
+        //   continue; 
+        // }
         
         if ( has_X0 ) { 
           tprobs[l][from][to] = ctrans[from][to][0]; 
@@ -79,6 +84,8 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
           }
           
           // XQ
+          // TODO: we don't have to divide by total_qs here, we can do it beforehand, 
+          // but this is not the hottest loop in town when precomputing transitions
           if ( has_XQ ) { 
             double coef = ctrans[from][to][1+k+ns]; 
             tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ); 
@@ -96,12 +103,13 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
             tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ) * 
                                      ( all_qs[l][k] / total_qs ); 
           }
+          
         }
         
       }
       
       // Compute cumsum 
-      for ( char to=1; to<ns; to++ ) { 
+      for ( char to=1; to<ns; to += tprob_interval ) { 
         tprobs[l][from][to] += tprobs[l][from][to-1];
       }
       
@@ -110,58 +118,6 @@ void compute_transition_probabilites(double tprobs[tprob_size][ns][ns],
   
   
 }
-
-constexpr arma::uword factorial(arma::uword n) { 
-  return n > 0 ? n * factorial( n - 1 ) : 1;  
-}
-
-constexpr arma::uword prod_low_base = factorial(ns - 1); 
-
-// Get line in the table of transition probabilities 
-// This was more sweat that I would like to admit 
-inline arma::uword getline(const char qs[nr][nc][ns], 
-                           const arma::uword i, 
-                           const arma::uword j) { 
-  
-  uword lines_before = 0; 
-  uword remaining = max_nb; 
-  
-  // Init choose low 
-  uword choose_low = ns - 1; 
-  // Max prod_low = (ns-1-0)!
-  uword prod_low = prod_low_base; 
-  
-  for ( uword k=1; k<ns; k++ ) { 
-    
-    // Compute choose(remaining - qi + choose_low, choose_low)
-    // Adjust choose low and prod low
-    choose_low--; 
-    prod_low /= (choose_low + 1); 
-    
-    uword curqs = qs[i][j][k-1]; 
-    
-    uword choose_high = remaining + ns - 1 - k + 1; 
-    
-    for ( uword qi=0; qi<curqs; qi++ ) { 
-      choose_high--; //  = remaining - qi + ns - 1 - k; 
-//       Rcpp::Rcout << "clow: " << choose_low << " chigh: " << choose_high << "\n"; 
-//       if ( choose_low > choose_high ) return( 1 ) ; 
-      uword prod_high = 1; 
-      for ( uword l=remaining - qi + 1; l<=choose_high; l++ ) { 
-        prod_high *= l;
-      }
-      // Add to the total of lines seen 
-      // TODO: investigate possible recursion relationship?
-      lines_before += prod_high / prod_low; 
-    }
-    
-    remaining -= curqs; 
-  }
-  
-  // This is the line at which we want to pick up the probability vector
-  return( lines_before ); 
-}
-
 
 // 
 // [[Rcpp::export]]
@@ -185,18 +141,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   bool snapshot_callback_active = ctrl["snapshot_callback_active"]; 
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
   
-  // Initialize some things as c arrays
-  // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
-  // the size of the C stack beyond what is acceptable.
-  auto omat = new char[nr][nc];
-  auto nmat = new char[nr][nc];
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      omat[i][j] = (char) init(i, j);
-      nmat[i][j] = (char) init(i, j);
-    }
-  }
-  
   // Convert all_qs_combinations to a c array
   char all_qs[tprob_size][ns+1]; 
   for ( uword l=0; l<tprob_size; l++ ) { 
@@ -217,24 +161,45 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
   }
   
-  // Initialize vector with counts of cells in each state in the landscape (used to 
-  // compute global densities)
-  uword ps[ns];
-  int delta_ps[ns]; // Needs to be a signed integer
-  memset(ps, 0, sizeof(ps));
-  memset(delta_ps, 0, sizeof(ps));
+  // Initialize some things as c arrays
+  // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
+  // the size of the C stack beyond what is acceptable.
+  auto mat_a = new char[nr][nc];
+  auto mat_b = new char[nr][nc];
+  char (*old_mat)[nc] = mat_a; // pointer to first element of array wich is char[nc]
+  char (*new_mat)[nc] = mat_b; 
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
-      ps[ omat[i][j] ]++; 
+      old_mat[i][j] = (char) init(i, j);
+      new_mat[i][j] = (char) init(i, j);
+    }
+  }
+  
+  // Initialize vector with counts of cells in each state in the landscape (used to 
+  // compute global densities)
+  uword ps_a[ns];
+  uword ps_b[ns];
+  memset(ps_a, 0, sizeof(ps_a));
+  memset(ps_b, 0, sizeof(ps_b));
+  
+  // Start with ps_a as old_ps, and ps_b as new_ps
+  uword *old_ps = ps_a; 
+  uword *new_ps = ps_b; 
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      old_ps[ old_mat[i][j] ]++; 
+      new_ps[ old_mat[i][j] ]++; 
     }
   }
   
   // Compute local densities 
-  auto qs = new char[nr][nc][ns]; 
-  get_local_densities(qs, omat); 
+  auto qs_a = new char[nr][nc][ns]; 
+  auto qs_b = new char[nr][nc][ns]; 
   
-  // Array that will store changes in local densities
-  auto delta_qs = new signed char[nr][nc][ns]; 
+  char (*old_qs)[nc][ns] = qs_a;  
+  char (*new_qs)[nc][ns] = qs_b;  
+  get_local_densities(old_qs, old_mat); 
+  get_local_densities(new_qs, old_mat); 
   
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
@@ -256,30 +221,21 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
-      console_callback_wrap(iter, ps, console_callback); 
+      console_callback_wrap(iter, old_ps, console_callback); 
     }
     
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-      cover_callback_wrap(iter, ps, cover_callback); 
+      cover_callback_wrap(iter, old_ps, cover_callback); 
     }
     
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
-      snapshot_callback_wrap(iter, omat, snapshot_callback); 
+      snapshot_callback_wrap(iter, old_mat, snapshot_callback); 
     }
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
       
       // Compute transition probabilities 
-      compute_transition_probabilites(trans_probs, ctrans, ps, all_qs); 
-      
-      // Adjust changes in local densities to zero 
-      for ( uword i=0; i<nr; i++ ) { 
-        for ( uword j=0; j<nc; j++ ) { 
-          for ( char k=0; k<ns; k++ ) { 
-            delta_qs[i][j][k] = 0; 
-          }
-        }
-      }
+      precompute_transition_probabilites(trans_probs, ctrans, old_ps, all_qs); 
       
       for ( uword i=0; i<nr; i++ ) { 
         
@@ -287,61 +243,39 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           double rn = randunif();
           
-          char cstate = omat[i][j]; 
+          char cstate = old_mat[i][j]; 
           
           // Get line in pre-computed table
-          uword line = getline(qs, i, j); 
-//           for ( char k = 0; k<ns; k++ ) { 
-//             line = line * (1+max_nb) + qs[i][j][k]; 
-//           }
-          
-//           Rcpp::Rcout << "qs :" << 
-//             (int) qs[i][j][0] << " " << (int) qs[i][j][1] << " " << (int) qs[i][j][2] << " -> line " << line << "\n"; 
+          uword line = 0; // getline(qs, i, j); 
+          for ( char k = 0; k<ns; k++ ) { 
+            line = line * (1+max_nb) + old_qs[i][j][k]; 
+          }
           
           // Check if we actually transition.  
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ p0 < rn < (p0+p1) => p1 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
+          // TODO: the right number of substeps can be determined beforehand !!! 
           char new_cell_state = cstate; 
           for ( char k=(ns-1); k>=0; k-- ) { 
             new_cell_state = rn < trans_probs[line][cstate][k] ? k : new_cell_state; 
-          }
+          } 
           
           if ( new_cell_state != cstate ) { 
-            delta_ps[new_cell_state]++;
-            delta_ps[cstate]--;
-            nmat[i][j] = new_cell_state; 
+            new_ps[new_cell_state]++; 
+            new_ps[cstate]--; 
+            new_mat[i][j] = new_cell_state; 
             // Adjust delta_qs of neighbors
-            adjust_local_densities(delta_qs, i, j, cstate, new_cell_state); 
+            adjust_local_densities(new_qs, i, j, cstate, new_cell_state); 
           }
         }
       }
       
-      // Apply changes in global densities 
-      for ( char k=0; k<ns; k++ ) { 
-        ps[k] += delta_ps[k]; 
-        delta_ps[k] = 0; 
-      }
-      
-      // Apply changes in local densities
-      for ( uword i=0; i<nr; i++ ) { 
-        for ( uword j=0; j<nc; j++ ) { 
-          for ( char k=0; k<ns; k++ ) { 
-            qs[i][j][k] += delta_qs[i][j][k]; 
-//             Rcpp::Rcout << "i: " << i << " j: " << j << " k: "  << (int) k << 
-//               "qs: " << (int) qs[i][j][k] << 
-//               " delta_qs: " << (int) delta_qs[i][j][k] << "\n"; 
-          }
-        }
-      }
-      
-      // Apply changes in matrices (TODO: use memcpy)
-      for ( uword i=0; i<nr; i++ ) { 
-        for ( uword j=0; j<nc; j++ ) { 
-          omat[i][j] = nmat[i][j]; 
-        }
-      }
+      // Switch pointers to old/new ps/qs arrays, etc
+      old_ps = new_ps; 
+      old_qs = new_qs; 
+      old_mat = new_mat; 
       
     } // end of substep loop
     
@@ -349,10 +283,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   }
   
   // Free up heap-allocated arrays
-  delete [] omat; 
-  delete [] nmat; 
-  delete [] qs; 
-  delete [] delta_qs; 
+  delete [] mat_a; 
+  delete [] mat_b; 
+  delete [] qs_a; 
+  delete [] qs_b; 
   
 }
 

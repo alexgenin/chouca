@@ -25,7 +25,7 @@ models[[2]] <- list(model, imat)
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
                  parms = list(r = 0.1))
-imat <- generate_initmat(model, c(0.4, 0.6), nr, nc)
+imat <- generate_initmat(model, c(0.2, 0.8), nr, nc)
 models[[3]] <- list(model, imat)
 
 # If we do not do extended tests, just do the musselbed model and the non-zero XPSQ/XQSQ
@@ -35,6 +35,7 @@ if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) {
 }
 
 plyr::llply(models, function(modinfo) { 
+  
   mod <- modinfo[[1]]
   initmat <- modinfo[[2]]
   
@@ -68,28 +69,32 @@ plyr::llply(models, function(modinfo) {
   
   emeans <- apply(engines_ts, c(1, 2), mean)
   evars <- apply(engines_ts, c(1, 2), var)
-
+  
   # Display results 
-  # plot(emeans[ ,5], type = "n")
-  # lines(emeans[ ,1], col = "red")
-  # lines(emeans[ ,3], col = "black")
-  # lines(emeans[ ,5], col = "green")
-
+  plot(emeans[ ,5], type = "n")
+  lines(emeans[ ,1], col = "red")
+  lines(emeans[ ,3], col = "black")
+  lines(emeans[ ,5], col = "green")
+  
+  # We use a large tolerance, to make sure the test is not too conservative. We just 
+  # catch blatant deviations in results, a do not take the risk of getting unlucky 
+  # during a test and getting a false positive
+  tolerance <- 5e-2
   
   expect_true({ 
-    all( abs( emeans[ ,1] - emeans[ ,3] ) < 1e-2 )
+    all( abs( emeans[ ,1] - emeans[ ,3] ) < tolerance )
   })
 
   expect_true({ 
-    all( abs( emeans[ ,2] - emeans[ ,4] ) < 1e-2 )
+    all( abs( emeans[ ,2] - emeans[ ,4] ) < tolerance )
   })
 
   expect_true({ 
-    all( abs( evars[ ,1] - evars[ ,3] ) < 1e-2 )
+    all( abs( evars[ ,1] - evars[ ,3] ) < tolerance )
   })
 
   expect_true({ 
-    all( abs( evars[ ,2] - evars[ ,4] ) < 1e-2 )
+    all( abs( evars[ ,2] - evars[ ,4] ) < tolerance )
   })
 
 })
