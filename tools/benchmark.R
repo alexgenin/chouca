@@ -9,13 +9,10 @@ library(lubridate)
 
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
-TEST_COMMITS <- c("989dde0d1318319aa940f23b391cabf6ec753791", # 2022-03-19
-                  "245c05834cc67394cf731f47f328aabec033ed5c", # 2022-04-05
-                  "9fcaf03c07da9251eb39b9cc127483177ee25ae0", # 2022-04-12
-                  "58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
-                  "d30ea4fd9132fa99457b3ff4e242a65a216ea051", 
-                  "ec1a941a73a87b8525660ed3bf855c6e0bffb798")
-                  
+TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
+                  "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
+                  "1b889584e49d8af12a7ce11059445b5d987a0d00") # 2022-04-30
+
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
 dir.create(PKGDIR)
@@ -87,7 +84,6 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
 
 # Benchmark chouca 
 
-# Check the effect of compiling native with O3, or native with Ofast 
 COMMIT_LAST <- tail(TEST_COMMITS, 1)
 bench_engines <- mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST)
 

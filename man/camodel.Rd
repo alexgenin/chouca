@@ -2,6 +2,7 @@
 % Please edit documentation in R/parsing.R
 \name{camodel}
 \alias{camodel}
+\alias{transition}
 \title{Definition of a probabilistic cellular automaton}
 \usage{
 camodel(
@@ -12,6 +13,8 @@ camodel(
   check_model = TRUE,
   epsilon = sqrt(.Machine[["double.eps"]])
 )
+
+transition(from, to, prob)
 }
 \arguments{
 \item{...}{a number of transition descriptions, as built by the
@@ -20,39 +23,92 @@ camodel(
 \item{parms}{a named list of parameters, which should be all numeric, single values}
 
 \item{all_states}{the complete list of states (a character vector). If unspecified,
-it will be guessed from the transition rules, but you should really pass it here
-to make sure your model definition is correct}
+it will be guessed from the transition rules, but it is a good idea pass it here 
+to make sure the model definition is correct}
 
 \item{verbose}{whether information should be printed when parsing the model
 definition.}
+
+\item{check_model}{A quick check of the model definition is done to make sure there 
+are no issues (e.g. probabilities outside the [1,0] interval, or an unsupported 
+model definition). Setting this argument to \code{FALSE} skips this checks, which is 
+a bit faster.}
+
+\item{epsilon}{A small value under which coefficient values are considered to be 
+equal to zero}
+
+\item{from}{The state from which the transition is defined}
+
+\item{to}{The state to which the transition is defined}
+
+\item{prob}{a one-sided formula describing the probability of transition between the two 
+states (see Details section for more information).}
 }
 \description{
 High-level definition of a probabilistic cellular automaton
 }
 \details{
-This function allows defining a cellular automaton model by its set of transition
-rules. These are defined by a set of calls to the \code{transition()} function. Each
-of these calls defines the two states of the transition, and the probability (as a
-one-sided formula involving constants and special values p, q, etc.).
+This function allows defining a stochastic cellular automaton model by its set of
+transition rules. These are defined by a set of calls to the \code{transition()}
+function. Each of these calls defines the two states of the transition, and the
+probability (as a one-sided formula involving constants and special values p, q, 
+etc.). 
 
-\code{transition()} takes three arguments: the state from which the transition is
+\code{transition()} takes three arguments: the state from which the transition is 
 defined, the state to which the transition goes, and a transition probability, defined
-as a one-sided formula. This formula can include constants, parameters defined in
-the named list \code{parms}, and any combination of p\link{'a'} and q\link{'b'}, which
-respectively represent the proportion of cells in a landscape in state 'a', and the
-proportion of neighbors of a given cell in state 'b'. See section Examples for
-examples of model implementations.
+as a one-sided formula. This formula can include numerical constants, parameters 
+defined in the named list \code{parms}, and any combination of p['a'] and q['b'], 
+which respectively represent the proportion of cells in a landscape in state 'a', and 
+the proportion of neighbors of a given cell in state 'b' ('a', and 'b' being, of 
+course, any of the possible states defined in the model). See section Examples for 
+examples of model implementations. 
 
-It is important to remember that \code{chouca} only supports model where the
+It is important to remember that \code{chouca} only supports model where the 
 transition probabilities are polynomials of p and q with maximum degree 2. In other
-words, for a model with n states, the transition probabilities must be of the form:
+words, for a model with n states, the transition probabilities must be of the form: 
 
 P = \eqn{a_0 + \sum_{k=1}^{n} b_k p_{k} + c_k p^2_{k} + d_k q_{k} + e_k q^2_{k} }
 
-where p_{k} and q_{k} are the proportions of cells in the landscape and in the
-cell neighborhood in state k, respectively. \eqn{a_0}, along with the coeffients
-\eqn{b_k}, \eqn{c_k}, \eqn{d_k} and \eqn{e_k} must be all constant. However, they
-can themselve depend on constants defined in the named list \code{parms}. This allows
-defining the model in terms of literal constants that are easy to read, and calculated
-on the fly by picking values in the \code{parms} list.
+where p_{k} and q_{k} are the proportions of cells in state k in the landscape, and 
+in the cell neighborhood, respectively. \eqn{a_0}, along with the coeffients 
+\eqn{b_k}, \eqn{c_k}, \eqn{d_k} and \eqn{e_k} must be all constants. However, they 
+can themselve depend on values defined in the named list \code{parms}. This 
+allows defining the model in terms of literal constants, and compute internal
+coefficients on the fly by picking values from the \code{parms} list. 
+
+\code{camodel()} will run a few checks on your model definition to make sure 
+transition probabilities do not go above one or below zero, and that the transition 
+probabilities fit the formula above. These checks should catch most errors, but are 
+not infaillible. They can be disabled using \code{check_model = TRUE}.
+
+To optimize compiled code used to run the model, very small coefficients in the formula
+above are rounded down to zero. This may be an issue if your transition 
+probabilities are very low: in this case, consider reducing \code{epsilon} to a value
+closer to zero.
+
+To run a model once it is defined, the function \code{\link{run_camodel}} can be used.
+}
+\section{Functions}{
+\itemize{
+\item \code{transition}: 
+}}
+
+\examples{
+
+# Redefine Kubo's 1996 forest gap model 
+kubo <- camodel( 
+  transition(from = "TREE", 
+             to   = "EMPTY", 
+             prob = ~ d + delta * q["EMPTY"] ), 
+  transition(from = "EMPTY", 
+             to   = "TREE", 
+             prob = ~ alpha), 
+  parms = list(d = 0.125, 
+               delta = 0.5, 
+               alpha = 0.2), 
+  all_states = c("EMPTY", "TREE")
+)
+
+
+
 }

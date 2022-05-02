@@ -64,9 +64,3 @@ for ( wrap in c(TRUE, FALSE) ) {
   }
   }
 }
-
-microbenchmark::microbenchmark( 
-  testnb(1, 1, TRUE, TRUE), 
-  testnbcol(1, TRUE, TRUE), 
-  times = 1000
-)

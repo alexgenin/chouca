@@ -15,11 +15,11 @@ camodel_compiled_engine <- function(trans, ctrl,
   coefs    <- nrow(trans) 
   
   # Read file
-  cmaxfile <- system.file("cmax_engine.cpp", package = "chouca")
+  cmaxfile <- system.file("compiled_engine_precomputed.cpp", package = "chouca")
   cmaxlines <- readLines(cmaxfile) 
   
-  # 
   if ( ctrl[["verbose_compilation"]] ) { 
+  # 
     cat("Compilation options:\n")
     gsubf <- function(a, b, lines) { 
       cat(sprintf("Setting %s to %s\n", a, b))
@@ -39,7 +39,7 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
-                     
+  
   # Probability components: turn on or off in compiled code as needed
   totX0 <- sum(trans[1, , ]) # X0
   totXP <- sum(trans[2:(2+ns-1), , ]) # XP
@@ -134,14 +134,15 @@ benchmark_compiled_model <- function(mod, init, niter = 100,
   })
   
   # Make average 
-  timings <- plyr::ddply(timings, ~ olevel + unroll_loops, plyr::summarise, 
-                         iter_per_s = mean(iter_per_s))
+  timings <- plyr::ddply(timings, ~ olevel + unroll_loops, function(df) { 
+    data.frame(iter_per_s = mean(df[ ,"iter_per_s"]))
+  })
   
   # Order timings 
   timings <- timings[order(timings[ ,"iter_per_s"]), ]
   
   # Compute speedups 
-  timings <- plyr::mutate(timings, speedup = iter_per_s / min(iter_per_s))
+  timings[ ,"speedup"] <- timings[ ,"iter_per_s"] / min(timings[ ,"iter_per_s"])
   
   return(timings)
 }

@@ -76,7 +76,7 @@ camodel_r_engine <- function(trans, ctrl,
           }
           
           # Flip a coin to see if the transition occurs
-          makes_transition <- runif(1) < ctrates
+          makes_transition <- stats::runif(1) < ctrates
           if ( any(makes_transition) ) { 
             new_state <- which(makes_transition)[1] - 1 # adjust indexing for states
             old_state <- nmat[i, j]

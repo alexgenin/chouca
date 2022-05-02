@@ -1,6 +1,19 @@
 # Test the parsing of models 
 
 
+# Test that a warning is emitted when probabilities can be above one
+expect_warning({ 
+  forestgap(parms = list(d = 10, 
+                         delta = 0.5, 
+                         alpha = 0.2))
+})
+
+# Test that a warning is emitted when probabilities can be below zero
+expect_warning({ 
+  forestgap(parms = list(d = -1, 
+                         delta = 0.5, 
+                         alpha = 0.2))
+})
 
 
 tr <- forestgap(parms = list(d = 0.125, 
@@ -28,7 +41,8 @@ expect_true({
 
 modsq <- camodel(transition("a", "b", 
                             ~ 10 + q["a"] + 0.1 * p["b"] + 
-                                4 * p["b"]^2 + 0.2 * q["a"]^2))
+                                4 * p["b"]^2 + 0.2 * q["a"]^2), 
+                 check_model = FALSE)
 tr <- modsq[["transitions"]]
 
 expect_true({ 
@@ -46,10 +60,11 @@ expect_true({
 # This model has trouble with XPSQ
 mod <- camodel(transition(from = "A", to = "E", 
                           ~ r * ( 1 - p["A"]^2 + p["A"] + q["A"] + q["A"]^2 )), 
-                transition(from = "E", to = "A", 
+               transition(from = "E", to = "A", 
                           ~ r * (a * q["A"])), 
-                all_states = c("A", "E"), 
-                parms = list(r = 1, a = 1))
+               all_states = c("A", "E"), 
+               parms = list(r = 1, a = 1), 
+               check_model = FALSE)
 tr <- mod[["transitions"]]
 
 expect_true({ 
@@ -68,8 +83,9 @@ expect_error({
                             ~ r * ( 1 - p["A"]^2 + p["A"] + q["A"] + 0.2*q["A"]^3 )), 
                   transition(from = "E", to = "A", 
                             ~ r * (a * q["A"])), 
-                  all_states = c("A", "E"), 
-                  parms = list(r = 1, a = 1))
+                 all_states = c("A", "E"), 
+                 parms = list(r = 1, a = 1), 
+                 check_model = TRUE)
 })
 
 # This model is supported by chouca because the ^3 coefficients cancel out
@@ -79,5 +95,6 @@ mod <- camodel(transition(from = "A", to = "E",
                 transition(from = "E", to = "A", 
                           ~ r * (a * q["A"])), 
                 all_states = c("A", "E"), 
-                parms = list(r = 1, a = 1))
+                parms = list(r = 1, a = 1), 
+               check_model = FALSE)
 

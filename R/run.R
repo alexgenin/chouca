@@ -32,7 +32,7 @@ generate_initmat <- function(mod, pvec, nr, nc) {
 
 run_camodel <- function(mod, initmat, niter, 
                         control = list()) { 
-  #TODO: make sure states in intimat are contained in the states in mod 
+  #TODO: make sure states in initmat are contained in the states in mod 
   
   # Pack transition coefficients into 3D array that RcppArmadillo understands
   ns <- mod[["nstates"]]
@@ -49,7 +49,7 @@ run_camodel <- function(mod, initmat, niter,
                                      paste0("from", states)))
   for ( cfrom in states ) { 
     for ( cto in states ) { 
-      dat <- subset(transitions, from == cfrom & to == cto) 
+      dat <- transitions[transitions[ ,"from"] == cfrom & transitions[ ,"to"] == cto, ]
       col_from <- which(states == cfrom)
       col_to   <- which(states == cto)
       if ( nrow(dat) > 0 ) { 
@@ -62,7 +62,7 @@ run_camodel <- function(mod, initmat, niter,
   control <- load_control_list(control)
   
   # Handle cover-storage callback 
-  cover_callback <- function(t, ...) { }  
+  cover_callback <- function(t, ps, n) { }  
   cover_callback_active <- control[["save_covers"]] 
   if ( cover_callback_active ) { 
     nl <- 1 + niter %/% control[["save_covers_every"]]
@@ -76,7 +76,7 @@ run_camodel <- function(mod, initmat, niter,
   }
   
   # Handle snapshot-storage callback
-  snapshot_callback <- function(t, ...) { } 
+  snapshot_callback <- function(t, m) { } 
   snapshot_callback_active <- control[["save_snapshots"]]
   if ( snapshot_callback_active ) { 
     snapshots <- list()
@@ -91,7 +91,7 @@ run_camodel <- function(mod, initmat, niter,
   }
   
   # Handle console output callback 
-  console_callback <- function(t, ps) { } 
+  console_callback <- function(t, ps, n) { } 
   console_callback_active <- control[["console_output"]]
   if ( console_callback_active ) { 
     last_time <- proc.time()["elapsed"]
@@ -183,6 +183,7 @@ load_control_list <- function(l) {
     console_output_every = 10, 
     neighbors = 4, 
     wrap = TRUE, 
+    #TODO: ca_engine -> engine
     ca_engine = "cpp", 
     # Compiled engine option 
     write_to_file = NULL, 

@@ -7,7 +7,7 @@ Authors@R:
 Description: What the package does (one paragraph).
 License: GPL (>= 3)
 Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
+Roxygen: list(markdown = FALSE)
 RoxygenNote: 7.1.2
 LinkingTo: 
     Rcpp,
@@ -15,8 +15,10 @@ LinkingTo:
 Imports: 
     Rcpp, 
     plyr, 
-    digest
+    digest, 
+    stats
 Suggests: 
     covr,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0), 
+    spatialwarnings
 Config/testthat/edition: 3
