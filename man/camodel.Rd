@@ -109,6 +109,11 @@ kubo <- camodel(
   all_states = c("EMPTY", "TREE")
 )
 
+# A funny plant model 
 
+mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ) , 
+               transition("empty", "plant", ~ q["plant"]^2), 
+               all_states = c("empty", "plant"), 
+               parms = list(death = 0.2496))
 
 }

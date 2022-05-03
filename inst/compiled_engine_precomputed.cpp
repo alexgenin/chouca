@@ -15,10 +15,13 @@ __OUNROLL__
 
 using namespace arma;
 
+// Define an unsigned char as uchar for more legibility 
+typedef unsigned char uchar; 
+
 // These strings will be replaced by their values 
 constexpr arma::uword nr = __NR__; 
 constexpr arma::uword nc = __NC__; 
-constexpr char ns = __NS__; 
+constexpr uchar ns = __NS__; 
 constexpr arma::uword ncoefs = __NCOEFS__; 
 constexpr bool wrap = __WRAP__; 
 constexpr bool use_8_nb = __USE_8_NB__; 
@@ -32,21 +35,20 @@ constexpr bool has_XQ = __HAS_XQ__;
 constexpr bool has_XPSQ = __HAS_XPSQ__; 
 constexpr bool has_XQSQ = __HAS_XQSQ__; 
 
+// Include functions and type declarations
+#include "__COMMON_HEADER__"
+
 // Some things 
 constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
-// Fancy expression for max_nb^ns converted to unsigned integer. 
 // The number of permutations in neighbors.
-constexpr arma::uword tprob_size = (uword) exp( log( (double) (1+max_nb) ) * (double) ns ); 
-constexpr char tprob_interval = wrap ? ( use_8_nb ? 8 : 4 ) : 1; 
-
-// Include functions 
-#include "__COMMON_HEADER__"
+constexpr arma::uword tprob_size = __TPROB_SIZE__;
+constexpr uchar tprob_interval = wrap ? ( use_8_nb ? 8 : 4 ) : 1; 
 
 // Compute transition probabilities between all possible qs states 
 void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns], 
                                         const double ctrans[ns][ns][ncoefs], 
                                         const arma::uword ps[ns], 
-                                        const char all_qs[tprob_size][ns+1]) { 
+                                        const uchar all_qs[tprob_size][ns+1]) { 
   
   // Note tprob_interval here. In all combinations of neighbors, only some of them 
   // can be observed in the wild. If we wraparound, then the number of neighbors is 
@@ -57,9 +59,9 @@ void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns],
     // Get total of neighbors = last column of all_qs
     double total_qs = all_qs[l][ns]; 
     
-    for ( char from=0; from<ns; from++ ) { 
+    for ( uchar from=0; from<ns; from++ ) { 
       
-      for ( char to=0; to<ns; to++ ) { 
+      for ( uchar to=0; to<ns; to++ ) { 
         
         // Useless
         // if ( from == to ) { 
@@ -73,7 +75,7 @@ void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns],
         }
         
         // Loop over coefs
-        for ( char k=0; k<ns; k++ ) { 
+        for ( uchar k=0; k<ns; k++ ) { 
           
           // All the if{} blocks below will be removed appropriately by the compiler.
           
@@ -109,7 +111,7 @@ void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns],
       }
       
       // Compute cumsum 
-      for ( char to=1; to<ns; to += tprob_interval ) { 
+      for ( uchar to=1; to<ns; to++ ) { 
         tprobs[l][from][to] += tprobs[l][from][to-1];
       }
       
@@ -142,7 +144,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
   
   // Convert all_qs_combinations to a c array
-  char all_qs[tprob_size][ns+1]; 
+  uchar all_qs[tprob_size][ns+1]; 
   for ( uword l=0; l<tprob_size; l++ ) { 
     for ( uword k=0; k<(ns+1); k++ ) { 
       all_qs[l][k] = all_qs_combinations(l, k); 
@@ -164,14 +166,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // Initialize some things as c arrays
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
   // the size of the C stack beyond what is acceptable.
-  auto mat_a = new char[nr][nc];
-  auto mat_b = new char[nr][nc];
-  char (*old_mat)[nc] = mat_a; // pointer to first element of array wich is char[nc]
-  char (*new_mat)[nc] = mat_b; 
+  auto mat_a = new uchar[nr][nc];
+  auto mat_b = new uchar[nr][nc];
+  uchar (*old_mat)[nc] = mat_a; // pointer to first element of array wich is char[nc]
+  uchar (*new_mat)[nc] = mat_b; 
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
-      old_mat[i][j] = (char) init(i, j);
-      new_mat[i][j] = (char) init(i, j);
+      old_mat[i][j] = (uchar) init(i, j);
+      new_mat[i][j] = (uchar) init(i, j);
     }
   }
   
@@ -193,11 +195,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   }
   
   // Compute local densities 
-  auto qs_a = new char[nr][nc][ns]; 
-  auto qs_b = new char[nr][nc][ns]; 
+  auto qs_a = new uchar[nr][nc][ns]; 
+  auto qs_b = new uchar[nr][nc][ns]; 
   
-  char (*old_qs)[nc][ns] = qs_a;  
-  char (*new_qs)[nc][ns] = qs_b;  
+  uchar (*old_qs)[nc][ns] = qs_a;  
+  uchar (*new_qs)[nc][ns] = qs_b;  
+  
   get_local_densities(old_qs, old_mat); 
   get_local_densities(new_qs, old_mat); 
   
@@ -233,7 +236,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
-      
       // Compute transition probabilities 
       precompute_transition_probabilites(trans_probs, ctrans, old_ps, all_qs); 
       
@@ -243,11 +245,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           
           double rn = randunif();
           
-          char cstate = old_mat[i][j]; 
+          uchar cstate = old_mat[i][j]; 
           
           // Get line in pre-computed transition probability table 
           uword line = 0; 
-          for ( char k = 0; k<ns; k++ ) { 
+          for ( uchar k = 0; k<ns; k++ ) { 
             line = line * (1+max_nb) + old_qs[i][j][k]; 
           }
           
@@ -257,8 +259,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
           // TODO: the right number of substeps can be determined beforehand !!! 
-          char new_cell_state = cstate; 
-          for ( char k=(ns-1); k>=0; k-- ) { 
+          uchar new_cell_state = cstate; 
+          for ( signed char k=(ns-1); k>=0; k-- ) { 
             new_cell_state = rn < trans_probs[line][cstate][k] ? k : new_cell_state; 
           } 
           

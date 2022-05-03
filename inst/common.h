@@ -32,13 +32,13 @@ static inline double randunif() {
 
 
 
-inline void get_local_densities(char qs[nr][nc][ns], 
-                                const char m[nr][nc]) { 
+inline void get_local_densities(uchar qs[nr][nc][ns], 
+                                const uchar m[nr][nc]) { 
   
   // Set all counts to zero
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
-      for ( char k=0; k<ns; k++ ) { 
+      for ( uchar k=0; k<ns; k++ ) { 
         qs[i][j][k] = 0; 
       }
     }
@@ -49,67 +49,67 @@ inline void get_local_densities(char qs[nr][nc][ns],
       // Get neighbors to the left 
       if ( wrap ) { 
         
-        char state_left = m[i][(nc + j - 1) % nc];
+        uchar state_left = m[i][(nc + j - 1) % nc];
         qs[i][j][state_left]++; // left 
         
-        char state_right = m[i][(nc + j + 1) % nc];
+        uchar state_right = m[i][(nc + j + 1) % nc];
         qs[i][j][state_right]++; // right
         
-        char state_up = m[(nr + i - 1) % nr][j];
+        uchar state_up = m[(nr + i - 1) % nr][j];
         qs[i][j][state_up]++; // up
         
-        char state_down = m[(nr + i + 1) % nr][j];
+        uchar state_down = m[(nr + i + 1) % nr][j];
         qs[i][j][state_down]++; // down
         
         if ( use_8_nb ) { 
           
-          char state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
+          uchar state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
           qs[i][j][state_upleft]++; // upleft
           
-          char state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
+          uchar state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
           qs[i][j][state_upright]++; // upright
           
-          char state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
+          uchar state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
           qs[i][j][state_downleft]++; // downleft
           
-          char state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
+          uchar state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
           qs[i][j][state_downright]++; // downright
         }
         
       } else { 
         
         if ( i > 0 ) { 
-          char state_up = m[i-1][j];
+          uchar state_up = m[i-1][j];
           qs[i][j][state_up]++; // up
         }
         if ( i < (nr-1) ) { 
-          char state_down = m[i+1][j]; 
+          uchar state_down = m[i+1][j]; 
           qs[i][j][state_down]++; // down
         }
         if ( j > 0 ) { 
-          char state_left = m[i][j-1]; 
+          uchar state_left = m[i][j-1]; 
           qs[i][j][state_left]++; // left
         }
         if ( j < (nc-1) ) { 
-          char state_right = m[i][j+1]; 
+          uchar state_right = m[i][j+1]; 
           qs[i][j][state_right]++; // right
         }
         
         if ( use_8_nb ) { 
           if ( i > 0 && j > 0 ) { 
-            char state_upleft = m[i-1][j-1]; 
+            uchar state_upleft = m[i-1][j-1]; 
             qs[i][j][state_upleft]++; // upleft
           }
           if ( i > 0 && j < (nc-1) ) { 
-            char state_upright = m[i-1][j+1]; 
+            uchar state_upright = m[i-1][j+1]; 
             qs[i][j][state_upright]++; // upright
           }
           if ( i < (nr-1) && j > 0 ) { 
-            char state_downleft = m[i+1][j-1]; 
+            uchar state_downleft = m[i+1][j-1]; 
             qs[i][j][state_downleft]++; // downleft
           }
           if ( i < (nr-1) && j < (nc-1) ) { 
-            char state_downright = m[i+1][j+1]; 
+            uchar state_downright = m[i+1][j+1]; 
             qs[i][j][state_downright]++; // downright
           }
         }
@@ -159,11 +159,11 @@ inline double number_of_neighbors(const arma::uword i,
   return nnb; 
 }
 
-inline void adjust_local_densities(char qs[nr][nc][ns], 
+inline void adjust_local_densities(uchar qs[nr][nc][ns], 
                                    const uword i, 
                                    const uword j, 
-                                   const char from, 
-                                   const char to) { 
+                                   const uchar from, 
+                                   const uchar to) { 
   
   // Get neighbors to the left 
   if ( wrap ) { 
@@ -245,17 +245,17 @@ inline void adjust_local_densities(char qs[nr][nc][ns],
 
 void console_callback_wrap(const arma::uword iter, 
                            const arma::uword ps[ns], 
-                           Rcpp::Function console_callback) { 
+                           const Rcpp::Function console_callback) { 
   uvec ps_arma(ns); // double
-  for ( char k=0; k<ns; k++ ) { 
+  for ( uchar k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
   console_callback(iter, ps_arma, ndbl); 
 }
 
 void snapshot_callback_wrap(const arma::uword iter, 
-                            const char omat[nr][nc],
-                            Rcpp::Function snapshot_callback) { 
+                            const uchar omat[nr][nc],
+                            const Rcpp::Function snapshot_callback) { 
     
   // Make arma array to give back to R
   Mat<ushort> m(nr, nc);
@@ -272,7 +272,7 @@ void cover_callback_wrap(const arma::uword iter,
                          const arma::uword ps[ns], 
                          Rcpp::Function cover_callback) { 
   uvec ps_arma(ns); 
-  for ( char k=0; k<ns; k++ ) { 
+  for ( uchar k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
   cover_callback(iter, ps_arma, ndbl); 

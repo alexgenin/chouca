@@ -64,6 +64,9 @@ camodel_compiled_engine <- function(trans, ctrl,
   # Precompute neighbors sum and add it as the last column
   all_qs <- cbind(all_qs, rowSums(all_qs))
   
+  # Set the number of lines of all_qs in c file
+  cmaxlines <- gsubf("__TPROB_SIZE__", nrow(all_qs), cmaxlines)
+  
   # Set GCC options on command line 
   olvl <- gsub(" ", "", ctrl[["olevel"]])
   if ( ! olvl %in% c("O0", "O1", "O2", "O3", "Ofast", "default") ) { 
@@ -86,6 +89,7 @@ camodel_compiled_engine <- function(trans, ctrl,
   hash <- digest::digest(list(cmaxlines), algo = "md5")
   cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
+  
   
   # Source cpp if needed 
   if ( ! exists(fname) ) { 

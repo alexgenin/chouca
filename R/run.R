@@ -187,7 +187,7 @@ load_control_list <- function(l) {
     ca_engine = "cpp", 
     # Compiled engine option 
     write_to_file = NULL, 
-    olevel = "O2", 
+    olevel = "default", 
     unroll_loops = FALSE, 
     verbose_compilation = FALSE
   )
