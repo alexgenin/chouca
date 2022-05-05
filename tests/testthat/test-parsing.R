@@ -98,3 +98,31 @@ mod <- camodel(transition(from = "A", to = "E",
                 parms = list(r = 1, a = 1), 
                check_model = FALSE)
 
+
+
+
+
+# Test generate_initmat()
+mod <- forestgap()
+
+# Wrong number of states -> error 
+expect_error({ 
+  generate_initmat(mod, c(1, 0, 1), 2, 2)
+})
+# Named vector, but not the right names -> error
+expect_error({ 
+  generate_initmat(mod, c(A = 1, B = 1), 2, 2)
+})
+# NAs -> error
+expect_error({ 
+  generate_initmat(mod, c(A = NA, B = 1), 2, 2)
+})
+# Sum of states above/below 1 -> warning
+expect_warning({ 
+  generate_initmat(mod, c(1, 2), 2, 2)
+})
+expect_warning({ 
+  generate_initmat(mod, c(0, 0.1), 2, 2)
+})
+
+

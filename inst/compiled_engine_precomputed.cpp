@@ -166,10 +166,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   // Initialize some things as c arrays
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
   // the size of the C stack beyond what is acceptable.
-  auto mat_a = new uchar[nr][nc];
-  auto mat_b = new uchar[nr][nc];
-  uchar (*old_mat)[nc] = mat_a; // pointer to first element of array wich is char[nc]
-  uchar (*new_mat)[nc] = mat_b; 
+  auto old_mat = new uchar[nr][nc];
+  auto new_mat = new uchar[nr][nc];
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       old_mat[i][j] = (uchar) init(i, j);
@@ -179,14 +177,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
-  uword ps_a[ns];
-  uword ps_b[ns];
-  memset(ps_a, 0, sizeof(ps_a));
-  memset(ps_b, 0, sizeof(ps_b));
+  uword old_ps[ns];
+  uword new_ps[ns];
+  memset(old_ps, 0, sizeof(old_ps));
+  memset(new_ps, 0, sizeof(new_ps));
   
-  // Start with ps_a as old_ps, and ps_b as new_ps
-  uword *old_ps = ps_a; 
-  uword *new_ps = ps_b; 
+  // Compute local densities
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       old_ps[ old_mat[i][j] ]++; 
@@ -195,12 +191,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   }
   
   // Compute local densities 
-  auto qs_a = new uchar[nr][nc][ns]; 
-  auto qs_b = new uchar[nr][nc][ns]; 
-  
-  uchar (*old_qs)[nc][ns] = qs_a;  
-  uchar (*new_qs)[nc][ns] = qs_b;  
-  
+  auto old_qs = new uchar[nr][nc][ns]; 
+  auto new_qs = new uchar[nr][nc][ns]; 
   get_local_densities(old_qs, old_mat); 
   get_local_densities(new_qs, old_mat); 
   
@@ -269,14 +261,16 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
             adjust_local_densities(new_qs, i, j, cstate, new_cell_state); 
-          }
+          } 
         }
       }
       
       // Switch pointers to old/new ps/qs arrays, etc
-      old_ps = new_ps; 
-      old_qs = new_qs; 
-      old_mat = new_mat; 
+      // TODO: this is probably wrong. Changes in old_qs/ps/mat are only recorded every 
+      // two iterations in this case. We probably need to pay the price of a copy here 
+      memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
+      memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
+      memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
       
     } // end of substep loop
     
@@ -284,10 +278,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   }
   
   // Free up heap-allocated arrays
-  delete [] mat_a; 
-  delete [] mat_b; 
-  delete [] qs_a; 
-  delete [] qs_b; 
+  delete [] old_mat; 
+  delete [] new_mat; 
+  delete [] old_qs; 
+  delete [] new_qs; 
   
 }
 

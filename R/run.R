@@ -13,9 +13,18 @@ generate_initmat <- function(mod, pvec, nr, nc) {
     stop("the length of state covers does not match the number of states in the model definition")
   }
   
+  if ( ! is.null(names(pvec)) ) { 
+    diff <- setdiff(names(pvec), mod[["states"]])
+    if ( length(diff) > 0 ) { 
+      stop("State names in 'pvec' do not match the states defined in the model")
+    }
+    # Make sure order is right 
+    pvec <- pvec[mod[["states"]]]
+  }
+  
   spvec <- sum(pvec)
-  if ( sum(pvec) > 1 ) { 
-    warning("The sum of initial covers are above one, they will be rescaled")
+  if ( sum(pvec) > 1.000001 | sum(pvec) < 0.99999 ) { 
+    warning("The initial covers do not sum to one, they will be rescaled")
   }
   pvec <- pvec / spvec
   
@@ -32,18 +41,23 @@ generate_initmat <- function(mod, pvec, nr, nc) {
 
 run_camodel <- function(mod, initmat, niter, 
                         control = list()) { 
-  #TODO: make sure states in initmat are contained in the states in mod 
   
   # Pack transition coefficients into 3D array that RcppArmadillo understands
   ns <- mod[["nstates"]]
   states <- mod[["states"]]
   
+  if ( ! all(levels(initmat) %in% states) ) { 
+    stop("States in the initial matrix do not match the model states")
+  }
+  
+  # TODO: move this to model definition, so it is not done every time we run the model 
   transitions <- do.call(rbind, lapply(mod[["transitions"]], function(o) { 
     data.frame(from = o[["from"]], to = o[["to"]], 
                vec = c(o[["X0"]], o[["XP"]], o[["XQ"]], o[["XPSQ"]], o[["XQSQ"]]))
   }))
   ncoefs <- 1 + ns + ns + ns + ns # X0+XP+XQ+XPSQ+XQSQ
-  transpack <- array(0, dim = list(ncoefs, ns, ns), 
+  transpack <- array(0, 
+                     dim = list(ncoefs, ns, ns), 
                      dimnames = list(paste0("coef", seq.int(ncoefs)), 
                                      paste0("to", states), 
                                      paste0("from", states)))
@@ -60,6 +74,8 @@ run_camodel <- function(mod, initmat, niter,
   
   # Read parameters
   control <- load_control_list(control)
+  
+  # NOTE: callbacks defined below will modify things in the currenct environment
   
   # Handle cover-storage callback 
   cover_callback <- function(t, ps, n) { }  
@@ -120,6 +136,7 @@ run_camodel <- function(mod, initmat, niter,
   initmat <- as.integer(initmat) - 1
   dim(initmat) <- d 
   
+  # TODO: this is ugly
   control_list <- list(substeps = control[["substeps"]], 
                        wrap     = control[["wrap"]], 
                        init     = initmat, 
@@ -136,7 +153,6 @@ run_camodel <- function(mod, initmat, niter,
                        unroll_loops = control[["unroll_loops"]], 
                        verbose_compilation = control[["verbose_compilation"]])
   
-  # NOTE: this function will modify some objects in the current environment. 
   engine <- control[["ca_engine"]][1]
   if ( tolower(engine) == "r" ) { 
     camodel_r_engine(transpack, control_list, 

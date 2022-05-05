@@ -12,7 +12,7 @@ if ( requireNamespace("spatialwarnings") ) {
   mod_pos_autocor <- camodel(transition(from = "a", to = "b", ~ 0.04 * q["b"]), 
                          transition(from = "b", to = "a", ~ 0.01), 
                          all_states = c("a", "b"))
-  im <- generate_initmat(mod_pos_autocor, c(0.5, 0.2), nr, nc)
+  im <- generate_initmat(mod_pos_autocor, c(0.5, 0.5), nr, nc)
   
   # Run the thing, then make sure there is autocorrelation
   ctrl <- list(save_snapshots = TRUE, 

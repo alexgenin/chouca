@@ -77,8 +77,9 @@ plyr::llply(models, function(modinfo) {
   lines(emeans[ ,5], col = "green")
   
   # We use a large tolerance, to make sure the test is not too conservative. We just 
-  # catch blatant deviations in results, a do not take the risk of getting unlucky 
-  # during a test and getting a false positive
+  # catch blatant deviations in results, and do not take the risk of getting unlucky 
+  # during a test and getting a false positive. These tests are here to make sure there 
+  # is no bad interaction on CRAN with other packages. 
   tolerance <- 5e-2
   
   expect_true({ 
@@ -96,6 +97,12 @@ plyr::llply(models, function(modinfo) {
   expect_true({ 
     all( abs( evars[ ,2] - evars[ ,4] ) < tolerance )
   })
-
+  
+  # These tests are not run on CRAN, because they are much more conservative. 
+  
+  if ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) { 
+    # moar testing
+  }
+  
 })
 
