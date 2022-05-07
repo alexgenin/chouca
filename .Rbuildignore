@@ -6,3 +6,4 @@
 ^notes.txt$
 ^lines.out$
 ^.github$
+^\.github$
