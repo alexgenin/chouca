@@ -21,7 +21,7 @@ forestgap <- function(parms = list(d = 0.125,
                prob = ~ d + delta * q["EMPTY"] ), 
     transition(from = "EMPTY", 
                to   = "TREE", 
-               prob = ~ alpha), 
+               prob = ~ alpha * p["TREE"]), 
     parms = parms, 
     all_states = c("EMPTY", "TREE")
   )

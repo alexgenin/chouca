@@ -96,10 +96,9 @@
 camodel <- function(..., 
                     parms = list(), 
                     all_states = NULL, 
-                    verbose = TRUE, 
+                    verbose = FALSE, 
                     check_model = TRUE, 
                     epsilon = sqrt(.Machine[["double.eps"]])) { 
-                      
   
   if ( ( ! identical(parms, list()) ) && 
         ( ! is.list(parms) || is.null(names(parms)) || any(names(parms) == "") ) ) { 
@@ -243,7 +242,7 @@ parse_transition <- function(tr, state_names, parms, epsilon, check_model) {
   # Compute probabilities and make sure there is no residual error 
   if ( check_model ) { 
     state_combs <- as.matrix(do.call(expand.grid, 
-                                    rep(list(seq(0, 1, l = 4)), length = 2*ns)))
+                                     rep(list(seq(0, 1, l = 4)), length = 2*ns)))
     colnames(state_combs) <- c(paste0("p", seq.int(ns)), paste0("q", seq.int(ns)))
     y <- apply(state_combs, 1, function(v) { 
       p <- v[1:ns]

@@ -9,7 +9,7 @@ camodel(
   ...,
   parms = list(),
   all_states = NULL,
-  verbose = TRUE,
+  verbose = FALSE,
   check_model = TRUE,
   epsilon = sqrt(.Machine[["double.eps"]])
 )

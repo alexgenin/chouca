@@ -63,9 +63,15 @@ where n is the total number of states.
 
 Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
 organisms in the landscape, and investigate how local interactions between organisms 
-may affect the dynamic as a whole. 
+may affect the dynamic as a whole. However, implementing them is often done using ad-hoc 
+R code, which is slow, and error-prone. `chouca` aims at providing a high-level interface
+to this type of models, in order to reduce errors, and allow spending more time on model
+design, than fighting with debugging. 
 
-`chouca` wants to be user-friendly, but stay reasonably fast. The core of the engine is in C++ (using RcppArmadillo), which helps getting results fast. The goal is to spend
+`chouca` wants to be user-friendly, yet provide good performance. Several engines are 
+included, including a fully compiled-code implementation 
+
+reasonably fast. The core of the engine is in C++ (using RcppArmadillo), which helps getting results fast. The goal is to spend
 more time on thinking about your results, rather than implementing your model ;)
 
 
