@@ -42,7 +42,7 @@ kubo <- camodel(
 )
 ```
 
-Running the model for 200 iterations on a 100x100 grid is another few lines of code: 
+Running the model for 200 iterations on a 100x100 grid is another couple of lines: 
 
 ```r
 initmat <- generate_initmat(kubo, c(0.5, 0.5), 100, 100)
@@ -62,17 +62,18 @@ where n is the total number of states.
 ## Motivation and objectives
 
 Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
-organisms in the landscape, and investigate how local interactions between organisms 
-may affect the dynamic as a whole. However, implementing them is often done using ad-hoc 
-R code, which is slow, and error-prone. `chouca` aims at providing a high-level interface
-to this type of models, in order to reduce errors, and allow spending more time on model
-design, than fighting with debugging. 
+organisms in the landscape, and investigate how local interactions between organisms may 
+affect the dynamic of a system as a whole. However, implementing them is often done using 
+ad-hoc R code, which is slow, and error-prone. `chouca` aims at providing a high-level 
+interface to such type of models, in order to reduce errors, and allow spending more time 
+on model design, than fighting with debugging. 
 
 `chouca` wants to be user-friendly, yet provide good performance. Several engines are 
-included, including a fully compiled-code implementation 
+included, including a pure-R engine and a C++ engine. In addition to those two, `chouca` 
+is capable of emitting and compiling the required C++ code at runtime for a specific 
+model. This allows for optimizations that would be impossible otherwise, and improves 
+performance typically by one or two orders of magnitude.
 
-reasonably fast. The core of the engine is in C++ (using RcppArmadillo), which helps getting results fast. The goal is to spend
-more time on thinking about your results, rather than implementing your model ;)
 
 
 
