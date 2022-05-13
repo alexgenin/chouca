@@ -3,12 +3,11 @@
 [![Codecov test coverage](https://codecov.io/gh/alexgenin/chouca/branch/master/graph/badge.svg)](https://app.codecov.io/gh/alexgenin/chouca?branch=master)
 <!-- badges: end -->
 
-# Chouca: a probabilistic cellular automaton engine 
+# Chouca: a fast engine for probabilistic cellular automata 
 
-Probabilistic cellular automata are a class of models that describe a system in space the 
-dynamics of cells on a 2D regular grid. Each cell can be in one of several states. At each 
-time step, they can transition to other states with some probability. This probability 
-typically depends on the neighbors of the cell and the global state of the landscape. 
+[Probabilistic cellular automata](https://en.wikipedia.org/wiki/Stochastic_cellular_automaton) are a class of models that are based on a 2D grid of cells, each being in one of several discrete states. At each time step, they can transition to
+other states with some probability. This probability typically depends on the neighbors 
+of the cell and the global state of the landscape. 
 
 You probably already know Conway's game of life -- a probabilistic cellular automaton 
 is identical, except that cell transitions do not always occur when a rule is satisfied, 
@@ -21,11 +20,12 @@ not use this for serious business (but watch when this notice disappears!).
 
 ## What this package implements 
 
-This package is an *engine* for cellular automata. The goal is that you declare your 
-transition rules and starting conditions, then the package handles the rest of the 
-simulation for you. 
+This package is an *engine* for cellular automata. The goal is to provide a declarative 
+interface to a PCA model, and leave the implementation details to the package. 
 
-For example, Kubo's forest model (Kubo, 1996), which describes how gaps create and expand in forests, can be implemented using the following few lines of code: 
+For example, Kubo's forest model (Kubo, 1996), which describes how gaps created by wind 
+in a forest appear and expand, can be implemented using the following few lines 
+of code: 
 
 ```r
 kubo <- camodel( 
@@ -34,7 +34,7 @@ kubo <- camodel(
              prob = ~ d + delta * q["EMPTY"] ), 
   transition(from = "EMPTY", 
              to   = "TREE", 
-             prob = ~ alpha), 
+             prob = ~ alpha * p["TREE"]), 
   parms = list(d = 0.125, 
                delta = 0.5, 
                alpha = 0.1), 

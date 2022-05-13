@@ -227,7 +227,8 @@ void camodel_cpp_engine(const arma::cube trans,
   Mat<ushort> init   = ctrl["init"];
   uword niter        = ctrl["niter"]; // TODO: think about overflow in those values
   ushort ns          = ctrl["nstates"]; 
-  bool use_8_nb      = ctrl["use_8_neighbors"]; 
+  ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
+  bool use_8_nb      = nbs == 8 ? true : false; 
   
   bool console_callback_active = ctrl["console_callback_active"]; 
   uword console_callback_every = ctrl["console_callback_every"]; 

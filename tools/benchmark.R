@@ -40,7 +40,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
   # Model used for benchmark
   mod <- musselbed()
   
-  control <- list(console_output = FALSE)
+  control <- list(console_output_every = 0)
   
   ldply(ENGINES, function(engine) { 
     ldply(rev(sizes), function(size) { 
@@ -49,7 +49,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       # We use rectangles because we always want to test the package on rectangles
       init <- generate_initmat(mod, c(0.5, 0.4, 0.1), size, size)
       tmax <- round(1000 * 1 / log(size))
-      control[["ca_engine"]] <- engine
+      control[["engine"]] <- engine
       
       # We first run a small simulation to warm up the engine (= compile the code)
       warmup <- system.time({ 

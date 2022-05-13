@@ -4,9 +4,9 @@
 
 # We need raw_moran from spatialwarnings
 if ( requireNamespace("spatialwarnings") ) { 
-    
-  nr <- 20 
-  nc <- 20 
+  
+  nr <- 50 
+  nc <- 50 
   
   # This model should have spatial autocorrelation 
   mod_pos_autocor <- camodel(transition(from = "a", to = "b", ~ 0.04 * q["b"]), 
@@ -15,9 +15,8 @@ if ( requireNamespace("spatialwarnings") ) {
   im <- generate_initmat(mod_pos_autocor, c(0.5, 0.5), nr, nc)
   
   # Run the thing, then make sure there is autocorrelation
-  ctrl <- list(save_snapshots = TRUE, 
-               save_snapshots_every = 100, 
-               console_output = FALSE)
+  ctrl <- list(save_snapshots_every = 100, 
+               console_output_every = 0)
   run <- run_camodel(mod_pos_autocor, im, 1000, control = ctrl)
   # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])
 

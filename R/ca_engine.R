@@ -8,7 +8,7 @@ camodel_r_engine <- function(trans, ctrl,
   # Unwrap elements of the ctrl list 
   substeps <- ctrl[["substeps"]]
   wrap     <- ctrl[["wrap"]]
-  use_8_nb <- ctrl[["use_8_neighbors"]] 
+  use_8_nb <- ctrl[["neighbors"]] == 8 # whether we use 8 neighbors
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]

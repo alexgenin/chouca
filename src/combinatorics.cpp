@@ -59,7 +59,7 @@ arma::uword simple_sum(const arma::uvec &qs,
                        const arma::uword &nb, 
                        const arma::uword &ns) { 
   uword line = 0; 
-  for ( char k = 0; k<ns; k++ ) { 
+  for ( uword k = 0; k<ns; k++ ) { 
     line = line * (1+nb) + qs(k); 
   }
   return line; 

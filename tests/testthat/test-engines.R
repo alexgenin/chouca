@@ -40,25 +40,22 @@ plyr::llply(models, function(modinfo) {
   initmat <- modinfo[[2]]
   
   control <- list(substeps = 1, 
-                  console_output = FALSE, 
-                  console_output_every = 20, 
-                  save_covers = TRUE, 
+                  console_output_every = 0, 
                   save_covers_every = 1, 
-                  save_snapshots = TRUE, 
                   save_snapshots_every = 1000, 
-                  ca_engine = "cpp")
+                  engine = "cpp")
   
   # Check that we reproduce well the variance and mean of time series between the two 
   # engines. Somehow setti the seed does not 
   engines_ts <- replicate(99, { 
     modcompiled <- run_camodel(mod, initmat, 20, control = { 
-      control[["ca_engine"]] <- "compiled" ; control
+      control[["engine"]] <- "compiled" ; control
     })
     modcpp <- run_camodel(mod, initmat, 20, control = { 
-      control[["ca_engine"]] <- "cpp" ; control
+      control[["engine"]] <- "cpp" ; control
     })
     modr <- run_camodel(mod, initmat, 20, control = { 
-      control[["ca_engine"]] <- "r" ; control
+      control[["engine"]] <- "r" ; control
     })
     
     # Time series 

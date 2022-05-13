@@ -8,7 +8,7 @@ camodel_compiled_engine <- function(trans, ctrl,
   # Unwrap elements of the ctrl list 
   substeps <- ctrl[["substeps"]]
   wrap     <- ctrl[["wrap"]]
-  use_8_nb <- ctrl[["use_8_neighbors"]] 
+  use_8_nb <- ctrl[["neighbors"]] == 8
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
@@ -67,19 +67,17 @@ camodel_compiled_engine <- function(trans, ctrl,
   # Set the number of lines of all_qs in c file
   cmaxlines <- gsubf("__TPROB_SIZE__", nrow(all_qs), cmaxlines)
   
+  
   # Set GCC options on command line 
-  olvl <- gsub(" ", "", ctrl[["olevel"]])
-  if ( ! olvl %in% c("O0", "O1", "O2", "O3", "Ofast", "default") ) { 
-    stop("olevel option must be one of 'default', 'O0', 'O1', 'O2', 'O3' or 'Ofast'")
-  }
   
   # Emit optimize pragma 
+  olvl <- gsub(" ", "", ctrl[["olevel"]])
   olvl_str <- ifelse(olvl == "default", "", 
                      sprintf('#pragma GCC optimize("%s")', olvl))
   cmaxlines <- gsub("__OLEVEL__", olvl_str, cmaxlines)
   
   # Emit loop unrolling pragma
-  loop_unroll <- ctrl[["unroll_loops"]]
+  loop_unroll <- isTRUE(ctrl[["unroll_loops"]])
   loop_unroll_str <- ifelse(loop_unroll, '#pragma GCC optimize("unroll-loops")', "")
   cmaxlines <- gsub("__OUNROLL__", loop_unroll_str, cmaxlines)
   
@@ -90,23 +88,13 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   
-  
   # Source cpp if needed 
   if ( ! exists(fname) ) { 
       
-#     Sys.setenv(CXX11FLAGS = " -O3 -march=native -mtune=native ", 
-#                CXXFLAGS = " -O3 -march=native -mtune=native ")
-#     Sys.setenv(MAKEFLAGS = "CXX11FLAGS='-O3 -march=native -mtune=native'")
-    
     # We compile from the file, so that lines can be put in a debug run
     funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
                       verbose = TRUE, cacheDir = ".", cleanupCacheDir = TRUE)
   }
-  
-  # Output file to 
-#   file <- paste0("/tmp/ramdisk/", paste(sample(letters), collapse = ""), ".cpp")
-#   cat(sprintf("writing to %s\n", file))
-#   writeLines(cmaxlines, file)
   
   runf <- get(fname)
   runf(trans, ctrl, console_callback, cover_callback, snapshot_callback, 
@@ -129,7 +117,7 @@ benchmark_compiled_model <- function(mod, init, niter = 100,
   timings <- plyr::ldply(seq.int(nrow(all_combs)), function(i) { 
     control[["olevel"]]       <- all_combs[i, "olevel"]
     control[["unroll_loops"]] <- all_combs[i, "unroll_loops"]
-    control[["ca_engine"]]       <- "compiled"
+    control[["engine"]]       <- "compiled"
     # warmup for compilation
     system.time( run_camodel(mod, init, niter, control = control) )
     # benchmark running time 

@@ -79,7 +79,7 @@ run_camodel <- function(mod, initmat, niter,
   
   # Handle cover-storage callback 
   cover_callback <- function(t, ps, n) { }  
-  cover_callback_active <- control[["save_covers"]] 
+  cover_callback_active <- is_positive(control[["save_covers_every"]])
   if ( cover_callback_active ) { 
     nl <- 1 + niter %/% control[["save_covers_every"]]
     global_covers <- matrix(NA_real_, ncol = 1+ns, nrow = nl)
@@ -93,7 +93,7 @@ run_camodel <- function(mod, initmat, niter,
   
   # Handle snapshot-storage callback
   snapshot_callback <- function(t, m) { } 
-  snapshot_callback_active <- control[["save_snapshots"]]
+  snapshot_callback_active <- is_positive(control[["save_snapshots_every"]])
   if ( snapshot_callback_active ) { 
     snapshots <- list()
     
@@ -108,7 +108,7 @@ run_camodel <- function(mod, initmat, niter,
   
   # Handle console output callback 
   console_callback <- function(t, ps, n) { } 
-  console_callback_active <- control[["console_output"]]
+  console_callback_active <- is_positive(control[["console_output_every"]])
   if ( console_callback_active ) { 
     last_time <- proc.time()["elapsed"]
     first_time <- last_time
@@ -142,7 +142,7 @@ run_camodel <- function(mod, initmat, niter,
                        init     = initmat, 
                        niter    = niter, 
                        nstates  = ns, 
-                       use_8_neighbors = control[["neighbors"]] == 8,  
+                       neighbors = control[["neighbors"]], 
                        console_callback_active  = console_callback_active, 
                        console_callback_every   = control[["console_output_every"]], 
                        cover_callback_active    = cover_callback_active, 
@@ -153,7 +153,7 @@ run_camodel <- function(mod, initmat, niter,
                        unroll_loops = control[["unroll_loops"]], 
                        verbose_compilation = control[["verbose_compilation"]])
   
-  engine <- control[["ca_engine"]][1]
+  engine <- control[["engine"]][1]
   if ( tolower(engine) == "r" ) { 
     camodel_r_engine(transpack, control_list, 
                      console_callback, cover_callback, snapshot_callback)
@@ -191,18 +191,13 @@ load_control_list <- function(l) {
   
   control_list <- list(
     substeps = 1, 
-    save_covers = TRUE, 
     save_covers_every = 1, 
-    save_snapshots = FALSE, 
-    save_snapshots_every = 1, 
-    console_output = TRUE, 
+    save_snapshots_every = 0, 
     console_output_every = 10, 
     neighbors = 4, 
     wrap = TRUE, 
-    #TODO: ca_engine -> engine
-    ca_engine = "cpp", 
-    # Compiled engine option 
-    write_to_file = NULL, 
+    engine = "cpp", 
+    # Compiled engine options
     olevel = "default", 
     unroll_loops = FALSE, 
     verbose_compilation = FALSE
@@ -216,5 +211,58 @@ load_control_list <- function(l) {
     }
   }
   
+  check_length1_integer(control_list[["substeps"]], "substeps", 1)
+  check_length1_integer(control_list[["save_covers_every"]], "save_covers_every", 0)
+  check_length1_integer(control_list[["save_snapshots_every"]], "save_snapshots_every", 0)
+  check_length1_integer(control_list[["console_output_every"]], "console_output_every", 0)
+  
+  if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 
+    stop(sprintf("Engine must be one of 'cpp', 'compiled' or 'r'"))
+  }
+  
+  if ( ! control_list[["olevel"]] %in% c("O0", "O1", "O2", "O3", "Ofast", "default") ) { 
+    stop("'olevel' option must be one of 'default', 'O0', 'O1', 'O2', 'O3' or 'Ofast'")
+  }
+  
+  if ( ! is.logical(control_list[["unroll_loops"]]) ) { 
+    stop("'unroll_loops' option must be TRUE or FALSE")
+  }
+  
+  if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 
+    stop("'verbose_compilation' option must be TRUE or FALSE")
+  }
+  
+  
+  if ( ! ( identical(control_list[["neighbors"]], 8) || 
+           identical(control_list[["neighbors"]], 4) ) ) { 
+    stop("The 'neighbors' control option must be 8 or 4.")
+  }
+  
+  
   control_list
+}
+
+check_length1_integer <- function(x, str, minx = 0) { 
+  err <- FALSE
+  if ( is.null(x) || is.na(x) || length(x) != 1 ) { 
+    err <- TRUE
+  } else if ( x < minx ) { 
+    err <- TRUE
+  }
+  if ( err ) { 
+    msg <- sprintf("Option '%s' must be an integer >= %s", str, minx)
+    stop(msg)
+  }
+  invisible(TRUE)
+}
+
+is_positive <- function(x) { 
+  if ( is.null(x) || is.na(x) || length(x) == 0 ) { 
+    return(FALSE)
+  }
+  if ( length(x) == 1 && x >= 1 ) { 
+    return(TRUE)
+  }
+  # zero
+  return(FALSE)
 }
