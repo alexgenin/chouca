@@ -49,9 +49,10 @@ At the moment `chouca` only runs cellular automata for which the transition prob
 
 ![Polynomial](./polynomial.png)
 
-where `q_k` is the proportion of neighbors of a cell in state `k` and `p_k` is the 
-proportion of cells in a given state over the whole 2D grid. `a_0` and the `b_k`, `c_k`, 
-`d_k` and `e_k` must be constants. 
+where `n_s` is the number of discrete states between which cells can switch, `q_k` is the 
+proportion of neighbors of a cell in state `k` and `p_k` is the proportion of cells in a 
+given state over the whole 2D grid. `a_0` and the `b_k`, `c_k`, `d_k` and `e_k` must be 
+constants. 
 
 
 ## Motivation and objectives
