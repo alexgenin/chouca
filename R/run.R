@@ -2,7 +2,7 @@
 # This file contains function that will run the model 
 #
 
-generate_initmat <- function(mod, pvec, nr, nc) { 
+generate_initmat <- function(mod, pvec, nr, nc = nr) { 
   
   if ( any(is.na(pvec)) ) { 
     stop("NA in pvec are unsupported")
