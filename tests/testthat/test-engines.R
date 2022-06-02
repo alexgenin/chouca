@@ -5,9 +5,25 @@
 
 # Generate datasets 
 
-# Kubo's forest gap model 
-nr <- 20
-nc <- 30
+
+if ( ! ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) ) { 
+  # Quick testing. 
+  # We use a large tolerance, to make sure the test is not too conservative. We just 
+  # catch blatant deviations in results, and do not take the risk of getting unlucky 
+  # during a test and getting a false positive. These tests are primarily 
+  # here to make sure there is no bad interaction on CRAN with other packages and on 
+  # other systems.
+  nr <- 20
+  nc <- 30
+  tolerance <- 5e-2
+} else { 
+  # Long testing. 
+  # We use a large matrix size and a smaller tolerance, to make tests more conservative. 
+  nr <- 48
+  nc <- 64
+  tolerance <- 1e-2
+}
+
 
 models <- list()
 
@@ -67,17 +83,18 @@ plyr::llply(models, function(modinfo) {
   emeans <- apply(engines_ts, c(1, 2), mean)
   evars <- apply(engines_ts, c(1, 2), var)
   
+  par(mfrow = c(1, 2))
   # Display results 
   plot(emeans[ ,5], type = "n")
   lines(emeans[ ,1], col = "red")
   lines(emeans[ ,3], col = "black")
   lines(emeans[ ,5], col = "green")
   
-  # We use a large tolerance, to make sure the test is not too conservative. We just 
-  # catch blatant deviations in results, and do not take the risk of getting unlucky 
-  # during a test and getting a false positive. These tests are here to make sure there 
-  # is no bad interaction on CRAN with other packages. 
-  tolerance <- 5e-2
+  # Display variance results
+  plot(evars[ ,5], type = "n")
+  lines(evars[ ,1], col = "red")
+  lines(evars[ ,3], col = "black")
+  lines(evars[ ,5], col = "green")
   
   expect_true({ 
     all( abs( emeans[ ,1] - emeans[ ,3] ) < tolerance )
@@ -94,12 +111,6 @@ plyr::llply(models, function(modinfo) {
   expect_true({ 
     all( abs( evars[ ,2] - evars[ ,4] ) < tolerance )
   })
-  
-  # These tests are not run on CRAN, because they are much more conservative. 
-  
-  if ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) { 
-    # moar testing
-  }
   
 })
 

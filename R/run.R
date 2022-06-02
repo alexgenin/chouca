@@ -1,7 +1,34 @@
 # 
-# This file contains function that will run the model 
+# This file contains function that will initialize and run a model 
 #
 
+#' @title Generate an initial matrix for a chouca model 
+#' 
+#' @description Helper to create a initial landscape (matrix) with specified covers for 
+#'   a cellular automaton 
+#' 
+#' @param mod A stochastic cellular automaton model defined using \code{\link{camodel}}
+#' 
+#' @param pvec The vector of covers of each state in the initial configuration. 
+#' 
+#' @param nr The number of rows of the output matrix 
+#' 
+#' @param nc The number of columns of the output matrix 
+#' 
+#' @details 
+#'   This function is a helper to build a starting configuration (matrix) for a 
+#'     stochastic cellular automaton. Based on the definition of the model and the 
+#'     specified starting covers (in \code{pvec}). It will produce a landscape with 
+#'     expected global cover of each state equal to the covers in \code{pvec}.
+#'   
+#'   The length of the \code{pvec} vector must match the number of possible cell states 
+#'     in the model. If present, the names of \code{pvec} must match the states
+#'     defined in the model. In this case, they will be used to determine which state 
+#'     gets which starting cover. 
+#'   
+#'   The \code{pvec} will be normalized to sum to one, emitting a warning if this 
+#'     produces a meaningful change in covers. 
+#'   
 generate_initmat <- function(mod, pvec, nr, nc = nr) { 
   
   if ( any(is.na(pvec)) ) { 
@@ -39,37 +66,125 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   return(m)
 }
 
+#' @title Running a cellular automata
+#' 
+#' @description Run a pre-defined stochastic cellular automaton
+#' 
+#' @param mod A stochastic cellular automaton model defined using \code{\link{camodel}}
+#' 
+#' @param initmat An initial matrix to use for the simulation, possibly created using 
+#'   \code{\link{generate_initmat}} 
+#' 
+#' @param niter The number of iterations for which to run the model 
+#' 
+#' @param control a named list with settings to alter how the simulation is run (see 
+#'   full list of settings in secion 'Details')
+#' 
+#' @seealso camodel
+#' 
+#' @details 
+#' 
+#' \code{run_camodel()} is the function to run a pre-defined cellular automaton. It loads 
+#'   the model definition, and runs the simulation for a pre-defined number of 
+#'   iterations. It will run the simulation for \code{niter} iterations, starting from 
+#'   the initial landscape matrix \code{initmat}.
+#' 
+#' The \code{control} list must have named elements, and allows altering the 
+#'   way the simulation is run. The possible options are the following: 
+#'  
+#'  \enumerate{ 
+#'    \item \code{substeps} The number of substeps within each iteration. Probabilities 
+#'      defined in the model definition may go above one for some models, which produces 
+#'      results that are approximate. To avoid this problem, each time step of the 
+#'      model can be divided into several 'substeps'. Transitions between cell 
+#'      probabilities may occur between each substep, but with a probability divided 
+#'      by the number of substeps. This makes sure that every probability evaluated 
+#'      during the model run is below one. Default is 1.
+#'    
+#'    \item \code{save_covers_every} The period of time between which the global covers 
+#'      of each state in the landscape is saved. Set to zero to turn off saving 
+#'      them. Default is 1 (save covers at each iteration).
+#'    
+#'    \item \code{save_snapshots_every} Period of time between which a snapshot of the
+#'      2D grid is saved. Set to zero to turn off the saving of snapshots (default
+#'      option).
+#'     
+#'    \item \code{console_callback_every} Sets the number of iterations between which 
+#'      progress report is printed on the console. Set to zero to turn off progress 
+#'      report. Default is to print progress every ten iterations.
+#'    
+#'    \item \code{neighbors} The number of neighbors to use. Use the integer value 4 to 
+#'      use a four-way (von-Neumann) neighborhood, or 8 for an 8-way neighborhood. Any 
+#'      other values will produce an error. Default is to use 4 neighbors.
+#'    
+#'    \item \code{wrap} Set to \code{TRUE} to use a toric space so that edges wrap around, 
+#'      i.e. that cells on a side of the landscape are considered neighbors of cells on 
+#'      the other side. 
+#'    
+#'    \item \code{engine} The engine to use to run the simulations. Accepted values 
+#'      are 'r', to use the pure-R engine, 'cpp' to use the C++ engine, or 'compiled', to
+#'      compile the model code on the fly. Default is to use the C++ engine.
+#'    
+#'    \item \code{olevel} (Compiled engine only) The optimization level to use when
+#'      compiling the model code (default, O2, O3 or Ofast). This requires compiling with 
+#'      gcc. By default, \code{\link[Rcpp]{sourceCpp}} options are used 
+#'      (option 'default').
+#'    
+#'    \item \code{unroll_loops} (Compiled engine only) Set to \code{TRUE} to unroll loops 
+#'      or not when compiling the model. Default is \code{FALSE}. Requires compiling with
+#'      gcc.  
+#'    
+#'    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
+#'      Rcpp messages when compiling the model. Default is \code{FALSE}. 
+#'    
+#' }
+#' 
+#' @return A \code{ca_model_result} objects, which is a list with the following 
+#'   components: 
+#' 
+#' \enumerate{ 
+#'   
+#'   \item \code{model} The original model used for the model run 
+#'   
+#'   \item \code{initmat} The initial landscape (matrix) used for the model run 
+#'   
+#'   \item \code{niter} The number of iterations used 
+#'   
+#'   \item \code{control} The control list used for the model run, containing the options
+#'     used for the run 
+#'   
+#'   \item \code{output} A named list containing the model outputs. The 'covers' 
+#'     component contains a matrix with the first column containing the time step, and the 
+#'     other columns the proportions of cells in a given state. The 'snapshots' componentµ
+#'     contains the landscapes recorded as matrices, with a 't' attribute indicating 
+#'     the corresponding time step of the model run. 
+#' }
+#' 
+#' @examples 
+#' 
+#' # Run a model with default parameters
+#' mod <- forestgap() 
+#' im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
+#' run_camodel(mod, im, niter = 100) 
+#' 
+#' # Set some options and use the compiled engine
+#' ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
+#' run <- run_camodel(mod, im, niter = 100)
+#' 
+#' covers <- run[["output"]][["covers"]]
+#' matplot(covers[ ,1], covers[ ,-1], type = "l")
+#' 
+#'@export
 run_camodel <- function(mod, initmat, niter, 
                         control = list()) { 
-  
+  #TODO: use column names in the output$covers matrix 
   # Pack transition coefficients into 3D array that RcppArmadillo understands
   ns <- mod[["nstates"]]
   states <- mod[["states"]]
+  transmatrix <- mod[["transmatrix"]]
   
   if ( ! all(levels(initmat) %in% states) ) { 
     stop("States in the initial matrix do not match the model states")
-  }
-  
-  # TODO: move this to model definition, so it is not done every time we run the model 
-  transitions <- do.call(rbind, lapply(mod[["transitions"]], function(o) { 
-    data.frame(from = o[["from"]], to = o[["to"]], 
-               vec = c(o[["X0"]], o[["XP"]], o[["XQ"]], o[["XPSQ"]], o[["XQSQ"]]))
-  }))
-  ncoefs <- 1 + ns + ns + ns + ns # X0+XP+XQ+XPSQ+XQSQ
-  transpack <- array(0, 
-                     dim = list(ncoefs, ns, ns), 
-                     dimnames = list(paste0("coef", seq.int(ncoefs)), 
-                                     paste0("to", states), 
-                                     paste0("from", states)))
-  for ( cfrom in states ) { 
-    for ( cto in states ) { 
-      dat <- transitions[transitions[ ,"from"] == cfrom & transitions[ ,"to"] == cto, ]
-      col_from <- which(states == cfrom)
-      col_to   <- which(states == cto)
-      if ( nrow(dat) > 0 ) { 
-        transpack[ , col_to, col_from] <- dat[ ,"vec"]
-      }
-    }
   }
   
   # Read parameters
@@ -83,6 +198,7 @@ run_camodel <- function(mod, initmat, niter,
   if ( cover_callback_active ) { 
     nl <- 1 + niter %/% control[["save_covers_every"]]
     global_covers <- matrix(NA_real_, ncol = 1+ns, nrow = nl)
+    colnames(global_covers) <- c("t", as.character(states))
     cur_line <- 1
     
     cover_callback <- function(t, ps, n) { 
@@ -155,13 +271,13 @@ run_camodel <- function(mod, initmat, niter,
   
   engine <- control[["engine"]][1]
   if ( tolower(engine) == "r" ) { 
-    camodel_r_engine(transpack, control_list, 
+    camodel_r_engine(transmatrix, control_list, 
                      console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
-    camodel_cpp_engine(transpack, control_list, 
+    camodel_cpp_engine(transmatrix, control_list, 
                        console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("compiled") ) { 
-    camodel_compiled_engine(transpack, control_list, 
+    camodel_compiled_engine(transmatrix, control_list, 
                             console_callback, cover_callback, snapshot_callback)
   } else { 
     stop(sprintf("%s is an unknown CA engine", engine))
@@ -232,9 +348,10 @@ load_control_list <- function(l) {
     stop("'verbose_compilation' option must be TRUE or FALSE")
   }
   
-  
-  if ( ! ( identical(control_list[["neighbors"]], 8) || 
-           identical(control_list[["neighbors"]], 4) ) ) { 
+  # Convert to integer, in case someone passed a string
+  control_list[["neighbors"]] <- as.integer(control_list[["neighbors"]])
+  if ( ! ( identical(control_list[["neighbors"]], 8L) || 
+           identical(control_list[["neighbors"]], 4L) ) ) { 
     stop("The 'neighbors' control option must be 8 or 4.")
   }
   

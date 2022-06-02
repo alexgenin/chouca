@@ -44,7 +44,7 @@
 #' course, any of the possible states defined in the model). See section Examples for 
 #' examples of model implementations. 
 #' 
-#' It is important to remember that \code{chouca} only supports model where the 
+#' It is important to remember that \code{chouca} only supports models where the 
 #' transition probabilities are polynomials of p and q with maximum degree 2. In other
 #' words, for a model with n states, the transition probabilities must be of the form: 
 #' 
@@ -62,7 +62,7 @@
 #' probabilities fit the formula above. These checks should catch most errors, but are 
 #' not infaillible. They can be disabled using \code{check_model = TRUE}.
 #' 
-#' To optimize compiled code used to run the model, very small coefficients in the formula
+#' When using compiled code used to run the model, very small coefficients in the formula
 #' above are rounded down to zero. This may be an issue if your transition 
 #' probabilities are very low: in this case, consider reducing \code{epsilon} to a value
 #' closer to zero.
@@ -85,10 +85,9 @@
 #'   all_states = c("EMPTY", "TREE")
 #' )
 #' 
-#' # A funny plant model 
-#' 
-#' mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ) , 
-#'                transition("empty", "plant", ~ q["plant"]^2), 
+#' # A fun plant model 
+#' mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
+#'                transition("empty", "plant", ~ q["plant"]^2 ), 
 #'                all_states = c("empty", "plant"), 
 #'                parms = list(death = 0.2496))
 #' 
@@ -96,8 +95,8 @@
 camodel <- function(..., 
                     parms = list(), 
                     all_states = NULL, 
-                    verbose = FALSE, 
                     check_model = TRUE, 
+                    verbose = FALSE, 
                     epsilon = sqrt(.Machine[["double.eps"]])) { 
   
   if ( ( ! identical(parms, list()) ) && 
@@ -151,16 +150,38 @@ camodel <- function(...,
     stop("NAs in computed coefficients, please make sure your model definition is correct")
   }
   
+  # Compute the packed transition matrix 
+  trvec <- do.call(rbind, lapply(transitions, function(o) { 
+    data.frame(from = o[["from"]], to = o[["to"]], 
+               vec = c(o[["X0"]], o[["XP"]], o[["XQ"]], o[["XPSQ"]], o[["XQSQ"]]))
+  }))
+  ncoefs <- 1 + 4*nstates # lengths of X0+XP+XQ+XPSQ+XQSQ
+  transmatrix <- array(0, 
+                     dim = list(ncoefs, nstates, nstates), 
+                     dimnames = list(paste0("coef", seq.int(ncoefs)), 
+                                     paste0("to", states), 
+                                     paste0("from", states)))
+  for ( cfrom in states ) { 
+    for ( cto in states ) { 
+      dat <- trvec[trvec[ ,"from"] == cfrom & trvec[ ,"to"] == cto, ]
+      col_from <- which(states == cfrom)
+      col_to   <- which(states == cto)
+      if ( nrow(dat) > 0 ) { 
+        transmatrix[ , col_to, col_from] <- dat[ ,"vec"]
+      }
+    }
+  }
+  
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
-                states = factor(states, states))
+                states = factor(states, levels = states), # convert explicitely to factor
+                transmatrix = transmatrix, 
+                transitions_defs = list(...), 
+                parms            = parms, 
+                epsilon = epsilon)
   
   class(caobj) <- c("ca_model", "list")
   return(caobj)
-}
-
-unform <- function(form) { 
-  as.expression( as.list(form)[[2]] )
 }
 
 #'@describeIn camodel
@@ -206,7 +227,7 @@ parse_transition <- function(tr, state_names, parms, epsilon, check_model) {
   # to recompile or not when using the 'compiled' engine.
   environment(tr[["prob"]]) <- emptyenv()
 
-  pexpr <- unform(tr[["prob"]]) 
+  pexpr <- as.expression( as.list(tr[["prob"]])[[2]] )
   zero <- rep(0, ns)
   names(zero) <- state_names
   
@@ -278,6 +299,23 @@ parse_transition <- function(tr, state_names, parms, epsilon, check_model) {
   
   c(tr, list(X0 = eps(X0), XP = eps(XP), XQ = eps(XQ), 
              XPSQ = eps(XPSQ), XQSQ = eps(XQSQ)))
+}
+
+# Update a ca_model with new arguments 
+#'@export
+update.ca_model <- function(mod, parms, 
+                            check_model = TRUE, 
+                            verbose     = FALSE) { 
+  
+  # Extract model parameters, and do the call
+  newcall <- c(mod[["transitions_defs"]], # always a list, so result of c() is a list
+               parms = list(parms), 
+               all_states = list(mod[["states"]]), 
+               check_model = check_model, 
+               verbose = verbose, 
+               epsilon = mod[["epsilon"]])
+  
+  do.call(camodel, newcall)
 }
 
 #'@export

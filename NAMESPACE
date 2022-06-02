@@ -2,10 +2,12 @@
 
 S3method(print,ca_model)
 S3method(print,camodel_transition)
+S3method(update,ca_model)
 export(aridvege)
 export(camodel)
 export(forestgap)
 export(musselbed)
+export(run_camodel)
 export(transition)
 importFrom(Rcpp,sourceCpp)
 useDynLib(chouca, .registration = TRUE)

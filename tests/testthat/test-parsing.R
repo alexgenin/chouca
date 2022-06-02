@@ -99,6 +99,15 @@ mod <- camodel(transition(from = "A", to = "E",
                check_model = FALSE)
 
 
+# Test updating of models. Internal coefficient matrix should have changed 
+mod <- forestgap()
+mod2 <- update(mod, parms = list(d = 0, delta = 0.5, alpha = 0.01))
+expect_true({ 
+  all(mod[["parms"]] != mod[["mod2"]])
+})
+expect_true({ 
+  ! all(mod[["transmatrix"]] == mod2[["transmatrix"]])
+})
 
 
 

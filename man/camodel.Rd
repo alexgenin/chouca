@@ -9,8 +9,8 @@ camodel(
   ...,
   parms = list(),
   all_states = NULL,
-  verbose = FALSE,
   check_model = TRUE,
+  verbose = FALSE,
   epsilon = sqrt(.Machine[["double.eps"]])
 )
 
@@ -26,13 +26,13 @@ transition(from, to, prob)
 it will be guessed from the transition rules, but it is a good idea pass it here 
 to make sure the model definition is correct}
 
-\item{verbose}{whether information should be printed when parsing the model
-definition.}
-
 \item{check_model}{A quick check of the model definition is done to make sure there 
 are no issues (e.g. probabilities outside the [1,0] interval, or an unsupported 
 model definition). Setting this argument to \code{FALSE} skips this checks, which is 
 a bit faster.}
+
+\item{verbose}{whether information should be printed when parsing the model
+definition.}
 
 \item{epsilon}{A small value under which coefficient values are considered to be 
 equal to zero}
@@ -63,7 +63,7 @@ the proportion of neighbors of a given cell in state 'b' ('a', and 'b' being, of
 course, any of the possible states defined in the model). See section Examples for 
 examples of model implementations. 
 
-It is important to remember that \code{chouca} only supports model where the 
+It is important to remember that \code{chouca} only supports models where the 
 transition probabilities are polynomials of p and q with maximum degree 2. In other
 words, for a model with n states, the transition probabilities must be of the form: 
 
@@ -81,7 +81,7 @@ transition probabilities do not go above one or below zero, and that the transit
 probabilities fit the formula above. These checks should catch most errors, but are 
 not infaillible. They can be disabled using \code{check_model = TRUE}.
 
-To optimize compiled code used to run the model, very small coefficients in the formula
+When using compiled code used to run the model, very small coefficients in the formula
 above are rounded down to zero. This may be an issue if your transition 
 probabilities are very low: in this case, consider reducing \code{epsilon} to a value
 closer to zero.
@@ -109,10 +109,9 @@ kubo <- camodel(
   all_states = c("EMPTY", "TREE")
 )
 
-# A funny plant model 
-
-mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ) , 
-               transition("empty", "plant", ~ q["plant"]^2), 
+# A fun plant model 
+mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
+               transition("empty", "plant", ~ q["plant"]^2 ), 
                all_states = c("empty", "plant"), 
                parms = list(death = 0.2496))
 

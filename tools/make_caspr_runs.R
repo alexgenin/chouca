@@ -29,6 +29,7 @@ if ( FALSE ) {
                           row.names = NULL)
   saveRDS(covers, 
           file = file.path("./tests/testthat/caspr_output/", "caspr_ts_forestgap.rds"))
+  
 }
 
 # Make caspr benchmarks 
@@ -40,9 +41,9 @@ if ( FALSE ) {
     a <- system.time({ 
       l <- init_landscape(c("+","0","-"), c(0.6,0.2,0.2), width = size) 
       p <- list(r = 0.4, d = 0.9, delta = 0.01)   # set parameters
-      r <- ca(l, model = musselbed, parms = p, t_max = 20)    # run simulation
+      r <- ca(l, model = musselbed, parms = p, t_max = 512)    # run simulation
     })
     as.data.frame(as.list(a))
-  })
+  }, .progress = "time")
   
 }

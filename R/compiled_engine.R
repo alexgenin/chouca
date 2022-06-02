@@ -2,6 +2,7 @@
 # Interface to the compiled engine
 # 
 
+
 camodel_compiled_engine <- function(trans, ctrl, 
                                     console_callback, cover_callback, snapshot_callback) { 
   
@@ -102,7 +103,52 @@ camodel_compiled_engine <- function(trans, ctrl,
 }
 
 
-
+#'@title Benchmark a chouca model 
+#'
+#'@description Benchmark compilation options for a chouca model 
+#'
+#'@param mod A chouca model, as defined by \code{\link{camodel}}
+#'
+#'@param init An initial matrix, as produced by \code{\link{generate_initmat}}
+#'
+#'@param niter The number of iterations to use for the benchmark 
+#'
+#'@param olevel The optimizations levels to try (one or several of 'O0', 'O1', 'O2', 'O3', 
+#' 'Ofast' or 'default'). 
+#'
+#'@param unroll_loops The loop unrolling options to try (one or both of TRUE and FALSE)
+#'
+#'@param control The options to use for the simulations. See the full list of options 
+#'  documented in \code{\link{run_camodel}}. 
+#'
+#'@param nrepeats The number of samples to take when measuring run time. 
+#'
+#'@details 
+#'  
+#'  This function will take a chouca model, try the different compilation optimisation
+#'    options of the 'compiled' engine (see \code{\link{run_camodel}}) and measure 
+#'    run times. This allows deciding on which optimization options to use when running 
+#'    simulations. 
+#'    
+#'@return
+#' 
+#' A data.frame whose lines are ordered by model run time with the following columns:
+#' \enumerate{
+#'   \item \code{olevel} The optimization level 
+#'   
+#'   \item \code{unroll_loops} The type of loop unrolling 
+#'   
+#'   \item \code{iter_per_s} The measured number of iteration per second
+#'   
+#'   \item \code{speedup} The speedup of a set of options compared to the slowest result. 
+#' }
+#' 
+#'@examples 
+#' 
+#' mod <- forestgap()
+#' inimat <- generate_initmat(mod, c(0.5, 0.5), 1024) 
+#' benchmark_compiled_model(mod, inimat, niter = 100) 
+#' 
 benchmark_compiled_model <- function(mod, init, niter = 100, 
                                      olevel = c("O2", "O3", "Ofast"), 
                                      unroll_loops = c(TRUE, FALSE), 
