@@ -32,22 +32,17 @@ model <- forestgap()
 imat <- generate_initmat(model, c(0.5, 0.5), nr, nc)
 models[[1]] <- list(model, imat)
 
-# Guichard's musselbed model
-model <- musselbed()
-imat <- generate_initmat(model, c(0.5, 0.1, 0.4), nr, nc)
-models[[2]] <- list(model, imat)
-
 # Model with non-zero XPSQ/XQSQ
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
                  parms = list(r = 0.1))
 imat <- generate_initmat(model, c(0.2, 0.8), nr, nc)
-models[[3]] <- list(model, imat)
+models[[2]] <- list(model, imat)
 
 # If we do not do extended tests, just do the musselbed model and the non-zero XPSQ/XQSQ
 # model
 if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) { 
-  models <- models[c(2, 3)]
+  models <- models[1]
 }
 
 plyr::llply(models, function(modinfo) { 

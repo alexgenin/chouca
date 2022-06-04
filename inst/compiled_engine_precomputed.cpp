@@ -6,7 +6,7 @@
 #endif 
 
 // We tell gcc to unroll loops, as we have many small loops. This can double 
-// performance (!!!)
+// performance in some cases (!)
 __OLEVEL__
 __OUNROLL__ 
 
@@ -63,7 +63,7 @@ void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns],
       
       for ( uchar to=0; to<ns; to++ ) { 
         
-        // Useless
+        // Useless in practice
         // if ( from == to ) { 
         //   continue; 
         // }
@@ -77,7 +77,8 @@ void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns],
         // Loop over coefs
         for ( uchar k=0; k<ns; k++ ) { 
           
-          // All the if{} blocks below will be removed appropriately by the compiler.
+          // All the if{} blocks below will be removed appropriately by the compiler as 
+          // their condition is constexpr.
           
           // XP
           if ( has_XP ) { 
@@ -250,7 +251,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           //               ^ p0 < rn < (p0+p1) => p1 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
-          // TODO: the right number of substeps can be determined beforehand !!! 
           uchar new_cell_state = cstate; 
           for ( signed char k=(ns-1); k>=0; k-- ) { 
             new_cell_state = rn < trans_probs[line][cstate][k] ? k : new_cell_state; 
@@ -265,9 +265,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
         }
       }
       
-      // Switch pointers to old/new ps/qs arrays, etc
-      // TODO: this is probably wrong. Changes in old_qs/ps/mat are only recorded every 
-      // two iterations in this case. We probably need to pay the price of a copy here 
+      // Copy old matrix to new, etc. 
       memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
       memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
       memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 

@@ -7,18 +7,6 @@ devtools::load_all("/home/alex/work/2022/chouca/tools/caspr-test/caspr")
 # 
 if ( FALSE ) { 
   
-  # Run simulation of musselbed with caspr 
-  l <- init_landscape(c("+","0","-"), c(0.6,0.2,0.2), width = 100) 
-  p <- list(r = 0.4, d = 0.9, delta = 0.01)   # set parameters
-  r <- ca(l, model = musselbed, parms = p, t_max = 200)    # run simulation
-  plot(r) 
-  
-  # Save time series
-  covers <- as.data.frame(with(r, cbind(time, cover)), 
-                          row.names = NULL)
-  saveRDS(covers, 
-          file = file.path("./tests/testthat/caspr_output/", "caspr_ts_musselbed.rds"))
-  
   # Run simulation of forestgap with caspr 
   l <- init_landscape(c("+","0"), c(0.6, 0.4), width = 100) 
   p <- list(alpha = 0.2, d = 0.01, delta = 0.17)   # set parameters
@@ -28,7 +16,8 @@ if ( FALSE ) {
   covers <- as.data.frame(with(r, cbind(time, cover)), 
                           row.names = NULL)
   saveRDS(covers, 
-          file = file.path("./tests/testthat/caspr_output/", "caspr_ts_forestgap.rds"))
+          file = file.path("./tests/testthat/caspr_output/", 
+                           "caspr_ts_forestgap.rds"))
   
 }
 

@@ -3,6 +3,35 @@
 # This file contains models 
 # 
 
+# Genin's coral reef model (2022?) 
+# 
+#'@export
+coralreef <- function(parms = list(r_a = 1.79, 
+                                   l_a = 0.02, 
+                                   i_a = 1.79e-3, 
+                                   r_c = 1.31e-4, 
+                                   d_0 = 4, 
+                                   m_a = 0.011, 
+                                   h_u = 1, 
+                                   g = 0.18, 
+                                   theta_b = 1.11, 
+                                   theta_c = 1.05, 
+                                   m_c     = 10^(-3.5)) ) { 
+  
+  camodel(
+    transition(from = "BARE", to = "CORAL", 
+               ~ r_c * ( 1 + d_0 * q["CORAL"] )), 
+    transition(from = "CORAL", to = "BARE", 
+               ~ m_c), 
+    transition(from = "BARE", to = "ALGAE", 
+               ~ i_a + r_a * p["ALGAE"] + l_a * q["ALGAE"]), 
+    transition(from = "ALGAE", to = "BARE", 
+               ~ m_a + h_u * g * ( theta_b * q["BARE"] + theta_c * q["CORAL"])), 
+    parms = parms, 
+    all_states = c("BARE", "ALGAE", "CORAL")
+  )
+}
+
 # Kubo's forest model (1996)
 # 
 # See also Génin et al. 2018 for model definition 
@@ -39,18 +68,17 @@ forestgap <- function(parms = list(d = 0.125,
 # disturbance dynamics: signatures of oceanographic forcing from local interactions. The
 # American Naturalist, 161, 889–904. doi: 10.1086/375300
 # 
-#'@export
-musselbed <- function(parms = list(d = 0.1, 
-                                   delta = 0.25, 
-                                   alpha = 0.4)) { 
-  camodel( 
-    transition("EMPTY",   "MUSSEL",  ~ alpha * q["MUSSEL"]), 
-    transition("DISTURB", "EMPTY",   ~ 1), 
-    transition("MUSSEL",  "DISTURB", ~ d + delta * q["DISTURB"]), 
-    parms = parms, 
-    all_states = c("MUSSEL", "EMPTY", "DISTURB")
-  )
-}
+# musselbed <- function(parms = list(d = 0.1, 
+#                                    delta = 0.25, 
+#                                    alpha = 0.4)) { 
+#   camodel( 
+#     transition("EMPTY",   "MUSSEL",  ~ alpha * q["MUSSEL"]), 
+#     transition("DISTURB", "EMPTY",   ~ 1), 
+#     transition("MUSSEL",  "DISTURB", ~ d + delta * q["DISTURB"]), 
+#     parms = parms, 
+#     all_states = c("MUSSEL", "EMPTY", "DISTURB")
+#   )
+# }
 
 
 
