@@ -93,6 +93,8 @@
 #' 
 #'@export
 camodel <- function(..., 
+                    neighbors, # default to von-neumann neighborhood
+                    wrap, 
                     parms = list(), 
                     all_states = NULL, 
                     check_model = TRUE, 
@@ -110,11 +112,11 @@ camodel <- function(...,
   
   # Read all possible states 
   msg <- function(txt) if ( verbose ) message(txt, appendLF = FALSE)
-  
   msg("Parsing CA model definition\n")
-  
+
   # Read transition objects
   transitions <- list(...)
+  
   
   # Check that they are all transitions 
   if ( ! all(sapply(transitions, inherits, "camodel_transition")) ) { 
@@ -134,51 +136,49 @@ camodel <- function(...,
     }
   }
   
-  # Compute transition probabilities
-  transitions <- lapply(transitions, parse_transition, states, parms, epsilon, 
-                        check_model)
+  # TODO: check if some transitions are declared twice 
   
   msg(sprintf("Using %s cell states\n", nstates))
   msg(sprintf("Using %s transitions\n", length(transitions)))
+
+  # Parse transitions
+  # In the worst case scenario, we need 25 points, so that the number of neighbors is 
+  # always divisible by 2, 3, 4 or 8. (25 because zero included)
+  xpoints <- 1 + ifelse(wrap, neighbors, ifelse(neighbors == 8, 120, 24))
+  transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
+                               epsilon)
   
-  # Check that there is no NA in transition rates 
-  allrates <- plyr::laply(transitions, function(o) { 
-    c(o[["X0"]], o[["XP"]], o[["XQ"]], o[["XPSQ"]], o[["XQSQ"]], use.names = FALSE)
+  # Pack transitions into matrices
+  qmat <- ldply(transitions_parsed, function(tr) { 
+    data.frame(from = tr[["from"]], 
+               to = tr[["to"]], 
+               tr[["beta_q"]])
   })
   
-  if ( any(is.na(allrates)) ) { 
-    stop("NAs in computed coefficients, please make sure your model definition is correct")
-  }
+  pmat <- ldply(transitions_parsed, function(tr) { 
+    data.frame(from = tr[["from"]], 
+               to = tr[["to"]], 
+               tr[["beta_p"]])
+  })
   
-  # Compute the packed transition matrix 
-  trvec <- do.call(rbind, lapply(transitions, function(o) { 
-    data.frame(from = o[["from"]], to = o[["to"]], 
-               vec = c(o[["X0"]], o[["XP"]], o[["XQ"]], o[["XPSQ"]], o[["XQSQ"]]))
-  }))
-  ncoefs <- 1 + 4*nstates # lengths of X0+XP+XQ+XPSQ+XQSQ
-  transmatrix <- array(0, 
-                     dim = list(ncoefs, nstates, nstates), 
-                     dimnames = list(paste0("coef", seq.int(ncoefs)), 
-                                     paste0("to", states), 
-                                     paste0("from", states)))
-  for ( cfrom in states ) { 
-    for ( cto in states ) { 
-      dat <- trvec[trvec[ ,"from"] == cfrom & trvec[ ,"to"] == cto, ]
-      col_from <- which(states == cfrom)
-      col_to   <- which(states == cto)
-      if ( nrow(dat) > 0 ) { 
-        transmatrix[ , col_to, col_from] <- dat[ ,"vec"]
-      }
-    }
-  }
+  alpha <- ldply(transitions_parsed, function(tr) { 
+    data.frame(from = tr[["from"]], 
+               to = tr[["to"]], 
+               a0 = tr[["alpha0"]])
+  })
   
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
                 states = factor(states, levels = states), # convert explicitely to factor
-                transmatrix = transmatrix, 
                 transitions_defs = list(...), 
                 parms            = parms, 
-                epsilon = epsilon)
+                alpha = alpha, 
+                pmat = pmat, 
+                qmat = qmat, 
+                wrap = wrap, 
+                neighbors = neighbors, 
+                epsilon = epsilon, 
+                xpoints = xpoints)
   
   class(caobj) <- c("ca_model", "list")
   return(caobj)
@@ -213,7 +213,7 @@ transition <- function(from, to, prob) {
   return(o)
 }
 
-parse_transition <- function(tr, state_names, parms, epsilon, check_model) { 
+parse_transition <- function(tr, state_names, parms, xpoints, epsilon) { 
   
   if ( ! inherits(tr, "camodel_transition") ) { 
     m <- paste("The transition definition has not been defined using transition().", 
@@ -222,11 +222,11 @@ parse_transition <- function(tr, state_names, parms, epsilon, check_model) {
   }
   ns <- length(state_names)
   
-  # Make sure the environment for the formula is set to the empyt environment. Otherwise
+  # Make sure the environment for the formula is set to the empty environment. Otherwise
   # it trips up hash computing of the model, which is used to determine whether we have 
   # to recompile or not when using the 'compiled' engine.
   environment(tr[["prob"]]) <- emptyenv()
-
+  
   pexpr <- as.expression( as.list(tr[["prob"]])[[2]] )
   zero <- rep(0, ns)
   names(zero) <- state_names
@@ -236,69 +236,46 @@ parse_transition <- function(tr, state_names, parms, epsilon, check_model) {
     eval(pexpr, envir = c(parms, list(p = p, q = q)))
   }
   
-  X0 <- prob_with(p = zero, q = zero)
-  names(X0) <- NULL 
+  # Get intercept for this transition
+  alpha0 <- prob_with(p = zero, q = zero)
   
-  # Global and local density probability component 
-  XP <- XPSQ <- XQ <- XQSQ <- numeric(ns)
-  
-  # See my notes for this
-  for ( i in seq.int(ns) ) { 
-    
-    onevec <- zero
-    onevec[i] <- 1 # density of focal state = full
-    
-    p_one_zero  <- prob_with(p = onevec,   q = zero)
-    p_mone_zero <- prob_with(p = - onevec, q = zero)
-    XP[i] <- (p_one_zero - p_mone_zero) / 2
-    XPSQ[i] <- p_one_zero - X0 - XP[i] 
-    
-    p_one_zero  <- prob_with(p = zero,  q = onevec)
-    p_mone_zero <- prob_with(p = zero,  q = - onevec)
-
-    XQ[i] <- (p_one_zero - p_mone_zero) / 2
-    XQSQ[i] <- p_one_zero - X0 - XQ[i]
-  }
-  
-  # Compute probabilities and make sure there is no residual error 
-  if ( check_model ) { 
-    state_combs <- as.matrix(do.call(expand.grid, 
-                                     rep(list(seq(0, 1, l = 4)), length = 2*ns)))
-    colnames(state_combs) <- c(paste0("p", seq.int(ns)), paste0("q", seq.int(ns)))
-    y <- apply(state_combs, 1, function(v) { 
-      p <- v[1:ns]
-      q <- v[seq(ns+1, ns+ns)]
-      X0 + sum(XP * p) + sum(XPSQ * p^2) + sum(XQ * q) + sum(XQSQ * q^2)
-    })
-    yok <- apply(state_combs, 1, function(v) { 
-      p <- v[seq(1, ns)]
-      names(p) <- state_names
-      q <- v[seq(ns+1, ns+ns)]
-      names(q) <- state_names
-      prob_with(p = p, q = q)
+  # Get coefficient/exponent table for q. We evaluate q at 'xpoints' points for vectors 
+  # of q with zeros everywhere except one state. 
+  beta_q <- ldply(state_names, function(s) { 
+    q <- zero
+    xs <- seq(0, 1, length.out = xpoints) 
+    nqs <- seq_along(xs) - 1
+    ys <- sapply(xs, function(x) { 
+      q[s] <- x
+      prob_with(p = zero, q = q) - alpha0
     })
     
-    if ( ! all( abs(y - yok) < epsilon ) ) { 
-      stop("There is residual error in the computed probabilities. Your model looks like it is not supported by chouca. Please look at ?camodel for more details about the supported classes of models")
-    }
-    
-    if ( any( y > 1 ) ) { 
-      maxy <- ceiling(max(y))
-      warning(sprintf("Model probabilities can go above one, consider increasing the number of 
-        substeps to %s or more", maxy))
-    }
-    
-    if ( any( y < 0 ) ) { 
-      warning("Model probabilities can be negative!")
-    }
-    
-  }
+    data.frame(state = s, qs = nqs, ys = ys)
+  })
   
-  # Make sure to zero things that are zero 
-  eps <- function(x) ifelse(abs(x)<epsilon, 0, x)
+  beta_p <- ldply(state_names, function(s) { 
+    p <- zero
+    # In the worst case scenario, we need 9 points, in the case of 8 possible neighbors
+    xs <- seq(0, 1, length.out = 25) 
+    ys <- sapply(xs, function(x) { 
+      p[s] <- x
+      prob_with(p = p, q = zero) - alpha0
+    })
+    
+    # Fit polynomial to this 
+    poly <- fitpoly(xs, ys, epsilon)
+    data.frame(state = s, coef = poly, expo = seq_along(poly))
+  })
   
-  c(tr, list(X0 = eps(X0), XP = eps(XP), XQ = eps(XQ), 
-             XPSQ = eps(XPSQ), XQSQ = eps(XQSQ)))
+  # TODO: add checks? -> no NA in transition rates 
+  
+  list(from = tr[["from"]], 
+       to   = tr[["to"]], 
+       alpha0 = alpha0, 
+       beta_q = beta_q, 
+       beta_p = beta_p, 
+       prob = pexpr)
+  
 }
 
 # Update a ca_model with new arguments 
@@ -318,6 +295,51 @@ update.ca_model <- function(mod, parms,
   do.call(camodel, newcall)
 }
 
+fitpoly <- function(x, y, epsilon) { 
+  
+  force(x)
+  force(y)
+  
+  # If 
+  if ( all(y < epsilon) ) { 
+    return( 0 ) 
+  }
+  
+  # We fit a polynomial
+  polyc <- function(x, betas) { 
+    sapply(x, function(i) { 
+      sum(betas * i ^ seq_along(betas))
+    })
+  }
+
+  ss <- function(betas) { 
+    1e6 * sum( (y - polyc(x, betas))^2 ) 
+  }
+  
+  degree <- 0
+  error <- 1
+  while ( error > 1e-10 && degree <= 25 ) { 
+    degree <- degree + 1
+    theta0 <- rep(0, degree)
+    nlmp <- optim(theta0, ss, method = "BFGS", 
+                  control = list(trace = TRUE, 
+                                 maxit = 1000, 
+                                 abstol = .Machine$double.eps))
+    error <- nlmp$value
+    print(degree)
+    print(error)
+  }
+  
+  np <- nlmp$par
+  # Plot prediction
+  ypred <- polyc(x, np)
+  plot(x, ypred, col = "red", pch = 20)
+  points(x, y)
+  
+  return(np)
+}
+
+
 #'@export
 print.ca_model <- function(x, ...) { 
   
@@ -328,9 +350,10 @@ print.ca_model <- function(x, ...) {
   cat0("")
   cat0("States: ", paste(x[["states"]], collapse = " "))
   cat0("")
+  
   for ( tr in x[["transitions"]] ) { 
     cat0("Transition: ", tr[["from"]], " -> ", tr[["to"]])
-    cat0("  p = ", as.character(tr[["prob"]])[2] )
+    cat0("  p = ", as.character(tr[["prob"]]) )
   }
   
   return(invisible(x))

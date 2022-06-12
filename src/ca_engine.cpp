@@ -1,11 +1,19 @@
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 // using namespace Rcpp;
+
+// Define some column names
+#define _from 0
+#define _to 1
+#define _state 2
+#define _qs 3
+#define _coef 0
+#define _expo 1
 
 using namespace arma;
 
@@ -215,20 +223,28 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m,
 // This file contains the main c++ engine to run CAs 
 // 
 // [[Rcpp::export]]
-void camodel_cpp_engine(const arma::cube trans, 
+int camodel_cpp_engine(const arma::Mat<ushort> alpha_index, 
+                        const arma::Col<double> alpha_vals, 
+                        const arma::Mat<ushort> pmat_index, 
+                        const arma::Mat<double> pmat_vals, 
+                        const arma::Mat<ushort> qmat_index, 
+                        const arma::Col<double> qmat_vals, 
                         const Rcpp::List ctrl, 
                         const Rcpp::Function console_callback, 
                         const Rcpp::Function cover_callback, 
                         const Rcpp::Function snapshot_callback) { 
   
   // Unpack control list
-  uword substeps     = ctrl["substeps"]; 
-  bool  wrap         = ctrl["wrap"]; 
-  Mat<ushort> init   = ctrl["init"];
-  uword niter        = ctrl["niter"]; // TODO: think about overflow in those values
-  ushort ns          = ctrl["nstates"]; 
-  ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
-  bool use_8_nb      = nbs == 8 ? true : false; 
+  const uword substeps     = ctrl["substeps"]; 
+  const bool  wrap         = ctrl["wrap"]; 
+  const Mat<ushort> init   = ctrl["init"];
+  const uword niter        = ctrl["niter"]; // TODO: think about overflow in those values
+  const ushort ns          = ctrl["nstates"]; 
+  const ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
+  const bool use_8_nb      = nbs == 8 ? true : false; 
+  
+  // Number of values in qs description
+  const ushort xpoints = ctrl["xpoints"]; 
   
   bool console_callback_active = ctrl["console_callback_active"]; 
   uword console_callback_every = ctrl["console_callback_every"]; 
@@ -261,10 +277,6 @@ void camodel_cpp_engine(const arma::cube trans,
   
   uword iter = 0; 
   
-  // Take into account substeps by dividing rates 
-  arma::cube trans_sub = trans; 
-  trans_sub /= (double) substeps; 
-  
   // Allocate some things we will reuse later 
   Mat<uword> qs(nr, ns);
   Col<double> qs_prop(ns);
@@ -294,6 +306,9 @@ void camodel_cpp_engine(const arma::cube trans,
         
         for ( uword i=0; i<nr; i++ ) { 
           
+//           Rcpp::Rcout << ps; 
+//           Rcpp::Rcout << qs; 
+          
           // Get a random number 
           double rn = Rf_runif(0, 1); 
           
@@ -304,7 +319,70 @@ void camodel_cpp_engine(const arma::cube trans,
           ushort cstate = omat(i, j); 
           
           // Compute probability transitions 
-          for ( ushort col=0; col<ns; col++ ) { 
+          for ( ushort to=0; to<ns; to++ ) { 
+            
+            // 
+            ptrans(to) = 0; 
+            
+            // Scan the table of alphas 
+            for ( uword k=0; k<alpha_index.n_rows; k++ ) { 
+               double tmp = ( alpha_index(k, _from) == cstate ) * 
+                ( alpha_index(k, _to) == to) * 
+                alpha_vals(k); 
+//               Rcpp::Rcout << "adding(a) " << tmp << "\n";
+              
+              ptrans(to) += 
+                ( alpha_index(k, _from) == cstate ) * 
+                ( alpha_index(k, _to) == to) * 
+                alpha_vals(k); 
+            }
+            
+            // Scan the table of pmat to reconstruct probabilities -> where is ps?
+            for ( uword k=0; k<pmat_index.n_rows; k++ ) { 
+//               Rcpp::Rcout << "ps: " << ps(pmat_index(k, astate)) / (double) n << "\n";
+              double tmp = ( pmat_index(k, _from) == cstate ) * 
+                ( pmat_index(k, _to) == to) * 
+                pmat_vals(k, _coef) * pow( ps(pmat_index(k, _state)) / (double) n, 
+                                           pmat_vals(k, _expo) );
+//               Rcpp::Rcout << "adding(p) " << tmp << "\n"; 
+              ptrans(to) += 
+                ( pmat_index(k, _from) == cstate ) * 
+                ( pmat_index(k, _to) == to) * 
+                pmat_vals(k, _coef) * pow( ps(pmat_index(k, _state)) / (double) n, 
+                                           pmat_vals(k, _expo) );
+            }
+            
+            // Scan the table of qmat to reconstruct probabilities 
+            for ( uword k=0; k<qmat_index.n_rows; k++ ) { 
+              
+              // Lookup which point in the qs function we need to use for the 
+              // current neighbor situation.
+              // NOTE: there must be a way without computing proportion, then 
+              // multiplying, then converting to integer.
+              double qpointn_factorf = (double) (xpoints - 1) / ( (double) qs_total); 
+              uword qthis = round(qs(i, qmat_index(k, _state)) * qpointn_factorf);
+//                 Rcpp::Rcout << "nbs: " << (int) qs(i, qmat_index(k, astate)) << 
+//                   " qpf: " << qpointn_factorf << 
+//                   " qthis: " << qthis << "\n"; 
+              
+                double tmp = ( qmat_index(k, _from) == cstate ) * 
+                  ( qmat_index(k, _to) == to) * 
+//                 Given the observed local abundance of this state, which line in 
+//                 qmat should be retained ? 
+                  ( qmat_index(k, _qs) == qthis ) * 
+                  qmat_vals(k); 
+//                 Rcpp::Rcout << "adding(q) " << tmp << " (npoint: " << qthis << ")\n"; 
+              
+              ptrans(to) += 
+                ( qmat_index(k, _from) == cstate ) * 
+                ( qmat_index(k, _to) == to) * 
+                // Given the observed local abundance of this state, which line in 
+                // qmat should be retained ? 
+                ( qmat_index(k, _qs) == qthis ) * 
+                qmat_vals(k); 
+            }
+            
+            /*
             // X0
             ptrans(col) = trans_sub(0, col, cstate); 
             // Add global and local density components
@@ -322,8 +400,22 @@ void camodel_cpp_engine(const arma::cube trans,
               ptrans(col) += trans_sub(1+k+3*ns, col, cstate) * 
                         ( qs(i, k) * qs(i, k) / (double) qs_total / (double) qs_total);
             }
+          */
+            
+            // if ( cstate != to ) { 
+            //   Rcpp::Rcout << "from: " << (int) cstate << " to " << (int) to << "\n"; 
+            //   Rcpp::Rcout << "ps: \n"; 
+            //   Rcpp::Rcout << ps; 
+            //   Rcpp::Rcout << "qs: \n"; 
+            //   Rcpp::Rcout << qs.row(i); 
+            //   Rcpp::Rcout << "prob: " << ptrans(to) << "\n"; 
+            //   Rcpp::Rcout << "omat: \n"; 
+            //   Rcpp::Rcout << omat; 
+            //   Rcpp::Rcout << "i: " << i << " j: " << j << "\n"; 
+//          //      return 1; 
+            // }
+            
           }
-          
           // Check if we actually transition. We scan all states and switch to the 
           // one with the highest probability. 
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
@@ -369,8 +461,9 @@ void camodel_cpp_engine(const arma::cube trans,
       omat = nmat; 
       
     } // end of substep loop
-    
+//     return 1; 
     iter++; 
   }
   
+  return 1; 
 }

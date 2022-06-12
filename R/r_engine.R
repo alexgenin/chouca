@@ -2,7 +2,7 @@
 # PCA engine in pure R. Mainly here for testing/prototyping purposes
 # 
 
-camodel_r_engine <- function(trans, ctrl, 
+camodel_r_engine <- function(alpha, pmat, qmat, ctrl, 
                              console_callback, cover_callback, snapshot_callback) { 
   
   # Unwrap elements of the ctrl list 
@@ -12,6 +12,9 @@ camodel_r_engine <- function(trans, ctrl,
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
+  
+  xpoints <- ctrl[["xpoints"]] 
+  
   # Initialize some elements
   # NOTE: we work in integer representation minus one internally, because it makes 
   # way more sense than handling R factors. This means that states (a,b,c) are 
@@ -25,6 +28,12 @@ camodel_r_engine <- function(trans, ctrl,
   # Compute global densities
   ps <- get_global_counts(omat, ns) 
   delta_ps <- rep(0, ns)
+  
+  # Discard useless coefficients 
+  # TODO: move that in run() or parse() and use epsilon
+  # NOTE: this may remove all lines -> it's ok, the for loop will be skipped down there
+  qmat <- qmat[ qmat[ ,"ys"] > 1e-8, , drop = FALSE]
+  pmat <- pmat[ pmat[ ,"coef"] > 1e-8, , drop = FALSE]
   
   t <- 0 
   while ( t <= niter ) { 
@@ -53,25 +62,50 @@ camodel_r_engine <- function(trans, ctrl,
         for ( j in seq.int(nc) ) { 
           
           this_cell_state <- omat[i, j] 
-          tprobs <- trans[ , , this_cell_state + 1] 
           
           # Compute local densities 
           qs <- local_dens(omat, ns, i, j, wrap, use_8_nb)
-          qs <- qs / sum(qs)
+          
+          # qpointn corresponds to the line in the lookup table at which we pick up the 
+          # value for the local probability
+          this_total_nb <- sum(qs)
+          qpointn <- as.integer(qs / this_total_nb * (xpoints-1))
+#           qs <- qs / sum(qs)
+          # Compute probability of transition to other states
+          trates <- rep(0, ns)
+          
+          for ( k in seq.int(nrow(pmat)) ) { 
+            trates[ 1+pmat[k, "to"] ] <- trates[ 1+pmat[k, "to"] ] + 
+              (pmat[k, "from"] == this_cell_state) * 
+                pmat[k, "coef"] * (ps[ 1+pmat[k, "state"] ] / n)^pmat[k, "expo"]
+          }
+          
+          for ( k in seq.int(nrow(qmat)) ) { 
+            trates[ 1+qmat[k, "to"] ] <- trates[ 1+qmat[k, "to"] ] + 
+              (qmat[k, "from"] == this_cell_state) * 
+                ( qmat[k, "qs"] == qpointn[ 1+qmat[k, "state"] ] ) * 
+                qmat[k, "ys"]
+          }
+          
+          # This works because the number of states match
+          trates[ 1+alpha[ , "to"] ] <- trates[ 1+alpha[ , "to"] ] + 
+            (alpha[ , "from"] == this_cell_state) * alpha[ , "a0"] 
+          
+          # Take substep into account 
+          trates <- trates / substeps
+          
+          if ( this_cell_state == 0 ) { # empty 
+            to_tree <- with(kubo_mod$parms, alpha * (ps[2] / n)^1)
+            if ( abs(to_tree - trates[2]) > 1e-8 ) browser()
+          } else { # tree
+            to_empty <- with(kubo_mod$parms, d + delta * (qs[1] / sum(qs)))
+            if ( abs(to_empty - trates[1]) > 1e-8 ) browser()
+          }
           
           # Compute rates of transitions (probabilities) to other states
-          trates <- numeric(ncol(tprobs))
-          for ( col in seq.int(ncol(tprobs)) ) { 
-            trates[col] <- 
-              ( tprobs[1, col] + # X0
-                  sum(tprobs[2:(2+ns-1), col] * ps/n) + # XP
-                  sum(tprobs[(2+ns):(2+2*ns-1), col] * qs) + # XQ
-                  sum(tprobs[(2+2*ns):(2+3*ns-1), col] * (ps/n)^2) + # XPSQ
-                  sum(tprobs[(2+3*ns):(2+4*ns-1), col] * qs^2) ) / substeps # XQSQ
-          }
           ctrates <- cumsum(trates)
           
-          if ( max(ctrates) > 1 ) { 
+          if ( max(ctrates) > 1 + sqrt(.Machine$double.eps) ) { 
             warning("Computed probabilities were above one, results will be approximate. Consider increasing control parameter 'substeps'")
           }
           

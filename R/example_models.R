@@ -16,7 +16,9 @@ coralreef <- function(parms = list(r_a = 1.79,
                                    g = 0.18, 
                                    theta_b = 1.11, 
                                    theta_c = 1.05, 
-                                   m_c     = 10^(-3.5)) ) { 
+                                   m_c     = 10^(-3.5)), 
+                      neighbors = 4, 
+                      wrap = TRUE) { 
   
   camodel(
     transition(from = "BARE", to = "CORAL", 
@@ -27,6 +29,8 @@ coralreef <- function(parms = list(r_a = 1.79,
                ~ i_a + r_a * p["ALGAE"] + l_a * q["ALGAE"]), 
     transition(from = "ALGAE", to = "BARE", 
                ~ m_a + h_u * g * ( theta_b * q["BARE"] + theta_c * q["CORAL"])), 
+    neighbors = neighbors, 
+    wrap = wrap, 
     parms = parms, 
     all_states = c("BARE", "ALGAE", "CORAL")
   )
@@ -43,7 +47,9 @@ coralreef <- function(parms = list(r_a = 1.79,
 #'@export
 forestgap <- function(parms = list(d = 0.125, 
                                    delta = 0.5, 
-                                   alpha = 0.2)) { 
+                                   alpha = 0.2), 
+                      neighbors = 4, 
+                      wrap = TRUE) { 
   camodel( 
     transition(from = "TREE", 
                to   = "EMPTY", 
@@ -51,6 +57,8 @@ forestgap <- function(parms = list(d = 0.125,
     transition(from = "EMPTY", 
                to   = "TREE", 
                prob = ~ alpha * p["TREE"]), 
+    neighbors = neighbors, 
+    wrap = wrap, 
     parms = parms, 
     all_states = c("EMPTY", "TREE")
   )

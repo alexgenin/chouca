@@ -181,14 +181,19 @@ run_camodel <- function(mod, initmat, niter,
   # Pack transition coefficients into 3D array that RcppArmadillo understands
   ns <- mod[["nstates"]]
   states <- mod[["states"]]
-  transmatrix <- mod[["transmatrix"]]
   
   if ( ! all(levels(initmat) %in% states) ) { 
     stop("States in the initial matrix do not match the model states")
   }
-  
   # Read parameters
   control <- load_control_list(control)
+  
+  
+  # Check that there is no NA in transition rates 
+  #TODO:
+#   if ( any(is.na(tests)) ) { 
+#     stop("NAs in computed coefficients, please make sure your model definition is correct")
+#   }
   
   # NOTE: callbacks defined below will modify things in the currenct environment
   
@@ -247,18 +252,40 @@ run_camodel <- function(mod, initmat, niter,
     }
   }
   
+  
   # Convert initmat to internal representation 
   d <- dim(initmat)
   initmat <- as.integer(initmat) - 1
   dim(initmat) <- d 
   
+  # Convert transition matrices to internal representation (and to actual matrices)
+  fix <- function(x) as.integer(factor(as.character(x), levels = states)) - 1 
+  alpha <- mod[["alpha"]]
+  pmat  <- mod[["pmat"]]
+  qmat  <- mod[["qmat"]]
+  for ( c in c("from", "to") ) { 
+    pmat[ ,c]  <- fix(pmat[ ,c])
+    qmat[ ,c]  <- fix(qmat[ ,c])
+    alpha[ ,c] <- fix(alpha[ ,c])
+  }
+  pmat[ ,"state"] <- fix(pmat[ ,"state"])
+  qmat[ ,"state"] <- fix(qmat[ ,"state"])
+  alpha <- as.matrix(alpha)
+  pmat <- as.matrix(pmat)
+  qmat <- as.matrix(qmat)
+  
+  # Subset matrices for speed 
+  # pmat <- pmat[ pmat[ ,"coef"] > mod[["epsilon"]], ]
+  # qmat <- qmat[ qmat[ ,"ys"]   > mod[["epsilon"]], ]
+  
   # TODO: this is ugly
   control_list <- list(substeps = control[["substeps"]], 
-                       wrap     = control[["wrap"]], 
+                       wrap     = mod[["wrap"]], 
                        init     = initmat, 
                        niter    = niter, 
                        nstates  = ns, 
-                       neighbors = control[["neighbors"]], 
+                       neighbors = mod[["neighbors"]], 
+                       xpoints  = mod[["xpoints"]], 
                        console_callback_active  = console_callback_active, 
                        console_callback_every   = control[["console_output_every"]], 
                        cover_callback_active    = cover_callback_active, 
@@ -271,11 +298,11 @@ run_camodel <- function(mod, initmat, niter,
   
   engine <- control[["engine"]][1]
   if ( tolower(engine) == "r" ) { 
-    camodel_r_engine(transmatrix, control_list, 
+    camodel_r_engine(alpha, pmat, qmat, control_list, 
                      console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
-    camodel_cpp_engine(transmatrix, control_list, 
-                       console_callback, cover_callback, snapshot_callback)
+    camodel_cpp_engine_wrap(alpha, pmat, qmat, control_list, 
+                            console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("compiled") ) { 
     camodel_compiled_engine(transmatrix, control_list, 
                             console_callback, cover_callback, snapshot_callback)
@@ -310,9 +337,7 @@ load_control_list <- function(l) {
     save_covers_every = 1, 
     save_snapshots_every = 0, 
     console_output_every = 10, 
-    neighbors = 4, 
-    wrap = TRUE, 
-    engine = "cpp", 
+    engine = "r", 
     # Compiled engine options
     olevel = "default", 
     unroll_loops = FALSE, 
@@ -346,13 +371,6 @@ load_control_list <- function(l) {
   
   if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 
     stop("'verbose_compilation' option must be TRUE or FALSE")
-  }
-  
-  # Convert to integer, in case someone passed a string
-  control_list[["neighbors"]] <- as.integer(control_list[["neighbors"]])
-  if ( ! ( identical(control_list[["neighbors"]], 8L) || 
-           identical(control_list[["neighbors"]], 4L) ) ) { 
-    stop("The 'neighbors' control option must be 8 or 4.")
   }
   
   

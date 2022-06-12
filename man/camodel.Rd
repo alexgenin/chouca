@@ -7,6 +7,8 @@
 \usage{
 camodel(
   ...,
+  neighbors,
+  wrap,
   parms = list(),
   all_states = NULL,
   check_model = TRUE,
