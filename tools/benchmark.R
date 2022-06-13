@@ -11,7 +11,8 @@ library(lubridate)
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
                   "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
-                  "1b889584e49d8af12a7ce11059445b5d987a0d00") # 2022-04-30
+                  "1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
+                  "118ceee9c1d21d3d4d1006364b90fbd5964f7988")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -21,7 +22,7 @@ system(paste0("git clone -b master ", GIT_ORIG, " ", PKGDIR))
 BENCH_SIZES <- 2^seq(4, 10)
 NREPS       <- 3
 CXXF <- "-g -O2 -Wall"
-ENGINES <- c("compiled", "cpp") 
+ENGINES <- c("cpp") 
 
 mkbench <- function(sizes, nrep, cxxf, commit) { 
   
@@ -38,7 +39,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
   withr::with_makevars(c(CXX11FLAGS = CXXF), load_all(PKGDIR))
   
   # Model used for benchmark
-  mod <- musselbed()
+  mod <- forestgap()
   
   control <- list(console_output_every = 0)
   
@@ -47,7 +48,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       cat(sprintf("Benching engine %s with size %s\n", engine, size))
       
       # We use rectangles because we always want to test the package on rectangles
-      init <- generate_initmat(mod, c(0.5, 0.4, 0.1), size, size)
+      init <- generate_initmat(mod, c(0.5, 0.5), size, size)
       tmax <- round(1000 * 1 / log(size))
       control[["engine"]] <- engine
       
@@ -59,7 +60,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       ldply(seq.int(NREPS), function(nrep) { 
         
         # Generate new matrix for each iteration
-        init <- generate_initmat(mod, c(0.5, 0.4, 0.1), size, size)
+        init <- generate_initmat(mod, c(0.5, 0.5), size, size)
         
         timings <- system.time({ 
           a <- try(run_camodel(mod, init, niter = tmax, control = control), 

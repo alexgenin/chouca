@@ -43,10 +43,9 @@ BEGIN_RCPP
 END_RCPP
 }
 // camodel_cpp_engine
-int camodel_cpp_engine(const arma::Mat<ushort> alpha_index, const arma::Col<double> alpha_vals, const arma::Mat<ushort> pmat_index, const arma::Mat<double> pmat_vals, const arma::Mat<ushort> qmat_index, const arma::Col<double> qmat_vals, const Rcpp::List ctrl, const Rcpp::Function console_callback, const Rcpp::Function cover_callback, const Rcpp::Function snapshot_callback);
+void camodel_cpp_engine(const arma::Mat<ushort> alpha_index, const arma::Col<double> alpha_vals, const arma::Mat<ushort> pmat_index, const arma::Mat<double> pmat_vals, const arma::Mat<ushort> qmat_index, const arma::Col<double> qmat_vals, const Rcpp::List ctrl, const Rcpp::Function console_callback, const Rcpp::Function cover_callback, const Rcpp::Function snapshot_callback);
 RcppExport SEXP _chouca_camodel_cpp_engine(SEXP alpha_indexSEXP, SEXP alpha_valsSEXP, SEXP pmat_indexSEXP, SEXP pmat_valsSEXP, SEXP qmat_indexSEXP, SEXP qmat_valsSEXP, SEXP ctrlSEXP, SEXP console_callbackSEXP, SEXP cover_callbackSEXP, SEXP snapshot_callbackSEXP) {
 BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type alpha_index(alpha_indexSEXP);
     Rcpp::traits::input_parameter< const arma::Col<double> >::type alpha_vals(alpha_valsSEXP);
@@ -58,8 +57,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const Rcpp::Function >::type console_callback(console_callbackSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Function >::type cover_callback(cover_callbackSEXP);
     Rcpp::traits::input_parameter< const Rcpp::Function >::type snapshot_callback(snapshot_callbackSEXP);
-    rcpp_result_gen = Rcpp::wrap(camodel_cpp_engine(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback));
-    return rcpp_result_gen;
+    camodel_cpp_engine(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback);
+    return R_NilValue;
 END_RCPP
 }
 // getline

@@ -223,7 +223,7 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m,
 // This file contains the main c++ engine to run CAs 
 // 
 // [[Rcpp::export]]
-int camodel_cpp_engine(const arma::Mat<ushort> alpha_index, 
+void camodel_cpp_engine(const arma::Mat<ushort> alpha_index, 
                         const arma::Col<double> alpha_vals, 
                         const arma::Mat<ushort> pmat_index, 
                         const arma::Mat<double> pmat_vals, 
@@ -243,7 +243,7 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
   const ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
   const bool use_8_nb      = nbs == 8 ? true : false; 
   
-  // Number of values in qs description
+  // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
   
   bool console_callback_active = ctrl["console_callback_active"]; 
@@ -306,14 +306,15 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
         
         for ( uword i=0; i<nr; i++ ) { 
           
-//           Rcpp::Rcout << ps; 
-//           Rcpp::Rcout << qs; 
-          
           // Get a random number 
           double rn = Rf_runif(0, 1); 
           
           // Normalized local densities to proportions
-          double qs_total = accu(qs.row(i)); 
+          uword qs_total = accu(qs.row(i)); 
+          
+          // Factor to convert the number of neighbors into the point at which the 
+          // dependency on q is sampled.
+          uword qpointn_factorf = (xpoints - 1) / qs_total; 
           
           // Get current state 
           ushort cstate = omat(i, j); 
@@ -321,16 +322,11 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
           // Compute probability transitions 
           for ( ushort to=0; to<ns; to++ ) { 
             
-            // 
+            // Init probability
             ptrans(to) = 0; 
             
             // Scan the table of alphas 
             for ( uword k=0; k<alpha_index.n_rows; k++ ) { 
-               double tmp = ( alpha_index(k, _from) == cstate ) * 
-                ( alpha_index(k, _to) == to) * 
-                alpha_vals(k); 
-//               Rcpp::Rcout << "adding(a) " << tmp << "\n";
-              
               ptrans(to) += 
                 ( alpha_index(k, _from) == cstate ) * 
                 ( alpha_index(k, _to) == to) * 
@@ -339,12 +335,6 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
             
             // Scan the table of pmat to reconstruct probabilities -> where is ps?
             for ( uword k=0; k<pmat_index.n_rows; k++ ) { 
-//               Rcpp::Rcout << "ps: " << ps(pmat_index(k, astate)) / (double) n << "\n";
-              double tmp = ( pmat_index(k, _from) == cstate ) * 
-                ( pmat_index(k, _to) == to) * 
-                pmat_vals(k, _coef) * pow( ps(pmat_index(k, _state)) / (double) n, 
-                                           pmat_vals(k, _expo) );
-//               Rcpp::Rcout << "adding(p) " << tmp << "\n"; 
               ptrans(to) += 
                 ( pmat_index(k, _from) == cstate ) * 
                 ( pmat_index(k, _to) == to) * 
@@ -359,19 +349,7 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
               // current neighbor situation.
               // NOTE: there must be a way without computing proportion, then 
               // multiplying, then converting to integer.
-              double qpointn_factorf = (double) (xpoints - 1) / ( (double) qs_total); 
-              uword qthis = round(qs(i, qmat_index(k, _state)) * qpointn_factorf);
-//                 Rcpp::Rcout << "nbs: " << (int) qs(i, qmat_index(k, astate)) << 
-//                   " qpf: " << qpointn_factorf << 
-//                   " qthis: " << qthis << "\n"; 
-              
-                double tmp = ( qmat_index(k, _from) == cstate ) * 
-                  ( qmat_index(k, _to) == to) * 
-//                 Given the observed local abundance of this state, which line in 
-//                 qmat should be retained ? 
-                  ( qmat_index(k, _qs) == qthis ) * 
-                  qmat_vals(k); 
-//                 Rcpp::Rcout << "adding(q) " << tmp << " (npoint: " << qthis << ")\n"; 
+              uword qthis = qs(i, qmat_index(k, _state)) * qpointn_factorf;
               
               ptrans(to) += 
                 ( qmat_index(k, _from) == cstate ) * 
@@ -381,26 +359,6 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
                 ( qmat_index(k, _qs) == qthis ) * 
                 qmat_vals(k); 
             }
-            
-            /*
-            // X0
-            ptrans(col) = trans_sub(0, col, cstate); 
-            // Add global and local density components
-            for ( ushort k=0; k<ns; k++ ) { 
-              // XP
-              ptrans(col) += trans_sub(1+k, col, cstate) * 
-                               ( ps(k) / (double) n);  
-              // XQ
-              ptrans(col) += trans_sub(1+k+ns, col, cstate) * 
-                               ( qs(i, k) / (double) qs_total ); 
-              // XPSQ
-              ptrans(col) += trans_sub(1+k+2*ns, col, cstate) * 
-                               ( ps(k) * ps(k) / (double) n / (double) n ); 
-              // XQSQ
-              ptrans(col) += trans_sub(1+k+3*ns, col, cstate) * 
-                        ( qs(i, k) * qs(i, k) / (double) qs_total / (double) qs_total);
-            }
-          */
             
             // if ( cstate != to ) { 
             //   Rcpp::Rcout << "from: " << (int) cstate << " to " << (int) to << "\n"; 
@@ -416,12 +374,14 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
             // }
             
           }
+          
+          
           // Check if we actually transition. We scan all states and switch to the 
           // one with the highest probability. 
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ p0 < rn < (p0+p1) => p1 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are 
-          // making an approximation. 
+          // making an approximation and may never consider a given transition. 
           // 
           // ptrans = cumsum(ptrans); // alternative code, but slower because it needs
           //                          // a copy
@@ -465,5 +425,4 @@ int camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
     iter++; 
   }
   
-  return 1; 
 }

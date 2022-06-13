@@ -10,7 +10,7 @@ local_dens_col <- function(m, nstates, j, wrap, use_8_nb) {
 }
 
 camodel_cpp_engine <- function(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback) {
-    .Call(`_chouca_camodel_cpp_engine`, alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback)
+    invisible(.Call(`_chouca_camodel_cpp_engine`, alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback))
 }
 
 getline <- function(qs, nb, ns) {
