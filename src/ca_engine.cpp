@@ -347,8 +347,6 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
               
               // Lookup which point in the qs function we need to use for the 
               // current neighbor situation.
-              // NOTE: there must be a way without computing proportion, then 
-              // multiplying, then converting to integer.
               uword qthis = qs(i, qmat_index(k, _state)) * qpointn_factorf;
               
               ptrans(to) += 
@@ -359,19 +357,6 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
                 ( qmat_index(k, _qs) == qthis ) * 
                 qmat_vals(k); 
             }
-            
-            // if ( cstate != to ) { 
-            //   Rcpp::Rcout << "from: " << (int) cstate << " to " << (int) to << "\n"; 
-            //   Rcpp::Rcout << "ps: \n"; 
-            //   Rcpp::Rcout << ps; 
-            //   Rcpp::Rcout << "qs: \n"; 
-            //   Rcpp::Rcout << qs.row(i); 
-            //   Rcpp::Rcout << "prob: " << ptrans(to) << "\n"; 
-            //   Rcpp::Rcout << "omat: \n"; 
-            //   Rcpp::Rcout << omat; 
-            //   Rcpp::Rcout << "i: " << i << " j: " << j << "\n"; 
-//          //      return 1; 
-            // }
             
           }
           

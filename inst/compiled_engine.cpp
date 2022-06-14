@@ -1,9 +1,17 @@
 
 
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
+
+// Define some column names
+#define _from 0
+#define _to 1
+#define _state 2
+#define _qs 3
+#define _coef 0
+#define _expo 1
 
 // We tell gcc to unroll loops, as we have many small loops. This can double 
 // performance in some cases (!)
@@ -22,114 +30,26 @@ typedef unsigned char uchar;
 constexpr arma::uword nr = __NR__; 
 constexpr arma::uword nc = __NC__; 
 constexpr uchar ns = __NS__; 
-constexpr arma::uword ncoefs = __NCOEFS__; 
 constexpr bool wrap = __WRAP__; 
 constexpr bool use_8_nb = __USE_8_NB__; 
+constexpr uword xpoints = __XPOINTS__; 
 constexpr arma::uword substeps = __SUBSTEPS__; 
-constexpr double ndbl = nr * nc; 
-
-// Components of model 
-constexpr bool has_X0 = __HAS_X0__; 
-constexpr bool has_XP = __HAS_XP__; 
-constexpr bool has_XQ = __HAS_XQ__; 
-constexpr bool has_XPSQ = __HAS_XPSQ__; 
-constexpr bool has_XQSQ = __HAS_XQSQ__; 
+constexpr double ncells = nr * nc; 
 
 // Include functions and type declarations
 #include "__COMMON_HEADER__"
 
-// Some things 
-constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
-// The number of permutations in neighbors.
-constexpr arma::uword tprob_size = __TPROB_SIZE__;
-constexpr uchar tprob_interval = wrap ? ( use_8_nb ? 8 : 4 ) : 1; 
-
-// Compute transition probabilities between all possible qs states 
-void precompute_transition_probabilites(double tprobs[tprob_size][ns][ns], 
-                                        const double ctrans[ns][ns][ncoefs], 
-                                        const arma::uword ps[ns], 
-                                        const uchar all_qs[tprob_size][ns+1]) { 
-  
-  // Note tprob_interval here. In all combinations of neighbors, only some of them 
-  // can be observed in the wild. If we wraparound, then the number of neighbors is 
-  // constant, it is either 8 or 4. So we can compute the values in tprobs only at 
-  // indices every 4 or 8 values. 
-  
-  for ( uword l=0; l<tprob_size; l+=tprob_interval ) { 
-    // Get total of neighbors = last column of all_qs
-    double total_qs = all_qs[l][ns]; 
-    
-    for ( uchar from=0; from<ns; from++ ) { 
-      
-      for ( uchar to=0; to<ns; to++ ) { 
-        
-        // Useless in practice
-        // if ( from == to ) { 
-        //   continue; 
-        // }
-        
-        if ( has_X0 ) { 
-          tprobs[l][from][to] = ctrans[from][to][0]; 
-        } else { 
-          tprobs[l][from][to] = 0.0; 
-        }
-        
-        // Loop over coefs
-        for ( uchar k=0; k<ns; k++ ) { 
-          
-          // All the if{} blocks below will be removed appropriately by the compiler as 
-          // their condition is constexpr.
-          
-          // XP
-          if ( has_XP ) { 
-            double coef = ctrans[from][to][1+k]; 
-            tprobs[l][from][to] += coef * ( ps[k] / ndbl ); 
-          }
-          
-          // XQ
-          // TODO: we don't have to divide by total_qs here, we can do it beforehand, 
-          // but this is not the hottest loop in town when precomputing transitions
-          if ( has_XQ ) { 
-            double coef = ctrans[from][to][1+k+ns]; 
-            tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ); 
-          }
-          
-          // XPSQ
-          if ( has_XPSQ ) { 
-            double coef = ctrans[from][to][1+k+2*ns]; 
-            tprobs[l][from][to] += coef * ( ps[k] / ndbl ) * ( ps[k] / ndbl ); 
-          }
-          
-          // XQSQ
-          if ( has_XQSQ ) { 
-            double coef = ctrans[from][to][1+k+3*ns]; 
-            tprobs[l][from][to] += coef * ( all_qs[l][k] / total_qs ) * 
-                                     ( all_qs[l][k] / total_qs ); 
-          }
-          
-        }
-        
-      }
-      
-      // Compute cumsum 
-      for ( uchar to=1; to<ns; to++ ) { 
-        tprobs[l][from][to] += tprobs[l][from][to-1];
-      }
-      
-    }
-  }
-  
-  
-}
-
-// 
 // [[Rcpp::export]]
-void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans, 
+void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index, 
+                                           const arma::Col<double> alpha_vals, 
+                                           const arma::Mat<ushort> pmat_index, 
+                                           const arma::Mat<double> pmat_vals, 
+                                           const arma::Mat<ushort> qmat_index, 
+                                           const arma::Col<double> qmat_vals, 
                                            const Rcpp::List ctrl, 
                                            const Rcpp::Function console_callback, 
                                            const Rcpp::Function cover_callback, 
-                                           const Rcpp::Function snapshot_callback,
-                                           const arma::Mat<ushort> all_qs_combinations) { 
+                                           const Rcpp::Function snapshot_callback) { 
   
   // Unpack control list
   Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
@@ -143,26 +63,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   
   bool snapshot_callback_active = ctrl["snapshot_callback_active"]; 
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
-  
-  // Convert all_qs_combinations to a c array
-  uchar all_qs[tprob_size][ns+1]; 
-  for ( uword l=0; l<tprob_size; l++ ) { 
-    for ( uword k=0; k<(ns+1); k++ ) { 
-      all_qs[l][k] = all_qs_combinations(l, k); 
-    }
-  }
-  
-  // Convert armadillo array to c-style array. Note that we change the order things are 
-  // stored so that coefficients are contiguous in memory. We also divide by substeps 
-  // here so that rates are always under one. 
-  double ctrans[ns][ns][ncoefs];
-  for ( uword from=0; from<ns; from++ ) { 
-    for ( uword to=0; to<ns; to++ ) { 
-      for ( uword coef=0; coef<ncoefs; coef++ ) { 
-        ctrans[from][to][coef] = trans(coef, to, from) / (double) substeps; 
-      }
-    }
-  }
   
   // Initialize some things as c arrays
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
@@ -209,7 +109,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
   randunif(); 
   
   // Allocate some things we will reuse later
-  double trans_probs[tprob_size][ns][ns]; 
+  double ptrans[ns]; 
   
   uword iter = 0; 
   
@@ -229,21 +129,83 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
     }
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
-      // Compute transition probabilities 
-      precompute_transition_probabilites(trans_probs, ctrans, old_ps, all_qs); 
       
       for ( uword i=0; i<nr; i++ ) { 
         
         for ( uword j=0; j<nc; j++ ) { 
-          
-          double rn = randunif();
-          
+                    
           uchar cstate = old_mat[i][j]; 
           
-          // Get line in pre-computed transition probability table 
-          uword line = 0; 
-          for ( uchar k = 0; k<ns; k++ ) { 
-            line = line * (1+max_nb) + old_qs[i][j][k]; 
+          // Normalized local densities to proportions
+          uword qs_total = 0; 
+          for ( ushort k=0; k<ns; k++ ) { 
+            qs_total += old_qs[i][j][k]; 
+          }
+          
+          // Factor to convert the number of neighbors into the point at which the 
+          // dependency on q is sampled.
+          uword qpointn_factorf = (xpoints - 1) / qs_total; 
+          
+          // Compute probability transitions 
+          for ( ushort to=0; to<ns; to++ ) { 
+            
+            // Init probability
+            ptrans[to] = 0; 
+            
+            // Scan the table of alphas 
+            for ( uword k=0; k<alpha_index.n_rows; k++ ) { 
+              ptrans[to] += 
+                ( alpha_index(k, _from) == cstate ) * 
+                ( alpha_index(k, _to) == to) * 
+                alpha_vals(k); 
+            }
+            
+            // Scan the table of pmat to reconstruct probabilities -> where is ps?
+            for ( uword k=0; k<pmat_index.n_rows; k++ ) { 
+              ptrans[to] += 
+                ( pmat_index(k, _from) == cstate ) * 
+                ( pmat_index(k, _to) == to) * 
+                pmat_vals(k, _coef) * pow( old_ps[pmat_index(k, _state)] / ncells, 
+                                           pmat_vals(k, _expo) );
+            }
+            
+            // Scan the table of qmat to reconstruct probabilities 
+            for ( uword k=0; k<qmat_index.n_rows; k++ ) { 
+              
+              // Lookup which point in the qs function we need to use for the 
+              // current neighbor situation.
+              uword qthis = old_qs[i][j][qmat_index(k, _state)] * qpointn_factorf;
+              
+              ptrans[to] += 
+                ( qmat_index(k, _from) == cstate ) * 
+                ( qmat_index(k, _to) == to) * 
+                // Given the observed local abundance of this state, which line in 
+                // qmat should be retained ? 
+                ( qmat_index(k, _qs) == qthis ) * 
+                qmat_vals(k); 
+            }
+          }
+          
+//           Rcpp::Rcout << "i:" << i << " j:" << j << " state: " << (int) cstate << "\n"; 
+//           Rcpp::Rcout << "qs: "; 
+//           for ( int k=0; k<ns; k++ ) { 
+//             Rcpp::Rcout << (uword) old_qs[i][j][k] << " "; 
+//           }
+//           Rcpp::Rcout << "\n"; 
+//           Rcpp::Rcout << "ps: "; 
+//           for ( int k=0; k<ns; k++ ) { 
+//             Rcpp::Rcout << (uword) old_ps[k] << " "; 
+//           }
+//           Rcpp::Rcout << "\n"; 
+//           Rcpp::Rcout << "ptrans: "; 
+//           for ( int k=0; k<ns; k++ ) { 
+//             Rcpp::Rcout << (double) ptrans[k] << " "; 
+//           }
+//           Rcpp::Rcout << "\n"; 
+          
+          // Compute cumsum 
+          for ( ushort k=1; k<ns; k++ ) { 
+            ptrans[k] += ptrans[k-1];
           }
           
           // Check if we actually transition.  
@@ -251,12 +213,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::cube trans,
           //               ^ p0 < rn < (p0+p1) => p1 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
+          // TODO: backport this to non-compiled engine 
           uchar new_cell_state = cstate; 
+          double rn = randunif(); // flip a coin
           for ( signed char k=(ns-1); k>=0; k-- ) { 
-            new_cell_state = rn < trans_probs[line][cstate][k] ? k : new_cell_state; 
+            new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
           } 
           
           if ( new_cell_state != cstate ) { 
+//             Rcpp::Rcout << "switch " << (int) cstate << " -> " << (int) new_cell_state << "\n"; 
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 

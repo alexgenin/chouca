@@ -35,6 +35,10 @@ camodel_r_engine <- function(alpha, pmat, qmat, ctrl,
   qmat <- qmat[ qmat[ ,"ys"] > 1e-8, , drop = FALSE]
   pmat <- pmat[ pmat[ ,"coef"] > 1e-8, , drop = FALSE]
   
+  # Take into account substeps 
+  qmat[ ,"ys"] <- qmat[ ,"ys"] / substeps
+  pmat[ ,"coef"] <- pmat[ ,"coef"] / substeps
+  
   t <- 0 
   while ( t <= niter ) { 
     
@@ -74,33 +78,26 @@ camodel_r_engine <- function(alpha, pmat, qmat, ctrl,
           # Compute probability of transition to other states
           trates <- rep(0, ns)
           
-          for ( k in seq.int(nrow(pmat)) ) { 
-            trates[ 1+pmat[k, "to"] ] <- trates[ 1+pmat[k, "to"] ] + 
-              (pmat[k, "from"] == this_cell_state) * 
-                pmat[k, "coef"] * (ps[ 1+pmat[k, "state"] ] / n)^pmat[k, "expo"]
+          for ( k in unique(pmat[ ,"to"]) ) { 
+            sub <- which(pmat[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum(
+              (pmat[sub, "from"] == this_cell_state) * 
+                pmat[sub, "coef"] * (ps[ 1+pmat[sub, "state"] ] / n)^pmat[sub, "expo"]
+            )
           }
           
-          for ( k in seq.int(nrow(qmat)) ) { 
-            trates[ 1+qmat[k, "to"] ] <- trates[ 1+qmat[k, "to"] ] + 
-              (qmat[k, "from"] == this_cell_state) * 
-                ( qmat[k, "qs"] == qpointn[ 1+qmat[k, "state"] ] ) * 
-                qmat[k, "ys"]
+          for ( k in unique(qmat[ ,"to"]) ) { 
+            sub <- which(qmat[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum( 
+              (qmat[sub, "from"] == this_cell_state) * 
+                ( qmat[sub, "qs"] == qpointn[ 1+qmat[sub, "state"] ] ) * 
+                qmat[sub, "ys"]
+            )
           }
           
-          # This works because the number of states match
+          # This works because the number of states always matches
           trates[ 1+alpha[ , "to"] ] <- trates[ 1+alpha[ , "to"] ] + 
             (alpha[ , "from"] == this_cell_state) * alpha[ , "a0"] 
-          
-          # Take substep into account 
-          trates <- trates / substeps
-          
-          if ( this_cell_state == 0 ) { # empty 
-            to_tree <- with(kubo_mod$parms, alpha * (ps[2] / n)^1)
-            if ( abs(to_tree - trates[2]) > 1e-8 ) browser()
-          } else { # tree
-            to_empty <- with(kubo_mod$parms, d + delta * (qs[1] / sum(qs)))
-            if ( abs(to_empty - trates[1]) > 1e-8 ) browser()
-          }
           
           # Compute rates of transitions (probabilities) to other states
           ctrates <- cumsum(trates)

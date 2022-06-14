@@ -3,6 +3,109 @@
 # This file contains models 
 # 
 
+
+ca_library <- function(model, 
+                       parms = NULL, 
+                       neighbors = NULL, 
+                       wrap = TRUE) { 
+  mod <- NULL 
+  
+  if ( length(model) != 1 ) { 
+    stop("Bad model name specified")
+  }
+  
+# Kubo's forest model (1996)
+# 
+# See also Génin et al. 2018 for model definition 
+# 
+# Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics with Gap
+# Expansion: Total Gap Area and Gap Size Distribution.” Journal of Theoretical Biology 
+# 180 (3): 229–46.
+# 
+  if ( model == "forestgap" || model == "forest-gap") { 
+    if ( is.null(parms) ) { 
+      parms <- list(d = 0.125, 
+                    delta = 0.5, 
+                    alpha = 0.2)
+    }
+    #TODO: what is the default number of neighbors of the forestgap model ?
+    neighbors <- ifelse(is.null(neighbors), 4, neighbors)
+    
+    mod <- camodel(
+      transition(from = "TREE", 
+                 to   = "EMPTY", 
+                 prob = ~ d + delta * q["EMPTY"] ), 
+      transition(from = "EMPTY", 
+                 to   = "TREE", 
+                 prob = ~ alpha * p["TREE"]), 
+      neighbors = neighbors, 
+      wrap = wrap, 
+      parms = parms, 
+      all_states = c("EMPTY", "TREE")
+    )
+  
+  }
+  
+# Guichard's Mussel Bed model (2003)
+# 
+# See also Génin et al. 2018 for model definition 
+# 
+# Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
+# disturbance dynamics: signatures of oceanographic forcing from local interactions. The
+# American Naturalist, 161, 889–904. doi: 10.1086/375300
+# 
+  if ( model == "musselbed" || model == "mussel-bed" ) { 
+    if ( is.null(parms) ) { 
+      parms <- list(d = 0.1, 
+                    delta = 0.25, 
+                    alpha = 0.4)
+    }
+    #TODO: what is the default number of neighbors of the musselbed model ?
+    neighbors <- ifelse(is.null(neighbors), 4, neighbors)
+    
+    mod <- camodel( 
+      transition("EMPTY",   "MUSSEL",  ~ alpha * q["MUSSEL"]), 
+      transition("DISTURB", "EMPTY",   ~ 1), 
+      transition("MUSSEL",  "DISTURB", ~ d + delta * sign(q["DISTURB"])), 
+      neighbors = neighbors, 
+      wrap = wrap, 
+      parms = parms, 
+      all_states = c("MUSSEL", "EMPTY", "DISTURB")
+    )
+  }
+  
+  
+  
+  # Conway's Game of life 
+  # https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
+  if ( model == "gameoflife" || model == "game-of-life" ) { 
+    
+    neighbors <- ifelse(is.null(neighbors), 8, neighbors)
+    
+    mod <- camodel( 
+      transition("LIVE", "DEAD", ~ q["LIVE"] < (2/nb) | q["LIVE"] > (3/nb)), 
+      transition("DEAD", "LIVE", ~ q["LIVE"] == (3/nb)), 
+      wrap = wrap, 
+      parms = parms, 
+      parms = list(nb = 8), 
+      all_states = c("DEAD", "LIVE")
+    )
+  }
+  
+  
+  
+  
+  if ( is.null(mod) ) { 
+    all_models <- c("forestgap", "musselbed", "gameoflife")
+    stop(paste0(model, " is an unknown model. Available models:", 
+                paste(all_models, collapse = " ")))
+  }
+  
+  return(mod)
+}
+
+
+
 # Genin's coral reef model (2022?) 
 # 
 #'@export
@@ -50,6 +153,8 @@ forestgap <- function(parms = list(d = 0.125,
                                    alpha = 0.2), 
                       neighbors = 4, 
                       wrap = TRUE) { 
+  message("forestgap is deprecated, use ca_library(model = 'forestgap')")
+  
   camodel( 
     transition(from = "TREE", 
                to   = "EMPTY", 
@@ -76,17 +181,10 @@ forestgap <- function(parms = list(d = 0.125,
 # disturbance dynamics: signatures of oceanographic forcing from local interactions. The
 # American Naturalist, 161, 889–904. doi: 10.1086/375300
 # 
-# musselbed <- function(parms = list(d = 0.1, 
-#                                    delta = 0.25, 
-#                                    alpha = 0.4)) { 
-#   camodel( 
-#     transition("EMPTY",   "MUSSEL",  ~ alpha * q["MUSSEL"]), 
-#     transition("DISTURB", "EMPTY",   ~ 1), 
-#     transition("MUSSEL",  "DISTURB", ~ d + delta * q["DISTURB"]), 
-#     parms = parms, 
-#     all_states = c("MUSSEL", "EMPTY", "DISTURB")
-#   )
-# }
+musselbed <- function(parms = list(d = 0.1, 
+                                   delta = 0.25, 
+                                   alpha = 0.4)) { 
+}
 
 
 

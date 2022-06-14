@@ -2,9 +2,58 @@
 # Interface to the compiled engine
 # 
 
-
-camodel_compiled_engine <- function(trans, ctrl, 
+camodel_compiled_engine_wrap <- function(alpha, pmat, qmat, control_list, 
                                     console_callback, cover_callback, snapshot_callback) { 
+  
+  
+  # Split alpha 
+  alpha_index <- intmat(alpha[ ,c("from", "to")])
+  alpha_vals  <- as.numeric(alpha[ ,c("a0")]) # vector of length nstates
+  
+  # Split pmat 
+  pmat_index <- intmat(pmat[ ,c("from", "to", "state")])
+  pmat_vals  <- pmat[ ,c("coef", "expo")]
+  
+  # Split qmat 
+  qmat_index <- intmat(qmat[ ,c("from", "to", "state", "qs")])
+  qmat_vals  <- qmat[ ,"ys"] # vector
+  
+  # Divide values by number of substeps
+  # TODO: move that up one level, it applies to all engines
+  substep <- control_list[["substeps"]]
+  pmat_vals[ ,"coef"] <- pmat_vals[ ,"coef"] / substep 
+  qmat_vals <- qmat_vals / substep # all of it, it is a vector
+  
+  # Reduce pmat/qmat sizes to non-zero coefficients
+  non_zero_pmat <- which(pmat_vals[ ,"coef"] > 1e-8)
+  pmat_vals <- pmat_vals[non_zero_pmat, , drop = FALSE]
+  pmat_index <- pmat_index[non_zero_pmat, , drop = FALSE]
+  
+  non_zero_qmat <- which(qmat_vals > 1e-8)
+  qmat_vals <- qmat_vals[non_zero_qmat]
+  qmat_index <- qmat_index[non_zero_qmat, , drop = FALSE]
+  
+  camodel_compiled_engine(alpha_index, 
+                          alpha_vals, 
+                          pmat_index, 
+                          pmat_vals, 
+                          qmat_index, 
+                          qmat_vals, 
+                          control_list, console_callback, cover_callback, snapshot_callback)
+  
+}
+
+
+camodel_compiled_engine <- function(alpha_index, 
+                                    alpha_vals, 
+                                    pmat_index, 
+                                    pmat_vals, 
+                                    qmat_index, 
+                                    qmat_vals, 
+                                    ctrl, 
+                                    console_callback, 
+                                    cover_callback, 
+                                    snapshot_callback) { 
   
   # Unwrap elements of the ctrl list 
   substeps <- ctrl[["substeps"]]
@@ -13,10 +62,9 @@ camodel_compiled_engine <- function(trans, ctrl,
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
-  coefs    <- nrow(trans) 
   
   # Read file
-  cmaxfile <- system.file("compiled_engine_precomputed.cpp", package = "chouca")
+  cmaxfile <- system.file("compiled_engine.cpp", package = "chouca")
   cmaxlines <- readLines(cmaxfile) 
   
   if ( ctrl[["verbose_compilation"]] ) { 
@@ -34,40 +82,12 @@ camodel_compiled_engine <- function(trans, ctrl,
   cmaxlines <- gsubf("__NR__", format(nrow(init)), cmaxlines)
   cmaxlines <- gsubf("__NC__", format(ncol(init)), cmaxlines)
   cmaxlines <- gsubf("__NS__", format(ns), cmaxlines)
-  cmaxlines <- gsubf("__NCOEFS__", format(coefs), cmaxlines)
   cmaxlines <- gsubf("__WRAP__", ifelse(wrap, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
+  cmaxlines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), cmaxlines)
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
-  
-  # Probability components: turn on or off in compiled code as needed
-  totX0 <- sum(trans[1, , ]) # X0
-  totXP <- sum(trans[2:(2+ns-1), , ]) # XP
-  totXQ <- sum(trans[(2+ns):(2+2*ns-1), , ]) # XQ
-  totXPSQ <- sum(trans[(2+2*ns):(2+3*ns-1), , ]) # XPSQ
-  totXQSQ <- sum(trans[(2+3*ns):(2+4*ns-1), , ]) # XQSQ
-  
-  boolstr <- function(x) ifelse(x>0, "true", "false")
-  cmaxlines <- gsubf("__HAS_X0__", boolstr(totX0), cmaxlines)
-  cmaxlines <- gsubf("__HAS_XP__", boolstr(totXP), cmaxlines)
-  cmaxlines <- gsubf("__HAS_XQ__", boolstr(totXQ), cmaxlines)
-  cmaxlines <- gsubf("__HAS_XPSQ__", boolstr(totXPSQ), cmaxlines)
-  cmaxlines <- gsubf("__HAS_XQSQ__", boolstr(totXQSQ), cmaxlines)
-  
-  # Make the table with all combinations of qs 
-  max_nb <- ifelse(use_8_nb, 8, 4)
-  all_qs <- rep( list(seq(0, max_nb) ), each = ns)
-  all_qs <- as.matrix(do.call(expand.grid, all_qs)) # !!! very large matrix
-  all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
-  colnames(all_qs) <- rownames(all_qs) <- NULL
-  
-  # Precompute neighbors sum and add it as the last column
-  all_qs <- cbind(all_qs, rowSums(all_qs))
-  
-  # Set the number of lines of all_qs in c file
-  cmaxlines <- gsubf("__TPROB_SIZE__", nrow(all_qs), cmaxlines)
-  
   
   # Set GCC options on command line 
   
@@ -97,9 +117,17 @@ camodel_compiled_engine <- function(trans, ctrl,
                       verbose = TRUE, cacheDir = ".", cleanupCacheDir = TRUE)
   }
   
+  writeLines(cmaxlines, "./output.cpp")
   runf <- get(fname)
-  runf(trans, ctrl, console_callback, cover_callback, snapshot_callback, 
-       all_qs)
+  runf(alpha_index, alpha_vals, 
+       pmat_index, 
+       pmat_vals, 
+       qmat_index, 
+       qmat_vals, 
+       ctrl, 
+       console_callback, 
+       cover_callback, 
+       snapshot_callback)
 }
 
 

@@ -13,18 +13,18 @@ if ( dir.exists("./caspr_output") ) {
   kubo_mod <- forestgap(parms = p)
   initmat <- generate_initmat(kubo_mod, c(0.4, 0.6), 
                               nr = 100, nc = 100)
-  ctrl <- list(substeps = 1, engine = "cpp", console_output_every = 1)
-  run <- run_camodel(kubo_mod, initmat, 100, control = ctrl)
+  ctrl <- list(substeps = 1, engine = "cpp", console_output_every = 0)
+  run <- run_camodel(kubo_mod, initmat, 200, control = ctrl)
   kubo_chouca <- as.data.frame(run[["output"]][["covers"]])
   names(kubo_chouca) <- c("time", "0", "+")
   
   # Display graphs
-  with(kubo_caspr, 
-       plot(time, sample(c(0, 1), size = length(time), replace = TRUE), type = "n"))
-  with(kubo_caspr,  lines(time, `+`, col = "red"))
-  with(kubo_chouca, lines(time, `+`, col = "red", lty = 2))
-  with(kubo_caspr,  lines(time, `0`, col = "blue"))
-  with(kubo_chouca, lines(time, `0`, col = "blue", lty = 2))
+  # with(kubo_caspr, 
+  #      plot(time, sample(c(0, 1), size = length(time), replace = TRUE), type = "n"))
+  # with(kubo_caspr,  lines(time, `+`, col = "red"))
+  # with(kubo_chouca, lines(time, `+`, col = "red", lty = 2))
+  # with(kubo_caspr,  lines(time, `0`, col = "blue"))
+  # with(kubo_chouca, lines(time, `0`, col = "blue", lty = 2))
   
   # Make sure things are close 
   tolerance <- 0.1

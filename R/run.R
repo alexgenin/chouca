@@ -304,8 +304,8 @@ run_camodel <- function(mod, initmat, niter,
     camodel_cpp_engine_wrap(alpha, pmat, qmat, control_list, 
                             console_callback, cover_callback, snapshot_callback)
   } else if ( tolower(engine) %in% c("compiled") ) { 
-    camodel_compiled_engine(transmatrix, control_list, 
-                            console_callback, cover_callback, snapshot_callback)
+    camodel_compiled_engine_wrap(alpha, pmat, qmat, control_list, 
+                                 console_callback, cover_callback, snapshot_callback)
   } else { 
     stop(sprintf("%s is an unknown CA engine", engine))
   }

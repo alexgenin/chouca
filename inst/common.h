@@ -250,7 +250,7 @@ void console_callback_wrap(const arma::uword iter,
   for ( uchar k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
-  console_callback(iter, ps_arma, ndbl); 
+  console_callback(iter, ps_arma, ncells); 
 }
 
 void snapshot_callback_wrap(const arma::uword iter, 
@@ -275,5 +275,5 @@ void cover_callback_wrap(const arma::uword iter,
   for ( uchar k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
-  cover_callback(iter, ps_arma, ndbl); 
+  cover_callback(iter, ps_arma, ncells); 
 }

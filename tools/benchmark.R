@@ -7,7 +7,6 @@ library(devtools)
 library(ggplot2)
 library(lubridate)
 
-
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
                   "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
@@ -67,9 +66,22 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
                    silent = FALSE)
         })
         error <- FALSE
+        
+        # The syntax has changed, so try with old parameter names
+        if ( inherits(a, "try-error") ) { 
+          timings <- system.time({ 
+            control[["ca_engine"]] <- control[["engine"]]
+            control[["engine"]] <- NULL
+            a <- try(run_camodel(mod, init, niter = tmax, control = control), 
+                     silent = FALSE)
+          })
+        }
+        
+        # If all fails, then bail 
         if ( inherits(a, "try-error") ) { 
           error <- TRUE
         }
+        
         timings <- as.list(timings)
         mcells_per_s <- (tmax * size^2) / timings[["elapsed"]] / 1e6
         data.frame(nrep = nrep, size = size, tmax = tmax, mcells_per_s = mcells_per_s, 

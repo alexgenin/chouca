@@ -25,7 +25,7 @@ camodel_cpp_engine_wrap <- function(alpha, pmat, qmat, control_list,
   pmat_vals[ ,"coef"] <- pmat_vals[ ,"coef"] / substep 
   qmat_vals <- qmat_vals / substep # all of it, it is a vector
   
-  # Reduce pmat/qmat sizes to non-zeo coefficients
+  # Reduce pmat/qmat sizes to non-zero coefficients
   non_zero_pmat <- which(pmat_vals[ ,"coef"] > 1e-8)
   pmat_vals <- pmat_vals[non_zero_pmat, , drop = FALSE]
   pmat_index <- pmat_index[non_zero_pmat, , drop = FALSE]
@@ -43,6 +43,7 @@ camodel_cpp_engine_wrap <- function(alpha, pmat, qmat, control_list,
                      control_list, console_callback, cover_callback, snapshot_callback)
   
 }
+
 
 intmat <- function(m) { 
   mn <- matrix(as.integer(m), nrow = nrow(m), ncol = ncol(m))

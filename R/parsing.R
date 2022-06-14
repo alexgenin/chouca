@@ -281,11 +281,22 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
 # Update a ca_model with new arguments 
 #'@export
 update.ca_model <- function(mod, parms, 
+                            neighbors = NULL, 
+                            wrap = NULL, 
                             check_model = TRUE, 
                             verbose     = FALSE) { 
   
+  if ( is.null(wrap) ) { 
+    wrap <- mod[["wrap"]]
+  }
+  if ( is.null(neighbors) ) { 
+    neighbors <- mod[["neighbors"]]
+  }
+  
   # Extract model parameters, and do the call
   newcall <- c(mod[["transitions_defs"]], # always a list, so result of c() is a list
+               neighbors = neighbors, 
+               wrap = wrap, 
                parms = list(parms), 
                all_states = list(mod[["states"]]), 
                check_model = check_model, 
@@ -333,12 +344,14 @@ fitpoly <- function(x, y, epsilon) {
   np <- nlmp$par
   # Plot prediction
   ypred <- polyc(x, np)
-  plot(x, ypred, col = "red", pch = 20)
-  points(x, y)
+  
+  # TODO: check that polynomial error is nil 
+  
+#   plot(x, ypred, col = "red", pch = 20)
+#   points(x, y)
   
   return(np)
 }
-
 
 #'@export
 print.ca_model <- function(x, ...) { 
@@ -355,6 +368,10 @@ print.ca_model <- function(x, ...) {
     cat0("Transition: ", tr[["from"]], " -> ", tr[["to"]])
     cat0("  p = ", as.character(tr[["prob"]]) )
   }
+  
+  cat0("")
+  cat0("Neighborhood: ", mod[["neighbors"]], "x", mod[["neighbors"]])
+  cat0("Wrap: ", mod[["wrap"]])
   
   return(invisible(x))
 }

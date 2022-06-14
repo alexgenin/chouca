@@ -8,8 +8,8 @@
 
 if ( ! ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) ) { 
   # Quick testing. 
-  # We use a large tolerance, to make sure the test is not too conservative. We just 
-  # catch blatant deviations in results, and do not take the risk of getting unlucky 
+  # We use a large tolerance, to make sure the test is not too conservative. We just try 
+  # to catch blatant deviations in results, and do not take the risk of getting unlucky 
   # during a test and getting a false positive. These tests are primarily 
   # here to make sure there is no bad interaction on CRAN with other packages and on 
   # other systems.
@@ -35,11 +35,24 @@ models[[1]] <- list(model, imat)
 # Model with non-zero XPSQ/XQSQ
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
-                 parms = list(r = 0.1))
+                 parms = list(r = 0.1), 
+                 wrap = TRUE, neighbors = 4)
 imat <- generate_initmat(model, c(0.2, 0.8), nr, nc)
 models[[2]] <- list(model, imat)
 
-# If we do not do extended tests, just do the musselbed model and the non-zero XPSQ/XQSQ
+# Deterministic model (rock-paper-scissors)
+model <- camodel(
+  transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
+  transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
+  transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
+  parms = list(prob = 1), 
+  wrap = FALSE, 
+  neighbors = 8
+)
+imat <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
+models[[3]] <- list(model, imat)
+
+# If we do not do extended tests, just do the forestgap model and the non-zero XPSQ/XQSQ
 # model
 if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) { 
   models <- models[1]
