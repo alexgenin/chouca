@@ -12,15 +12,16 @@ TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
                   "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
                   "1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
                   "4e35aa5e408fc1ae29ffc7ba3c2803b0d9ef1510", 
-                  "9c4f41d59d8f019be171dbcead9097ad77b77974")
-CTRL_LIST_VERS <- c(1, 1, 1, 2)
+                  "deb79c0dcdef21e12f9fa8200f3be6165634a221")
+CTRL_LIST_VERS <- c(1, 1, 1, 2, 2)
+stopifnot(length(TEST_COMMITS) == length(CTRL_LIST_VERS))
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
 dir.create(PKGDIR)
 system(paste0("git clone -b master ", GIT_ORIG, " ", PKGDIR))
 
-BENCH_SIZES <- 2^seq(4, 8)
+BENCH_SIZES <- 2^seq(4, 10)
 NREPS       <- 3
 CXXF <- "-g -O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
@@ -69,7 +70,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       if ( inherits(mod, "try-error") ) { 
         mod <- chouca:::ca_library("forestgap")
       }
-      browser()
+      
       # We use rectangles because we always want to test the package on rectangles
       init <- generate_initmat(mod, c(0.5, 0.5), size, size)
       tmax <- round(1000 * 1 / log(size))
@@ -116,7 +117,7 @@ if ( FALSE ) {
     scale_color_brewer(palette = "Set2") + 
     labs(x = "Matrix size", 
          y = "Million cells evaluated per second")
-
+  
   ggplot(subset(bench_engines, finished), 
         aes(x = size, y = tmax / elapsed / 1e3, color = engine)) + 
     geom_point() + 
@@ -161,7 +162,7 @@ ggplot(subset(bench_commits, finished),
                           substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit))) + 
-  facet_grid( ~ engine ) + 
+  facet_wrap( ~ engine ) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
