@@ -11,7 +11,8 @@ GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
                   "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
                   "1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
-                  "4e35aa5e408fc1ae29ffc7ba3c2803b0d9ef1510")
+                  "4e35aa5e408fc1ae29ffc7ba3c2803b0d9ef1510", 
+                  "9c4f41d59d8f019be171dbcead9097ad77b77974")
 CTRL_LIST_VERS <- c(1, 1, 1, 2)
 
 # Download latest chouca package in directory, compile and load it 
@@ -64,8 +65,11 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       cat(sprintf("Benching engine %s with size %s\n", engine, size))
       
       # Model used for benchmark
-      mod <- forestgap()
-      
+      mod <- try({ forestgap() })
+      if ( inherits(mod, "try-error") ) { 
+        mod <- chouca:::ca_library("forestgap")
+      }
+      browser()
       # We use rectangles because we always want to test the package on rectangles
       init <- generate_initmat(mod, c(0.5, 0.5), size, size)
       tmax <- round(1000 * 1 / log(size))
@@ -87,10 +91,10 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
         mcells_per_s <- (tmax * size^2) / timings[["timings"]][["elapsed"]] / 1e6
         data.frame(nrep = nrep, size = size, tmax = tmax, 
                    mcells_per_s = mcells_per_s, 
-                  engine = engine, 
-                  finished = ! (timings[["error"]] | warmup[["error"]] ), 
-                  warmup = warmup[["timings"]]["elapsed"], 
-                  elapsed = timings[["timings"]]["elapsed"])
+                   engine = engine, 
+                   finished = ! (timings[["error"]] | warmup[["error"]] ), 
+                   warmup = warmup[["timings"]]["elapsed"], 
+                   elapsed = timings[["timings"]]["elapsed"])
       })
     })
    }, .progress = "time")
