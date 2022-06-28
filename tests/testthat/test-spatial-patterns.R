@@ -10,8 +10,10 @@ if ( requireNamespace("spatialwarnings") ) {
   
   # This model should have spatial autocorrelation 
   mod_pos_autocor <- camodel(transition(from = "a", to = "b", ~ 0.04 * q["b"]), 
-                         transition(from = "b", to = "a", ~ 0.01), 
-                         all_states = c("a", "b"))
+                             transition(from = "b", to = "a", ~ 0.01), 
+                             all_states = c("a", "b"), 
+                             neighrbors = 8, 
+                             wrap = TRUE)
   im <- generate_initmat(mod_pos_autocor, c(0.5, 0.5), nr, nc)
   
   # Run the thing, then make sure there is autocorrelation
@@ -34,7 +36,9 @@ if ( requireNamespace("spatialwarnings") ) {
   # Same model, but with negative autocorrelation
   mod_neg_autocor <- camodel(transition(from = "a", to = "b", ~ 0.01), 
                              transition(from = "b", to = "a", ~ 0.01 * q["b"]), 
-                             all_states = c("a", "b"))
+                             all_states = c("a", "b"), 
+                             neighbors = 8, 
+                             wrap = TRUE)
   
   run <- run_camodel(mod_neg_autocor, im, 1000, control = ctrl)
   # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])

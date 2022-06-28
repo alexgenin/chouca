@@ -7,22 +7,16 @@ camodel_compiled_engine_wrap <- function(alpha, pmat, qmat, control_list,
   
   
   # Split alpha 
-  alpha_index <- intmat(alpha[ ,c("from", "to")])
+  alpha_index <- intmat(alpha[ ,c("from", "to"), drop = FALSE])
   alpha_vals  <- as.numeric(alpha[ ,c("a0")]) # vector of length nstates
   
   # Split pmat 
-  pmat_index <- intmat(pmat[ ,c("from", "to", "state")])
-  pmat_vals  <- pmat[ ,c("coef", "expo")]
+  pmat_index <- intmat(pmat[ ,c("from", "to", "state"), drop = FALSE])
+  pmat_vals  <- pmat[ ,c("coef", "expo"), drop = FALSE]
   
   # Split qmat 
-  qmat_index <- intmat(qmat[ ,c("from", "to", "state", "qs")])
+  qmat_index <- intmat(qmat[ ,c("from", "to", "state", "qs"), drop = FALSE])
   qmat_vals  <- qmat[ ,"ys"] # vector
-  
-  # Divide values by number of substeps
-  # TODO: move that up one level, it applies to all engines
-  substep <- control_list[["substeps"]]
-  pmat_vals[ ,"coef"] <- pmat_vals[ ,"coef"] / substep 
-  qmat_vals <- qmat_vals / substep # all of it, it is a vector
   
   # Reduce pmat/qmat sizes to non-zero coefficients
   non_zero_pmat <- which(pmat_vals[ ,"coef"] > 1e-8)
@@ -86,11 +80,22 @@ camodel_compiled_engine <- function(alpha_index,
   cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
   cmaxlines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), cmaxlines)
+  cmaxlines <- gsubf("__ALPHA_NROW__", format(nrow(alpha_index)), cmaxlines)
+  cmaxlines <- gsubf("__PMAT_NROW__", format(nrow(pmat_index)), cmaxlines)
+  cmaxlines <- gsubf("__QMAT_NROW__", format(nrow(qmat_index)), cmaxlines)
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
   
-  # Set GCC options on command line 
+  # Set #define on whether to precompute transition probabilities 
+  precompute_probas <- ctrl[["precompute_probas"]]
+  if ( precompute_probas == "auto" ) { 
+    precompute_probas <- ns^ifelse(use_8_nb, 8, 4) < prod(dim(init))
+  }
+  cmaxlines <- gsubf("__PRECOMPUTE_TRANS_PROBAS_DEFINE__", 
+                    ifelse(precompute_probas, "#define PRECOMPUTE_TRANS_PROBAS", ""), 
+                    cmaxlines)
   
+  # Set GCC options on command line 
   # Emit optimize pragma 
   olvl <- gsub(" ", "", ctrl[["olevel"]])
   olvl_str <- ifelse(olvl == "default", "", 
@@ -109,6 +114,18 @@ camodel_compiled_engine <- function(alpha_index,
   cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   
+  # Make the table with all combinations of qs 
+  max_nb <- ifelse(use_8_nb, 8, 4)
+  all_qs <- rep( list(seq(0, max_nb) ), each = ns)
+  all_qs <- as.matrix(do.call(expand.grid, all_qs)) # !!! very large matrix
+  all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
+  colnames(all_qs) <- rownames(all_qs) <- NULL
+  all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
+  all_qs <- all_qs[-1, ] # this has sum zero which produces division by zero
+  
+  # Replace size in compiled code
+  cmaxlines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), cmaxlines)
+  
   # Source cpp if needed 
   if ( ! exists(fname) ) { 
       
@@ -124,6 +141,7 @@ camodel_compiled_engine <- function(alpha_index,
        pmat_vals, 
        qmat_index, 
        qmat_vals, 
+       all_qs, 
        ctrl, 
        console_callback, 
        cover_callback, 

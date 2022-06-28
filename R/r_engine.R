@@ -28,17 +28,7 @@ camodel_r_engine <- function(alpha, pmat, qmat, ctrl,
   # Compute global densities
   ps <- get_global_counts(omat, ns) 
   delta_ps <- rep(0, ns)
-  
-  # Discard useless coefficients 
-  # TODO: move that in run() or parse() and use epsilon
-  # NOTE: this may remove all lines -> it's ok, the for loop will be skipped down there
-  qmat <- qmat[ qmat[ ,"ys"] > 1e-8, , drop = FALSE]
-  pmat <- pmat[ pmat[ ,"coef"] > 1e-8, , drop = FALSE]
-  
-  # Take into account substeps 
-  qmat[ ,"ys"] <- qmat[ ,"ys"] / substeps
-  pmat[ ,"coef"] <- pmat[ ,"coef"] / substeps
-  
+    
   t <- 0 
   while ( t <= niter ) { 
     

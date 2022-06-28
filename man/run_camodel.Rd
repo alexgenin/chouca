@@ -93,6 +93,14 @@ The \code{control} list must have named elements, and allows altering the
      or not when compiling the model. Default is \code{FALSE}. Requires compiling with
      gcc.  
    
+   \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
+     precompute probabilities of transitions for all possible combinations of 
+     neighborhood. When working with a model with a low number of states, this 
+     can increase simulation speed dramatically. Default is to do it when the 
+     possible total number of neighborhood combinations is below the number of cells 
+     in the landscape (so that it is effectively less work to pre-compute transitions 
+     than to compute them at each iteration). 
+   
    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
      Rcpp messages when compiling the model. Default is \code{FALSE}. 
    

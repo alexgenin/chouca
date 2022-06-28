@@ -28,11 +28,11 @@ if ( ! ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) ) {
 models <- list()
 
 # Kubo's forestgap model 
-model <- forestgap()
+model <- ca_library("forestgap")
 imat <- generate_initmat(model, c(0.5, 0.5), nr, nc)
 models[[1]] <- list(model, imat)
 
-# Model with non-zero XPSQ/XQSQ
+# Model with quadratice dependence on q and p
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
                  parms = list(r = 0.1), 
@@ -41,6 +41,10 @@ imat <- generate_initmat(model, c(0.2, 0.8), nr, nc)
 models[[2]] <- list(model, imat)
 
 # Deterministic model (rock-paper-scissors)
+# TODO: this model does not pass tests because it is periodic and stochastic, and 
+# because the compiled model does not honor the R random number generator, it will 
+# diverge when substeps <1, because the transition rules are interpreted as 
+# probabilities.
 model <- camodel(
   transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
   transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
@@ -49,7 +53,7 @@ model <- camodel(
   wrap = FALSE, 
   neighbors = 8
 )
-imat <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
+imat <- generate_initmat(model, rep(1/3, 3), nr, nc)
 models[[3]] <- list(model, imat)
 
 # If we do not do extended tests, just do the forestgap model and the non-zero XPSQ/XQSQ

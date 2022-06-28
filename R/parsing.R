@@ -149,19 +149,19 @@ camodel <- function(...,
                                epsilon)
   
   # Pack transitions into matrices
-  qmat <- ldply(transitions_parsed, function(tr) { 
+  qmat <- plyr::ldply(transitions_parsed, function(tr) { 
     data.frame(from = tr[["from"]], 
                to = tr[["to"]], 
                tr[["beta_q"]])
   })
   
-  pmat <- ldply(transitions_parsed, function(tr) { 
+  pmat <- plyr::ldply(transitions_parsed, function(tr) { 
     data.frame(from = tr[["from"]], 
                to = tr[["to"]], 
                tr[["beta_p"]])
   })
   
-  alpha <- ldply(transitions_parsed, function(tr) { 
+  alpha <- plyr::ldply(transitions_parsed, function(tr) { 
     data.frame(from = tr[["from"]], 
                to = tr[["to"]], 
                a0 = tr[["alpha0"]])
@@ -233,7 +233,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
   
   # Constant probability component (when all the p and q are zero)
   prob_with <- function(p, q) { 
-    eval(pexpr, envir = c(parms, list(p = p, q = q)))
+    as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
   }
   
   # Get intercept for this transition
@@ -241,7 +241,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
   
   # Get coefficient/exponent table for q. We evaluate q at 'xpoints' points for vectors 
   # of q with zeros everywhere except one state. 
-  beta_q <- ldply(state_names, function(s) { 
+  beta_q <- plyr::ldply(state_names, function(s) { 
     q <- zero
     xs <- seq(0, 1, length.out = xpoints) 
     nqs <- seq_along(xs) - 1
@@ -253,7 +253,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
     data.frame(state = s, qs = nqs, ys = ys)
   })
   
-  beta_p <- ldply(state_names, function(s) { 
+  beta_p <- plyr::ldply(state_names, function(s) { 
     p <- zero
     # In the worst case scenario, we need 9 points, in the case of 8 possible neighbors
     xs <- seq(0, 1, length.out = 25) 
@@ -345,6 +345,10 @@ fitpoly <- function(x, y, epsilon) {
   # Plot prediction
   ypred <- polyc(x, np)
   
+  if ( error > 1e-10 ) { 
+    stop("Could not approximate the given function with a polynomial - your model definition may be too complex for chouca")
+  }
+  
   # TODO: check that polynomial error is nil 
   
 #   plot(x, ypred, col = "red", pch = 20)
@@ -366,12 +370,12 @@ print.ca_model <- function(x, ...) {
   
   for ( tr in x[["transitions"]] ) { 
     cat0("Transition: ", tr[["from"]], " -> ", tr[["to"]])
-    cat0("  p = ", as.character(tr[["prob"]]) )
+    cat0(paste0("  ", as.character(tr[["prob"]]) ))
   }
   
   cat0("")
-  cat0("Neighborhood: ", mod[["neighbors"]], "x", mod[["neighbors"]])
-  cat0("Wrap: ", mod[["wrap"]])
+  cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
+  cat0("Wrap: ", x[["wrap"]])
   
   return(invisible(x))
 }

@@ -11,6 +11,32 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// getline
+arma::uword getline(const arma::uvec& qs, const arma::uword& nb, const arma::uword& ns);
+RcppExport SEXP _chouca_getline(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qs(qsSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type ns(nsSEXP);
+    rcpp_result_gen = Rcpp::wrap(getline(qs, nb, ns));
+    return rcpp_result_gen;
+END_RCPP
+}
+// simple_sum
+arma::uword simple_sum(const arma::uvec& qs, const arma::uword& nb, const arma::uword& ns);
+RcppExport SEXP _chouca_simple_sum(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::uvec& >::type qs(qsSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type nb(nbSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type ns(nsSEXP);
+    rcpp_result_gen = Rcpp::wrap(simple_sum(qs, nb, ns));
+    return rcpp_result_gen;
+END_RCPP
+}
 // local_dens
 arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m, const arma::uword nstates, const arma::uword i, const arma::uword j, const bool wrap, const bool use_8_nb);
 RcppExport SEXP _chouca_local_dens(SEXP mSEXP, SEXP nstatesSEXP, SEXP iSEXP, SEXP jSEXP, SEXP wrapSEXP, SEXP use_8_nbSEXP) {
@@ -61,39 +87,33 @@ BEGIN_RCPP
     return R_NilValue;
 END_RCPP
 }
-// getline
-arma::uword getline(const arma::uvec& qs, const arma::uword& nb, const arma::uword& ns);
-RcppExport SEXP _chouca_getline(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
+// aaaa0d91609dd70176756315aa3d03e6a5bcamodel_compiled_engine
+void aaaa0d91609dd70176756315aa3d03e6a5bcamodel_compiled_engine(const arma::Mat<ushort> alpha_index, const arma::Col<double> alpha_vals, const arma::Mat<ushort> pmat_index, const arma::Mat<double> pmat_vals, const arma::Mat<ushort> qmat_index, const arma::Col<double> qmat_vals, const Rcpp::List ctrl, const Rcpp::Function console_callback, const Rcpp::Function cover_callback, const Rcpp::Function snapshot_callback);
+RcppExport SEXP _chouca_aaaa0d91609dd70176756315aa3d03e6a5bcamodel_compiled_engine(SEXP alpha_indexSEXP, SEXP alpha_valsSEXP, SEXP pmat_indexSEXP, SEXP pmat_valsSEXP, SEXP qmat_indexSEXP, SEXP qmat_valsSEXP, SEXP ctrlSEXP, SEXP console_callbackSEXP, SEXP cover_callbackSEXP, SEXP snapshot_callbackSEXP) {
 BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::uvec& >::type qs(qsSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type nb(nbSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type ns(nsSEXP);
-    rcpp_result_gen = Rcpp::wrap(getline(qs, nb, ns));
-    return rcpp_result_gen;
-END_RCPP
-}
-// simple_sum
-arma::uword simple_sum(const arma::uvec& qs, const arma::uword& nb, const arma::uword& ns);
-RcppExport SEXP _chouca_simple_sum(SEXP qsSEXP, SEXP nbSEXP, SEXP nsSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::uvec& >::type qs(qsSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type nb(nbSEXP);
-    Rcpp::traits::input_parameter< const arma::uword& >::type ns(nsSEXP);
-    rcpp_result_gen = Rcpp::wrap(simple_sum(qs, nb, ns));
-    return rcpp_result_gen;
+    Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type alpha_index(alpha_indexSEXP);
+    Rcpp::traits::input_parameter< const arma::Col<double> >::type alpha_vals(alpha_valsSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type pmat_index(pmat_indexSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<double> >::type pmat_vals(pmat_valsSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type qmat_index(qmat_indexSEXP);
+    Rcpp::traits::input_parameter< const arma::Col<double> >::type qmat_vals(qmat_valsSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::List >::type ctrl(ctrlSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function >::type console_callback(console_callbackSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function >::type cover_callback(cover_callbackSEXP);
+    Rcpp::traits::input_parameter< const Rcpp::Function >::type snapshot_callback(snapshot_callbackSEXP);
+    aaaa0d91609dd70176756315aa3d03e6a5bcamodel_compiled_engine(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback);
+    return R_NilValue;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_chouca_getline", (DL_FUNC) &_chouca_getline, 3},
+    {"_chouca_simple_sum", (DL_FUNC) &_chouca_simple_sum, 3},
     {"_chouca_local_dens", (DL_FUNC) &_chouca_local_dens, 6},
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 10},
-    {"_chouca_getline", (DL_FUNC) &_chouca_getline, 3},
-    {"_chouca_simple_sum", (DL_FUNC) &_chouca_simple_sum, 3},
+    {"_chouca_aaaa0d91609dd70176756315aa3d03e6a5bcamodel_compiled_engine", (DL_FUNC) &_chouca_aaaa0d91609dd70176756315aa3d03e6a5bcamodel_compiled_engine, 10},
     {NULL, NULL, 0}
 };
 

@@ -21,16 +21,35 @@ if ( FALSE ) {
   
 }
 
+# 
+if ( FALSE ) { 
+  
+  # Run simulation of musselbed with caspr 
+  p <- list(r = 0.4, d = 0.9, delta = 0.01)   # set parameters
+  l <- init_landscape(c("+","0", "-"),  c(0.6, 0.2, 0.2), width = 100) 
+  m <- musselbed
+  
+  r <- ca(l, model = musselbed, parms = p, t_max = 200, subs = 10)    # run simulation
+  plot(r) 
+  
+  covers <- as.data.frame(with(r, cbind(time, cover)), 
+                          row.names = NULL)
+  saveRDS(covers, 
+          file = file.path("./tests/testthat/caspr_output/", 
+                           "caspr_ts_musselbed.rds"))
+  
+}
+
 # Make caspr benchmarks 
 if ( FALSE ) { 
   
   # Run simulation of musselbed with caspr 
   sizes <- c(16, 32, 64, 128, 256, 512)
-  timings <- ldply(sizes, function(size) { 
+  timings <- plyr::ldply(sizes, function(size) { 
     a <- system.time({ 
       l <- init_landscape(c("+","0","-"), c(0.6,0.2,0.2), width = size) 
       p <- list(r = 0.4, d = 0.9, delta = 0.01)   # set parameters
-      r <- ca(l, model = musselbed, parms = p, t_max = 512)    # run simulation
+      r <- ca(l, model = musselbed, parms = p, t_max = 512, subs = 1)    # run simulation
     })
     as.data.frame(as.list(a))
   }, .progress = "time")

@@ -15,9 +15,10 @@ but with a given probability.
 
 ## What this package implements 
 
-This package is an *engine* for probabilistic cellular automata (PCA). The goal is to 
-provide a declarative interface to a PCA model, and leave the implementation details to 
-the package. 
+This package is an *engine* for probabilistic cellular automata (PCA), although it can 
+also do deterministic cellular automata. The objective is to provide a high-leve, 
+declarative interface to a PCA model, and leave the implementation details to the 
+package. 
 
 For example, Kubo's forest model (Kubo, 1996), which describes how gaps created by wind 
 in a forest appear and expand, can be implemented using the following few lines 
@@ -34,6 +35,8 @@ kubo <- camodel(
   parms = list(d = 0.125, 
                delta = 0.5, 
                alpha = 0.1), 
+  wrap = TRUE, 
+  neighbors = 4, 
   all_states = c("EMPTY", "TREE")
 )
 ```
@@ -45,15 +48,19 @@ initmat <- generate_initmat(kubo, c(0.5, 0.5), nr = 100, nc = 100)
 run_camodel(kubo, initmat, niter = 200)
 ```
 
-At the moment `chouca` only runs cellular automata for which the transition probabilities are second degree polynomial of the global covers of each state `p` and the local covers of each state `q`. In other words a transition rule must follow the following pattern: 
+Conway's game of life can be declared in the following way. Note that we declare that 
+we want the model with 8 neighbors, and with a toric space (that wraps around the 
+edges):
 
-![Polynomial](./polynomial.png)
-
-where `n_s` is the number of discrete states between which cells can switch, `q_k` is the 
-proportion of neighbors of a cell in state `k` and `p_k` is the proportion of cells in a 
-given state over the whole 2D grid. `a_0` and the `b_k`, `c_k`, `d_k` and `e_k` must be 
-constants. 
-
+```r
+  mod <- camodel( 
+    transition("LIVE", "DEAD", ~ q["LIVE"] < (2/8) | q["LIVE"] > (3/8)), 
+    transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
+    wrap = TRUE, 
+    neighbors = 8, 
+    all_states = c("DEAD", "LIVE")
+  )
+```
 
 ## Motivation and objectives
 
@@ -78,7 +85,7 @@ performance typically by one or two orders of magnitude.
 `chouca` is mainly developed by Alexandre Génin, but contributions and discussion are 
 welcome. 
 
-*A.G. has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie grant agreement N°896159.*
+*This work has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie grant agreement N°896159.*
 
 
 

@@ -134,6 +134,14 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'      or not when compiling the model. Default is \code{FALSE}. Requires compiling with
 #'      gcc.  
 #'    
+#'    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
+#'      precompute probabilities of transitions for all possible combinations of 
+#'      neighborhood. When working with a model with a low number of states, this 
+#'      can increase simulation speed dramatically. Default is to do it when the 
+#'      possible total number of neighborhood combinations is below the number of cells 
+#'      in the landscape (so that it is effectively less work to pre-compute transitions 
+#'      than to compute them at each iteration). 
+#'    
 #'    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
 #'      Rcpp messages when compiling the model. Default is \code{FALSE}. 
 #'    
@@ -275,8 +283,13 @@ run_camodel <- function(mod, initmat, niter,
   qmat <- as.matrix(qmat)
   
   # Subset matrices for speed 
-  # pmat <- pmat[ pmat[ ,"coef"] > mod[["epsilon"]], ]
-  # qmat <- qmat[ qmat[ ,"ys"]   > mod[["epsilon"]], ]
+  pmat <- pmat[ abs(pmat[ ,"coef"]) > mod[["epsilon"]], , drop = FALSE]
+  qmat <- qmat[ abs(qmat[ ,"ys"])   > mod[["epsilon"]], , drop = FALSE]
+  
+  # Take into account substeps 
+  qmat[ ,"ys"] <- qmat[ ,"ys"] / control[["substeps"]]
+  pmat[ ,"coef"] <- pmat[ ,"coef"] / control[["substeps"]]
+  alpha[ ,"a0"] <- alpha[ ,"a0"] / control[["substeps"]]
   
   # TODO: this is ugly
   control_list <- list(substeps = control[["substeps"]], 
@@ -293,6 +306,7 @@ run_camodel <- function(mod, initmat, niter,
                        snapshot_callback_active = snapshot_callback_active, 
                        snapshot_callback_every  = control[["save_snapshots_every"]], 
                        olevel = control[["olevel"]], 
+                       precompute_probas = control[["precompute_probas"]], 
                        unroll_loops = control[["unroll_loops"]], 
                        verbose_compilation = control[["verbose_compilation"]])
   
@@ -337,11 +351,12 @@ load_control_list <- function(l) {
     save_covers_every = 1, 
     save_snapshots_every = 0, 
     console_output_every = 10, 
-    engine = "r", 
+    engine = "cpp", 
     # Compiled engine options
     olevel = "default", 
     unroll_loops = FALSE, 
-    verbose_compilation = FALSE
+    precompute_probas = "auto", 
+    verbose_compilation = FALSE 
   )
   
   for ( nm in names(l) ) { 
@@ -373,6 +388,10 @@ load_control_list <- function(l) {
     stop("'verbose_compilation' option must be TRUE or FALSE")
   }
   
+  if ( ! ( is.logical(control_list[["precompute_probas"]]) || 
+          control_list[["precompute_probas"]] == "auto") ) { 
+    stop("precompute probas must be TRUE, FALSE or 'auto'")
+  }
   
   control_list
 }
