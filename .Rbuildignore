@@ -13,3 +13,4 @@
 ^src/.*\.o$
 ^tools/.*$ 
 ^\.kateproject\.notes$"
+^\.covrignore$

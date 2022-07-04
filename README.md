@@ -1,6 +1,7 @@
 
 <!-- badges: start -->
 [![Codecov test coverage](https://codecov.io/gh/alexgenin/chouca/branch/master/graph/badge.svg)](https://app.codecov.io/gh/alexgenin/chouca?branch=master)
+[![./.github/workflows/check-release](https://github.com/alexgenin/chouca/actions/workflows/./.github/workflows/check-release.yaml/badge.svg)](https://github.com/alexgenin/chouca/actions/workflows/./.github/workflows/check-release.yaml)
 <!-- badges: end -->
 
 # Chouca: a fast engine for probabilistic cellular automata 
