@@ -12,7 +12,7 @@ if ( requireNamespace("spatialwarnings") ) {
   mod_pos_autocor <- camodel(transition(from = "a", to = "b", ~ 0.04 * q["b"]), 
                              transition(from = "b", to = "a", ~ 0.01), 
                              all_states = c("a", "b"), 
-                             neighrbors = 8, 
+                             neighbors = 8, 
                              wrap = TRUE)
   im <- generate_initmat(mod_pos_autocor, c(0.5, 0.5), nr, nc)
   

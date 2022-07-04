@@ -54,8 +54,9 @@ This function will take a chouca model, try the different compilation optimisati
 }
 \examples{
 
-mod <- forestgap()
+mod <- ca_library("forestgap")
 inimat <- generate_initmat(mod, c(0.5, 0.5), 1024) 
-benchmark_compiled_model(mod, inimat, niter = 100) 
-
+\dontrun{ 
+  benchmark_compiled_model(mod, inimat, niter = 100) 
+}
 }

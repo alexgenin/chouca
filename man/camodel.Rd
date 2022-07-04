@@ -22,11 +22,16 @@ transition(from, to, prob)
 \item{...}{a number of transition descriptions, as built by the
 \code{\link{transition}} function (see Details)}
 
+\item{neighbors}{The number of neighbors to use in the cellular automaton (4 for 4-way 
+or von-Neumann neghborhood, or 8 for a Moore neighborhood)}
+
+\item{wrap}{Whether the 2D grid should wrap around at the edges}
+
 \item{parms}{a named list of parameters, which should be all numeric, single values}
 
 \item{all_states}{the complete list of states (a character vector). If unspecified,
 it will be guessed from the transition rules, but it is a good idea pass it here 
-to make sure the model definition is correct}
+to make sure the model definition is correct.}
 
 \item{check_model}{A quick check of the model definition is done to make sure there 
 are no issues (e.g. probabilities outside the [1,0] interval, or an unsupported 
@@ -108,13 +113,38 @@ kubo <- camodel(
   parms = list(d = 0.125, 
                delta = 0.5, 
                alpha = 0.2), 
-  all_states = c("EMPTY", "TREE")
+  all_states = c("EMPTY", "TREE"), 
+  neighbors = 4, 
+  wrap = TRUE
 )
 
 # A fun plant model 
-mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
-               transition("empty", "plant", ~ q["plant"]^2 ), 
-               all_states = c("empty", "plant"), 
-               parms = list(death = 0.2496))
+mod <- camodel(
+  transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
+  transition("empty", "plant", ~ q["plant"]^2 ), 
+  all_states = c("empty", "plant"), 
+  wrap = TRUE, 
+  neighbors = 4, 
+  parms = list(death = 0.2496)
+)
+
+# Conway's Game of Life 
+mod <- camodel( 
+  transition("LIVE", "DEAD", ~ q["LIVE"] < (2/8) | q["LIVE"] > (3/8)), 
+  transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
+  wrap = TRUE, 
+  neighbors = 8, 
+  all_states = c("DEAD", "LIVE")
+)
+
+# A spiral-generating rock-paper-scissor model (run with substeps = 1)
+mod <- camodel(
+  transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
+  transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
+  transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
+  parms = list(prob = 1), 
+  wrap = TRUE, 
+  neighbors = 8
+)
 
 }

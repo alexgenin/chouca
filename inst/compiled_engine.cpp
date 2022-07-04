@@ -250,7 +250,17 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           
           uchar cstate = old_mat[i][j]; 
           
-#ifndef PRECOMPUTE_TRANS_PROBAS
+#ifdef PRECOMPUTE_TRANS_PROBAS
+          // Get precomputed probas 
+          
+          // Get line in pre-computed transition probability table 
+          uword line = 0; 
+          for ( uchar k = 0; k<ns; k++ ) { 
+            line = line * (1+max_nb) + old_qs[i][j][k]; 
+          }
+          line -= 1; 
+          
+#else
           // Normalized local densities to proportions
           uword qs_total = 0; 
           for ( ushort k=0; k<ns; k++ ) { 
@@ -304,42 +314,23 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           for ( ushort k=1; k<ns; k++ ) { 
             ptrans[k] += ptrans[k-1];
           }
-#else
-          // Get precomputed probas 
-          
-          // Get line in pre-computed transition probability table 
-          uword line = 0; 
-          for ( uchar k = 0; k<ns; k++ ) { 
-            line = line * (1+max_nb) + old_qs[i][j][k]; 
-          }
-          line -= 1; 
-          
-          // for ( uchar k=0; k<ns; k++) { 
-          //   if ( tprobs[line][cstate][k] != ptrans[k] ) { 
-          //     Rcpp::Rcout << "pre: " << tprobs[line][cstate][k] << " onf: " << 
-          //       ptrans[k] << "\n" << 
-          //       "line: " << line << " from: " << (int) cstate << " to: " << (int)k << "\n"; 
-          //   }
-          // }
 #endif
           // Check if we actually transition.  
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ p0 < rn < (p0+p1) => p1 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
-          // TODO: backport this to non-compiled engine 
           uchar new_cell_state = cstate; 
           double rn = randunif(); // flip a coin
           for ( signed char k=(ns-1); k>=0; k-- ) { 
-#ifndef PRECOMPUTE_TRANS_PROBAS
-            new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
-#else 
+#ifdef PRECOMPUTE_TRANS_PROBAS
             new_cell_state = rn < tprobs[line][cstate][k] ? k : new_cell_state; 
+#else 
+            new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
 #endif
           } 
           
           if ( new_cell_state != cstate ) { 
-//             Rcpp::Rcout << "switch " << (int) cstate << " -> " << (int) new_cell_state << "\n"; 
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 

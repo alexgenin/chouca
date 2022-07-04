@@ -10,11 +10,16 @@
 #' @param ... a number of transition descriptions, as built by the
 #'   \code{\link{transition}} function (see Details)
 #' 
+#' @param neighbors The number of neighbors to use in the cellular automaton (4 for 4-way 
+#'   or von-Neumann neghborhood, or 8 for a Moore neighborhood)
+#' 
+#' @param wrap Whether the 2D grid should wrap around at the edges
+#' 
 #' @param parms a named list of parameters, which should be all numeric, single values
 #' 
 #' @param all_states the complete list of states (a character vector). If unspecified,
 #'   it will be guessed from the transition rules, but it is a good idea pass it here 
-#'   to make sure the model definition is correct 
+#'   to make sure the model definition is correct. 
 #' 
 #' @param verbose whether information should be printed when parsing the model
 #'   definition. 
@@ -82,14 +87,39 @@
 #'   parms = list(d = 0.125, 
 #'                delta = 0.5, 
 #'                alpha = 0.2), 
-#'   all_states = c("EMPTY", "TREE")
+#'   all_states = c("EMPTY", "TREE"), 
+#'   neighbors = 4, 
+#'   wrap = TRUE
 #' )
 #' 
 #' # A fun plant model 
-#' mod <- camodel(transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
-#'                transition("empty", "plant", ~ q["plant"]^2 ), 
-#'                all_states = c("empty", "plant"), 
-#'                parms = list(death = 0.2496))
+#' mod <- camodel(
+#'   transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
+#'   transition("empty", "plant", ~ q["plant"]^2 ), 
+#'   all_states = c("empty", "plant"), 
+#'   wrap = TRUE, 
+#'   neighbors = 4, 
+#'   parms = list(death = 0.2496)
+#' )
+#' 
+#' # Conway's Game of Life 
+#' mod <- camodel( 
+#'   transition("LIVE", "DEAD", ~ q["LIVE"] < (2/8) | q["LIVE"] > (3/8)), 
+#'   transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
+#'   wrap = TRUE, 
+#'   neighbors = 8, 
+#'   all_states = c("DEAD", "LIVE")
+#' )
+#' 
+#' # A spiral-generating rock-paper-scissor model (run with substeps = 1)
+#' mod <- camodel(
+#'   transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
+#'   transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
+#'   transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
+#'   parms = list(prob = 1), 
+#'   wrap = TRUE, 
+#'   neighbors = 8
+#' )
 #' 
 #'@export
 camodel <- function(..., 
@@ -232,8 +262,15 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
   names(zero) <- state_names
   
   # Constant probability component (when all the p and q are zero)
+  warn <- character()
   prob_with <- function(p, q) { 
-    as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
+    p <- as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
+    if ( p < 0 ) { 
+      m <- paste0("Transition probabilities may go below zero. Problematic transition:\n", 
+                 "  ", tr[["from"]], " -> ", tr[["to"]])
+      warn <<- c(warn, m)
+    }
+    p
   }
   
   # Get intercept for this transition
@@ -267,7 +304,12 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
     data.frame(state = s, coef = poly, expo = seq_along(poly))
   })
   
-  # TODO: add checks? -> no NA in transition rates 
+  # Print all the warnings accumulated so far
+  if ( length(warn) > 0 ) { 
+    # Some of them may be repeated
+    warn <- unique(warn) 
+    lapply(warn, warning, call. = FALSE)
+  }
   
   list(from = tr[["from"]], 
        to   = tr[["to"]], 
@@ -280,28 +322,29 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
 
 # Update a ca_model with new arguments 
 #'@export
-update.ca_model <- function(mod, parms, 
+update.ca_model <- function(object, parms, 
                             neighbors = NULL, 
                             wrap = NULL, 
                             check_model = TRUE, 
-                            verbose     = FALSE) { 
+                            verbose = FALSE, 
+                            ...) { 
   
   if ( is.null(wrap) ) { 
-    wrap <- mod[["wrap"]]
+    wrap <- object[["wrap"]]
   }
   if ( is.null(neighbors) ) { 
-    neighbors <- mod[["neighbors"]]
+    neighbors <- object[["neighbors"]]
   }
   
   # Extract model parameters, and do the call
-  newcall <- c(mod[["transitions_defs"]], # always a list, so result of c() is a list
+  newcall <- c(object[["transitions_defs"]], # always a list, so result of c() is a list
                neighbors = neighbors, 
                wrap = wrap, 
                parms = list(parms), 
-               all_states = list(mod[["states"]]), 
+               all_states = list(object[["states"]]), 
                check_model = check_model, 
                verbose = verbose, 
-               epsilon = mod[["epsilon"]])
+               epsilon = object[["epsilon"]])
   
   do.call(camodel, newcall)
 }
@@ -332,27 +375,20 @@ fitpoly <- function(x, y, epsilon) {
   while ( error > 1e-10 && degree <= 25 ) { 
     degree <- degree + 1
     theta0 <- rep(0, degree)
-    nlmp <- optim(theta0, ss, method = "BFGS", 
-                  control = list(trace = TRUE, 
-                                 maxit = 1000, 
-                                 abstol = .Machine$double.eps))
+    nlmp <- stats::optim(theta0, ss, method = "BFGS", 
+                         control = list(trace = FALSE, 
+                                        maxit = 1000, 
+                                        abstol = .Machine$double.eps))
     error <- nlmp$value
-    print(degree)
-    print(error)
   }
   
-  np <- nlmp$par
+  np <- nlmp[["par"]]
   # Plot prediction
   ypred <- polyc(x, np)
   
   if ( error > 1e-10 ) { 
     stop("Could not approximate the given function with a polynomial - your model definition may be too complex for chouca")
   }
-  
-  # TODO: check that polynomial error is nil 
-  
-#   plot(x, ypred, col = "red", pch = 20)
-#   points(x, y)
   
   return(np)
 }

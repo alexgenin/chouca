@@ -20,12 +20,12 @@ if ( dir.exists("./caspr_output") ) {
   
   # Display graphs
   if ( FALSE ) { 
-      with(kubo_caspr, 
-          plot(time, sample(c(0, 1), size = length(time), replace = TRUE), type = "n"))
-      with(kubo_caspr,  lines(time, `+`, col = "red"))
-      with(kubo_chouca, lines(time, `+`, col = "red", lty = 2))
-      with(kubo_caspr,  lines(time, `0`, col = "blue"))
-      with(kubo_chouca, lines(time, `0`, col = "blue", lty = 2))
+    with(kubo_caspr, 
+        plot(time, sample(c(0, 1), size = length(time), replace = TRUE), type = "n"))
+    with(kubo_caspr,  lines(time, `+`, col = "red"))
+    with(kubo_chouca, lines(time, `+`, col = "red", lty = 2))
+    with(kubo_caspr,  lines(time, `0`, col = "blue"))
+    with(kubo_chouca, lines(time, `0`, col = "blue", lty = 2))
   }
   
   # Make sure things are close 
@@ -46,7 +46,7 @@ if ( dir.exists("./caspr_output") ) {
   
   initmat <- generate_initmat(guichard_mod, c(0.6, 0.2, 0.2), 
                               nr = 100, nc = 100)
-  ctrl <- list(substeps = 2, engine = "cpp", console_output_every = 0)
+  ctrl <- list(substeps = 10, engine = "cpp", console_output_every = 0)
   run <- run_camodel(guichard_mod, initmat, 200, control = ctrl)
   guichard_chouca <- as.data.frame(run[["output"]][["covers"]])
   names(guichard_chouca) <- c("time", "m", "e", "d")

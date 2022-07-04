@@ -1,18 +1,11 @@
 # Test the parsing of models 
 
 
-# Test that a warning is emitted when probabilities can be above one
-expect_warning({ 
-  forestgap(parms = list(d = 10, 
-                         delta = 0.5, 
-                         alpha = 0.2))
-})
-
 # Test that a warning is emitted when probabilities can be below zero
 expect_warning({ 
-  forestgap(parms = list(d = -1, 
-                         delta = 0.5, 
-                         alpha = 0.2))
+  ca_library("forestgap", parms = list(d = -1, 
+                                       delta = 0.5, 
+                                       alpha = 0.2))
 })
 
 

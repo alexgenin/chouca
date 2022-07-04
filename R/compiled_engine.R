@@ -128,13 +128,12 @@ camodel_compiled_engine <- function(alpha_index,
   
   # Source cpp if needed 
   if ( ! exists(fname) ) { 
-      
     # We compile from the file, so that lines can be put in a debug run
     funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
-                      verbose = TRUE, cacheDir = ".", cleanupCacheDir = TRUE)
+                      verbose = ctrl[["verbose_compilation"]], 
+                      cleanupCacheDir = FALSE)
   }
   
-  writeLines(cmaxlines, "./output.cpp")
   runf <- get(fname)
   runf(alpha_index, alpha_vals, 
        pmat_index, 
@@ -191,10 +190,12 @@ camodel_compiled_engine <- function(alpha_index,
 #' 
 #'@examples 
 #' 
-#' mod <- forestgap()
+#' mod <- ca_library("forestgap")
 #' inimat <- generate_initmat(mod, c(0.5, 0.5), 1024) 
-#' benchmark_compiled_model(mod, inimat, niter = 100) 
-#' 
+#' \dontrun{ 
+#'   benchmark_compiled_model(mod, inimat, niter = 100) 
+#' }
+#'@export
 benchmark_compiled_model <- function(mod, init, niter = 100, 
                                      olevel = c("O2", "O3", "Ofast"), 
                                      unroll_loops = c(TRUE, FALSE), 

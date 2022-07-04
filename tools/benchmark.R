@@ -12,7 +12,7 @@ TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
                   "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
                   "1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
                   "4e35aa5e408fc1ae29ffc7ba3c2803b0d9ef1510", 
-                  "deb79c0dcdef21e12f9fa8200f3be6165634a221")
+                  "724838a11277dd38d15fd661bfa391fc14f6f7df")
 CTRL_LIST_VERS <- c(1, 1, 1, 2, 2)
 stopifnot(length(TEST_COMMITS) == length(CTRL_LIST_VERS))
 
@@ -162,7 +162,7 @@ ggplot(subset(bench_commits, finished),
                           substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit))) + 
-  facet_wrap( ~ engine ) + 
+  facet_wrap( ~ engine, scales = "free_y") + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 

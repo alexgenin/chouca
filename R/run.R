@@ -28,7 +28,8 @@
 #'   
 #'   The \code{pvec} will be normalized to sum to one, emitting a warning if this 
 #'     produces a meaningful change in covers. 
-#'   
+#'
+#'@export
 generate_initmat <- function(mod, pvec, nr, nc = nr) { 
   
   if ( any(is.na(pvec)) ) { 
@@ -114,16 +115,19 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'      report. Default is to print progress every ten iterations.
 #'    
 #'    \item \code{neighbors} The number of neighbors to use. Use the integer value 4 to 
-#'      use a four-way (von-Neumann) neighborhood, or 8 for an 8-way neighborhood. Any 
-#'      other values will produce an error. Default is to use 4 neighbors.
+#'      use a four-way (von-Neumann) neighborhood, or 8 for an 8-way (Moore) 
+#'      neighborhood. Any other values will produce an error. Default is to use 4
+#'      neighbors.
 #'    
-#'    \item \code{wrap} Set to \code{TRUE} to use a toric space so that edges wrap around, 
-#'      i.e. that cells on a side of the landscape are considered neighbors of cells on 
-#'      the other side. 
+#'    \item \code{wrap} Set to \code{TRUE} to use a toric space in which edges wrap 
+#'      around, i.e. that cells on a side of the landscape are considered neighbors of
+#'      cells on the other side. 
 #'    
 #'    \item \code{engine} The engine to use to run the simulations. Accepted values 
 #'      are 'r', to use the pure-R engine, 'cpp' to use the C++ engine, or 'compiled', to
-#'      compile the model code on the fly. Default is to use the C++ engine.
+#'      compile the model code on the fly. Default is to use the C++ engine. Note that 
+#'      the 'compiled' engine uses its own random number generator, and for this reason
+#'      may produce results that are different from the two other engines.
 #'    
 #'    \item \code{olevel} (Compiled engine only) The optimization level to use when
 #'      compiling the model code (default, O2, O3 or Ofast). This requires compiling with 
@@ -171,13 +175,13 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #' @examples 
 #' 
 #' # Run a model with default parameters
-#' mod <- forestgap() 
+#' mod <- ca_library("forestgap")
 #' im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
 #' run_camodel(mod, im, niter = 100) 
 #' 
 #' # Set some options and use the compiled engine
 #' ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
-#' run <- run_camodel(mod, im, niter = 100)
+#' run <- run_camodel(mod, im, niter = 200)
 #' 
 #' covers <- run[["output"]][["covers"]]
 #' matplot(covers[ ,1], covers[ ,-1], type = "l")
