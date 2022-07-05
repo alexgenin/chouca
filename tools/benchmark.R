@@ -8,12 +8,12 @@ library(ggplot2)
 library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
-TEST_COMMITS <- c("58959efce8b69831d78103beee6d4f9eb8477718", # 2022-04-13
-                  "ec1a941a73a87b8525660ed3bf855c6e0bffb798", 
-                  "1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
+TEST_COMMITS <- c("1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
                   "4e35aa5e408fc1ae29ffc7ba3c2803b0d9ef1510", 
-                  "724838a11277dd38d15fd661bfa391fc14f6f7df")
-CTRL_LIST_VERS <- c(1, 1, 1, 2, 2)
+                  "724838a11277dd38d15fd661bfa391fc14f6f7df", 
+                  "fea6ff41c3cda84e138012bc6a719327a8aba56f")
+
+CTRL_LIST_VERS <- c(1, 2, 2, 2)
 stopifnot(length(TEST_COMMITS) == length(CTRL_LIST_VERS))
 
 # Download latest chouca package in directory, compile and load it 
@@ -48,7 +48,7 @@ time_mod <- function(mod, init, control, niter, ctrl_ver) {
 mkbench <- function(sizes, nrep, cxxf, commit) { 
   
   # Checkout correct commit in PKGDIR
-  system(sprintf("cd '%s' && git checkout %s", PKGDIR, commit))
+  system(sprintf("cd '%s' && git stash save && git checkout %s", PKGDIR, commit))
   
   # cd into pkgdir 
   owd <- getwd()
@@ -66,13 +66,13 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       cat(sprintf("Benching engine %s with size %s\n", engine, size))
       
       # Model used for benchmark
-      mod <- try({ forestgap() })
+      mod <- try({ musselbed() })
       if ( inherits(mod, "try-error") ) { 
-        mod <- chouca:::ca_library("forestgap")
+        mod <- chouca:::ca_library("musselbed")
       }
       
       # We use rectangles because we always want to test the package on rectangles
-      init <- generate_initmat(mod, c(0.5, 0.5), size, size)
+      init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
       tmax <- round(1000 * 1 / log(size))
       control[["engine"]] <- engine
       
@@ -85,7 +85,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       ldply(seq.int(NREPS), function(nrep) { 
         
         # Generate new matrix for each iteration
-        init <- generate_initmat(mod, c(0.5, 0.5), size, size)
+        init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
         
         timings <- time_mod(mod, init, control, tmax, ctrl_ver)
         

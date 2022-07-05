@@ -4,9 +4,9 @@
 // 
 
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
 
 // Define some column names for clarity
 #define _from 0
@@ -53,15 +53,15 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 #include "__COMMON_HEADER__"
 
 // Compute transition probabilities between all possible qs states 
-void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns], 
-                                        const uchar all_qs[all_qs_nrow][ns+1], 
-                                        const arma::Mat<ushort>& alpha_index, 
-                                        const arma::Col<double>& alpha_vals, 
-                                        const arma::Mat<ushort>& pmat_index, 
-                                        const arma::Mat<double>& pmat_vals, 
-                                        const arma::Mat<ushort>& qmat_index, 
-                                        const arma::Col<double>& qmat_vals, 
-                                        const arma::uword ps[ns]) { 
+inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns], 
+                                               const uchar all_qs[all_qs_nrow][ns+1], 
+                                               const arma::Mat<ushort>& alpha_index, 
+                                               const arma::Col<double>& alpha_vals, 
+                                               const arma::Mat<ushort>& pmat_index, 
+                                               const arma::Mat<double>& pmat_vals, 
+                                               const arma::Mat<ushort>& qmat_index, 
+                                               const arma::Col<double>& qmat_vals, 
+                                               const arma::uword ps[ns]) { 
   
   // Note tprob_interval here. In all combinations of neighbors, only some of them 
   // can be observed in the wild. If we wraparound, then the number of neighbors is 
@@ -166,7 +166,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
       new_mat[i][j] = (uchar) init(i, j);
     }
   }
-  
+
   // Convert all_qs to char array 
   auto all_qs = new uchar[all_qs_nrow][ns+1]; 
   for ( uword i=0; i<all_qs_nrow; i++ ) { 
@@ -186,7 +186,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       old_ps[ old_mat[i][j] ]++; 
-      new_ps[ old_mat[i][j] ]++; 
+      new_ps[ old_mat[i][j] ]++; // necessary? TODO use memset? or do not do it ? 
     }
   }
   
@@ -194,7 +194,17 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   auto old_qs = new uchar[nr][nc][ns]; 
   auto new_qs = new uchar[nr][nc][ns]; 
   get_local_densities(old_qs, old_mat); 
-  get_local_densities(new_qs, old_mat); 
+  get_local_densities(new_qs, old_mat); // necessary? TODO use memcpy? or do not do it ? 
+  
+  // Matrix holding probability line 
+  auto old_pline = new uword[nr][nc]; 
+  auto new_pline = new uword[nr][nc]; 
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      old_pline[i][j] = one_prob_line(old_mat, i, j); 
+      new_pline[i][j] = one_prob_line(old_mat, i, j); // TODO use memcpy?
+    }
+  }
   
   // Initialize table with precomputed probabilities 
 #ifdef PRECOMPUTE_TRANS_PROBAS
@@ -243,6 +253,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
                                          qmat_index, 
                                          qmat_vals, 
                                          old_ps); 
+      // for ( uword l=0; l<all_qs_nrow; l++ ) { 
+      //   for ( ushort j=0; j<ns; j++ ) {
+      //     for ( ushort k=0; k<ns; k++ ) {
+      //       Rcpp::Rcout << "l: " << l << " j: " << j << " k: " << k << " " << 
+      //         tprobs[l][j][k] << " \n"; 
+      //     }
+      //   }
+      // }
 #endif 
       for ( uword i=0; i<nr; i++ ) { 
         
@@ -251,25 +269,18 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           uchar cstate = old_mat[i][j]; 
           
 #ifdef PRECOMPUTE_TRANS_PROBAS
-          // Get precomputed probas 
+          // Get precomputed line in probability table
+          uword line = old_pline[i][j]; 
           
-          // Get line in pre-computed transition probability table 
-          uword line = 0; 
-          for ( uchar k = 0; k<ns; k++ ) { 
-            line = line * (1+max_nb) + old_qs[i][j][k]; 
-          }
-          line -= 1; 
-          
-          // If we have constant neighborhood, then all_qs only contains the values 
-          // at each max_nb values, so we need to divide by 8 here to fall on the 
-          // right line in the table of probabilities. 
-          if ( wrap ) { 
-            line = (line+1) / max_nb - 1; 
-//             Rcpp::Rcout << "i: " << i << "j: " << j << " line: " << line << "\n"; 
-          }
+          // Rcpp::Rcout << "i: " << i << " j: " << j << " "; 
+          // for ( ushort k=0; k<ns; k++ ) {
+          //   Rcpp::Rcout << tprobs[line][cstate][k] << " "; 
+          // }
+          // Rcpp::Rcout << " (line: " << line << ")\n"; 
           
 #else
           // Normalized local densities to proportions
+          // TODO: use number_of_neighbors
           uword qs_total = 0; 
           for ( ushort k=0; k<ns; k++ ) { 
             qs_total += old_qs[i][j][k]; 
@@ -319,7 +330,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           }
           
           // Compute cumsum 
-          for ( ushort k=1; k<ns; k++ ) { 
+          for ( uchar k=1; k<ns; k++ ) { 
             ptrans[k] += ptrans[k-1];
           }
 #endif
@@ -342,7 +353,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
+            adjust_prob_lines(new_pline, new_mat, i, j); 
+#else
             adjust_local_densities(new_qs, i, j, cstate, new_cell_state); 
+#endif
           } 
         }
       }
@@ -351,6 +366,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
       memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
       memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
       memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
+      memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
       
     } // end of substep loop
     
