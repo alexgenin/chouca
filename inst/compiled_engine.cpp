@@ -67,8 +67,6 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
   // can be observed in the wild. If we wraparound, then the number of neighbors is 
   // constant, it is either 8 or 4. So we can compute the values in tprobs only at 
   // indices every 4 or 8 values. 
-  // TODO: in fact we could compute every one always, and divide by 4 or 8 when the 
-  // number of neighbors is constant. This reduces the size of tprobs.
   
   for ( uword l=0; l<all_qs_nrow; l++ ) { 
     
@@ -188,15 +186,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       old_ps[ old_mat[i][j] ]++; 
-      new_ps[ old_mat[i][j] ]++; // necessary? TODO use memset? or do not do it ? 
     }
   }
+  memcpy(new_ps, old_ps, sizeof(uword)*ns); 
   
   // Compute local densities 
   auto old_qs = new uchar[nr][nc][ns]; 
   auto new_qs = new uchar[nr][nc][ns]; 
   get_local_densities(old_qs, old_mat); 
-  get_local_densities(new_qs, old_mat); // necessary? TODO use memcpy? or do not do it ? 
+  memcpy(new_qs, old_qs, sizeof(uchar)*nr*nc*ns); 
   
   // Matrix holding probability line 
 #ifdef PRECOMPUTE_TRANS_PROBAS
@@ -205,9 +203,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       adjust_prob_line(old_pline, old_qs, i, j); 
-      adjust_prob_line(new_pline, old_qs, i, j); // TODO use memcpy?
     }
   }
+  memcpy(new_pline, old_pline, sizeof(uword)*nr*nc); 
   
   // Initialize table with precomputed probabilities 
   auto tprobs = new double[all_qs_nrow][ns][ns]; 
@@ -273,9 +271,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
 #ifdef PRECOMPUTE_TRANS_PROBAS
 #else
           // Normalized local densities to proportions
-          // TODO: consider adding column rows, so we get back to situation with fixed 
-          // number of neighbors also when we do not wrap. This would simplify/speedup
-          // things a lot for non-wrapping models. 
           uword qs_total = number_of_neighbors(i, j); 
           
           // Factor to convert the number of neighbors into the point at which the 
@@ -332,7 +327,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
           uchar new_cell_state = cstate; 
-          double rn = randunif(); // flip a coin
+          double rn = randunif(); // get random number
           for ( signed char k=(ns-1); k>=0; k-- ) { 
 #ifdef PRECOMPUTE_TRANS_PROBAS
             uword line = old_pline[i][j]; 

@@ -9,7 +9,7 @@ library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "c4974e7099147eb86d83077e002a4f93cbe4e063")
+                  "9feeda5e06adaa8290c1bc51cdafe685e7c4a431")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
