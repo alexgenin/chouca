@@ -9,10 +9,7 @@ library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "9a72d9ff7e1fa3ba441ab49657035c1a300ccaaf")
-
-CTRL_LIST_VERS <- c(2, 2)
-stopifnot(length(TEST_COMMITS) == length(CTRL_LIST_VERS))
+                  "c4974e7099147eb86d83077e002a4f93cbe4e063")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -23,23 +20,12 @@ BENCH_SIZES <- 2^seq(4, 10)
 NREPS       <- 3
 CXXF <- "-g -O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
+ENGINES <- c("compiled") 
 
-time_mod <- function(mod, init, control, niter, ctrl_ver) { 
-  if ( ctrl_ver == 1 ) { 
-    timings <- system.time({ 
-      # Translate control list into old syntax
-      control[["ca_engine"]] <- control[["engine"]]
-      control[["engine"]] <- NULL
-      control[["console_output_every"]] <- 1
-      control[["console_output"]] <- FALSE
-      a <- try(run_camodel(mod, init, niter = niter, control = control), 
-                silent = FALSE)
-    })
-  } else { 
-    timings <- system.time({ 
-      a <- try( run_camodel(mod, init, niter = niter, control = control) )
-    })
-  }
+time_mod <- function(mod, init, control, niter) { 
+  timings <- system.time({ 
+    a <- try( run_camodel(mod, init, niter = niter, control = control) )
+  })
   list(error = inherits(a, "try-error"), timings = timings)
 }
 
@@ -64,28 +50,22 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       cat(sprintf("Benching engine %s with size %s\n", engine, size))
       
       # Model used for benchmark
-      mod <- try({ musselbed() })
-      if ( inherits(mod, "try-error") ) { 
-        mod <- chouca:::ca_library("musselbed")
-      }
+      mod <- chouca:::ca_library("musselbed")
       
       # We use rectangles because we always want to test the package on rectangles
       init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
       tmax <- round(1000 * 1 / log(size))
       control[["engine"]] <- engine
       
-      # Get the control list version 
-      ctrl_ver <- CTRL_LIST_VERS[which(TEST_COMMITS == commit)]
-      
       # We first run a small simulation to warm up the engine (= compile the code)
-      warmup <- time_mod(mod, init, control, 10, ctrl_ver)
+      warmup <- time_mod(mod, init, control, 10)
       
       ldply(seq.int(NREPS), function(nrep) { 
         
         # Generate new matrix for each iteration
         init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
         
-        timings <- time_mod(mod, init, control, tmax, ctrl_ver)
+        timings <- time_mod(mod, init, control, tmax)
         
         mcells_per_s <- (tmax * size^2) / timings[["timings"]][["elapsed"]] / 1e6
         data.frame(nrep = nrep, size = size, tmax = tmax, 

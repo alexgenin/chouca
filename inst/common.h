@@ -120,8 +120,8 @@ inline void get_local_densities(uchar qs[nr][nc][ns],
   
 }
 
-inline double number_of_neighbors(const arma::uword i, 
-                                  const arma::uword j) { 
+inline uword number_of_neighbors(const arma::uword i, 
+                                 const arma::uword j) { 
   // When we do not wrap, the total number of neighbors depends on where we are 
   // in the matrix, e.g. first column or last row has missing neighbors. In that 
   // case, we need to correct for that. When wrapping is on, then the 
@@ -131,7 +131,7 @@ inline double number_of_neighbors(const arma::uword i,
   // 
   // The compiler will remove the if{} statements below at compile time if we are 
   // wrapping, making this function return a constant, defined on the line below:
-  double nnb = use_8_nb ? 8.0 : 4.0; 
+  uword nnb = use_8_nb ? 8 : 4; 
   
   // If we do not wrap and we use 8 neighbors, then we just need to substract from the 
   // total (maximum) counts. 
@@ -185,52 +185,63 @@ inline void adjust_prob_line(arma::uword prob_lines[nr][nc],
 
 // Adjust the local densities of the neighboring cells of a cell along with the lines 
 // of the precomputations. 
+#ifdef PRECOMPUTE_TRANS_PROBAS
 inline void adjust_local_density(uchar qs[nr][nc][ns], 
                                  uword pline[nr][nc], 
                                  const uword i, 
                                  const uword j, 
                                  const uchar from, 
                                  const uchar to) { 
-  
+#else
+inline void adjust_local_density(uchar qs[nr][nc][ns], 
+                                 const uword i, 
+                                 const uword j, 
+                                 const uchar from, 
+                                 const uchar to) { 
+#endif
   // Get neighbors to the left 
   if ( wrap ) { 
     
     // left 
     qs[i][(nc + j - 1) % nc][to]++; 
     qs[i][(nc + j - 1) % nc][from]--; 
-    adjust_prob_line(pline, qs, i, (nc + j - 1) % nc); 
     
     // right
     qs[i][(nc + j + 1) % nc][to]++; 
     qs[i][(nc + j + 1) % nc][from]--; 
-    adjust_prob_line(pline, qs, i, (nc + j + 1) % nc); 
     
     // up
     qs[(nr + i - 1) % nr][j][to]++; 
     qs[(nr + i - 1) % nr][j][from]--; 
-    adjust_prob_line(pline, qs, (nr + i - 1) % nr, j); 
     
     // down
     qs[(nr + i + 1) % nr][j][to]++;
     qs[(nr + i + 1) % nr][j][from]--;
+#ifdef PRECOMPUTE_TRANS_PROBAS
+    adjust_prob_line(pline, qs, i, (nc + j - 1) % nc); 
+    adjust_prob_line(pline, qs, i, (nc + j + 1) % nc); 
+    adjust_prob_line(pline, qs, (nr + i - 1) % nr, j); 
     adjust_prob_line(pline, qs, (nr + i + 1) % nr, j); 
+#endif
     
     if ( use_8_nb ) { 
       qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
       qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
-      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j - 1) % nc); 
       
       qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
       qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
-      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j + 1) % nc); 
       
       qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
       qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
-      adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j - 1) % nc); 
       
       qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
       qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
+#ifdef PRECOMPUTE_TRANS_PROBAS
+      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j - 1) % nc); 
+      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j + 1) % nc); 
+      adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j - 1) % nc); 
       adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j + 1) % nc); 
+#endif
     }
     
   } else { 
@@ -238,44 +249,60 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
     if ( i > 0 ) { 
       qs[i-1][j][to]++; // up
       qs[i-1][j][from]--;
+#ifdef PRECOMPUTE_TRANS_PROBAS
       adjust_prob_line(pline, qs, i-1, j); 
+#endif
     }
     if ( i < (nr-1) ) { 
       qs[i+1][j][to]++; // down
       qs[i+1][j][from]--; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
       adjust_prob_line(pline, qs, i+1, j); 
+#endif
     }
     if ( j > 0 ) { 
       qs[i][j-1][to]++; // left
       qs[i][j-1][from]--; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
       adjust_prob_line(pline, qs, i, j-1); 
+#endif
     }
     if ( j < (nc-1) ) { 
       qs[i][j+1][to]++; // right
       qs[i][j+1][from]--; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
       adjust_prob_line(pline, qs, i, j+1); 
+#endif
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
         qs[i-1][j-1][to]++; // upleft
         qs[i-1][j-1][from]--; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
         adjust_prob_line(pline, qs, i-1, j-1); 
+#endif
       }
       if ( i > 0 && j < (nc-1) ) { 
         qs[i-1][j+1][to]++; // upright
         qs[i-1][j+1][from]++; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
         adjust_prob_line(pline, qs, i-1, j+1); 
+#endif
       }
       if ( i < (nr-1) && j > 0 ) { 
         qs[i+1][j-1][from]++; // downleft
         qs[i+1][j-1][to]--; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
         adjust_prob_line(pline, qs, i+1, j-1); 
+#endif
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
         qs[i+1][j+1][to]++; // downright
         qs[i+1][j+1][from]--; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
         adjust_prob_line(pline, qs, i+1, j+1); 
+#endif
       }
     }
     

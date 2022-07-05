@@ -1,13 +1,14 @@
 # 
 # 
-# TODO: test of game of life 
+# TODO: 
+#   coralreef 
+#   
 # 
 
 test_that("Example models produce correct results", { 
 
   # 
   # GAME OF LIFE
-  # TODO: add a mechanism to indicate a model is deterministic
   # ------------
   gol <- ca_library("gameoflife")
   imat <- matrix(0, nrow = 6, ncol = 6)

@@ -118,8 +118,9 @@ camodel_compiled_engine <- function(alpha_index,
   if ( precompute_probas ) { 
     max_nb <- ifelse(use_8_nb, 8, 4)
     all_qs <- rep( list(seq(0, max_nb) ), each = ns)
-    all_qs <- as.matrix(do.call(expand.grid, all_qs)) # !!! very large matrix
-    # revert ??
+    # !!! very large matrix -> TODO: find a way to make this smaller
+    all_qs <- as.matrix(do.call(expand.grid, all_qs)) 
+    # revert because the math expects the states in that order
     all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
     colnames(all_qs) <- rownames(all_qs) <- NULL
     all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
@@ -134,7 +135,6 @@ camodel_compiled_engine <- function(alpha_index,
     # This is a dummy matrix just to make sure we pass something to the c++ function.
     all_qs <- matrix(0, nrow = 1, ncol = ns)
   }
-  print(all_qs) 
   
   # Replace size in compiled code
   cmaxlines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), cmaxlines)

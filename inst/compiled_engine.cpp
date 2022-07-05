@@ -166,14 +166,16 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
       new_mat[i][j] = (uchar) init(i, j);
     }
   }
-
+  
   // Convert all_qs to char array 
+#ifdef PRECOMPUTE_TRANS_PROBAS
   auto all_qs = new uchar[all_qs_nrow][ns+1]; 
   for ( uword i=0; i<all_qs_nrow; i++ ) { 
     for ( uword k=0; k<(ns+1); k++ ) { 
       all_qs[i][k] = (uchar) all_qs_arma(i, k); 
     }
   }
+#endif
   
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
@@ -197,6 +199,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   get_local_densities(new_qs, old_mat); // necessary? TODO use memcpy? or do not do it ? 
   
   // Matrix holding probability line 
+#ifdef PRECOMPUTE_TRANS_PROBAS
   auto old_pline = new uword[nr][nc]; 
   auto new_pline = new uword[nr][nc]; 
   for ( uword i=0; i<nr; i++ ) { 
@@ -207,7 +210,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   }
   
   // Initialize table with precomputed probabilities 
-#ifdef PRECOMPUTE_TRANS_PROBAS
   auto tprobs = new double[all_qs_nrow][ns][ns]; 
 #endif
   
@@ -269,36 +271,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           uchar cstate = old_mat[i][j]; 
           
 #ifdef PRECOMPUTE_TRANS_PROBAS
-          // Get precomputed line in probability table
-          uword line = old_pline[i][j]; 
-          
-          // Get line in pre-computed transition probability table 
-          uword nline = 0; 
-          for ( uchar k = 0; k<ns; k++ ) { 
-            nline = nline * (1+max_nb) + old_qs[i][j][k]; 
-          }
-          nline -= 1; 
-          
-          // If we have constant number of neighbors, then all_qs only contains the 
-          // values at each max_nb values, so we need to divide by 8 here to fall on the 
-          // right line in the table of probabilities. 
-          if ( wrap ) { 
-            nline = (nline+1) / max_nb - 1; 
-          }
-          
-          // Rcpp::Rcout << "i: " << i << " j: " << j << " "; 
-          // for ( ushort k=0; k<ns; k++ ) {
-          //   Rcpp::Rcout << tprobs[line][cstate][k] << " "; 
-          // }
-          // Rcpp::Rcout << " (line: " << line << ", nline: " << nline << ")\n"; 
-          
 #else
           // Normalized local densities to proportions
-          // TODO: use number_of_neighbors
-          uword qs_total = 0; 
-          for ( ushort k=0; k<ns; k++ ) { 
-            qs_total += old_qs[i][j][k]; 
-          }
+          // TODO: consider adding column rows, so we get back to situation with fixed 
+          // number of neighbors also when we do not wrap. This would simplify/speedup
+          // things a lot for non-wrapping models. 
+          uword qs_total = number_of_neighbors(i, j); 
           
           // Factor to convert the number of neighbors into the point at which the 
           // dependency on q is sampled.
@@ -357,6 +335,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           double rn = randunif(); // flip a coin
           for ( signed char k=(ns-1); k>=0; k-- ) { 
 #ifdef PRECOMPUTE_TRANS_PROBAS
+            uword line = old_pline[i][j]; 
             new_cell_state = rn < tprobs[line][cstate][k] ? k : new_cell_state; 
 #else 
             new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
@@ -367,7 +346,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
             adjust_local_density(new_qs, new_pline, i, j, cstate, new_cell_state); 
+#else 
+            adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
+#endif
 //             Rcpp::Rcout << " switch " << (int) cstate << " -> " << 
 //               (int) new_cell_state << "\n"; 
           } 
