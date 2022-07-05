@@ -4,9 +4,9 @@
 // 
 
 
-// #ifndef ARMA_NO_DEBUG
-// #define ARMA_NO_DEBUG
-// #endif 
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
 
 // Define some column names for clarity
 #define _from 0
@@ -201,8 +201,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   auto new_pline = new uword[nr][nc]; 
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
-      old_pline[i][j] = one_prob_line(old_mat, i, j); 
-      new_pline[i][j] = one_prob_line(old_mat, i, j); // TODO use memcpy?
+      adjust_prob_line(old_pline, old_qs, i, j); 
+      adjust_prob_line(new_pline, old_qs, i, j); // TODO use memcpy?
     }
   }
   
@@ -272,11 +272,25 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           // Get precomputed line in probability table
           uword line = old_pline[i][j]; 
           
+          // Get line in pre-computed transition probability table 
+          uword nline = 0; 
+          for ( uchar k = 0; k<ns; k++ ) { 
+            nline = nline * (1+max_nb) + old_qs[i][j][k]; 
+          }
+          nline -= 1; 
+          
+          // If we have constant number of neighbors, then all_qs only contains the 
+          // values at each max_nb values, so we need to divide by 8 here to fall on the 
+          // right line in the table of probabilities. 
+          if ( wrap ) { 
+            nline = (nline+1) / max_nb - 1; 
+          }
+          
           // Rcpp::Rcout << "i: " << i << " j: " << j << " "; 
           // for ( ushort k=0; k<ns; k++ ) {
           //   Rcpp::Rcout << tprobs[line][cstate][k] << " "; 
           // }
-          // Rcpp::Rcout << " (line: " << line << ")\n"; 
+          // Rcpp::Rcout << " (line: " << line << ", nline: " << nline << ")\n"; 
           
 #else
           // Normalized local densities to proportions
@@ -353,17 +367,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-            // NOTE: adjusting prob lines take too much time, but we could recompute 
-            // the lines only when we adjust qs, then just pick it up in the main loop. 
-            // NOTE2: if we get a sufficiently low number of updates, we could consider
-            // increasing the cost of the line-finding, which would mean we could get 
-            // back the combinatorics code from before, and all_qs would have a much 
-            // lower size. 
-            adjust_prob_lines(new_pline, new_mat, i, j); 
-#else
-            adjust_local_densities(new_qs, i, j, cstate, new_cell_state); 
-#endif
+            adjust_local_density(new_qs, new_pline, i, j, cstate, new_cell_state); 
+//             Rcpp::Rcout << " switch " << (int) cstate << " -> " << 
+//               (int) new_cell_state << "\n"; 
           } 
         }
       }
@@ -372,7 +378,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
       memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
       memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
       memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
+#ifdef PRECOMPUTE_TRANS_PROBAS
       memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
+#endif
       
     } // end of substep loop
     

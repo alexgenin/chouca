@@ -159,174 +159,17 @@ inline double number_of_neighbors(const arma::uword i,
   return nnb; 
 }
 
-inline void adjust_local_densities(uchar qs[nr][nc][ns], 
-                                   const uword i, 
-                                   const uword j, 
-                                   const uchar from, 
-                                   const uchar to) { 
-  
-  // Get neighbors to the left 
-  if ( wrap ) { 
-    
-    // left 
-    qs[i][(nc + j - 1) % nc][to]++; 
-    qs[i][(nc + j - 1) % nc][from]--; 
-    
-    // right
-    qs[i][(nc + j + 1) % nc][to]++; 
-    qs[i][(nc + j + 1) % nc][from]--; 
-    
-    // up
-    qs[(nr + i - 1) % nr][j][to]++; 
-    qs[(nr + i - 1) % nr][j][from]--; 
-    
-    // down
-    qs[(nr + i + 1) % nr][j][to]++;
-    qs[(nr + i + 1) % nr][j][from]--;
-    
-    if ( use_8_nb ) { 
-      
-      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
-      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
-      
-      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
-      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
-      
-      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
-      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
-      
-      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
-      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
-    }
-    
-  } else { 
-    
-    if ( i > 0 ) { 
-      qs[i-1][j][to]++; // up
-      qs[i-1][j][from]--;
-    }
-    if ( i < (nr-1) ) { 
-      qs[i+1][j][to]++; // down
-      qs[i+1][j][from]--; 
-    }
-    if ( j > 0 ) { 
-      qs[i][j-1][to]++; // left
-      qs[i][j-1][from]--; 
-    }
-    if ( j < (nc-1) ) { 
-      qs[i][j+1][to]++; // right
-      qs[i][j+1][from]--; 
-    }
-    
-    if ( use_8_nb ) { 
-      if ( i > 0 && j > 0 ) { 
-        qs[i-1][j-1][to]++; // upleft
-        qs[i-1][j-1][from]--; 
-      }
-      if ( i > 0 && j < (nc-1) ) { 
-        qs[i-1][j+1][to]++; // upright
-        qs[i-1][j+1][from]++; 
-      }
-      if ( i < (nr-1) && j > 0 ) { 
-        qs[i+1][j-1][from]++; // downleft
-        qs[i+1][j-1][to]--; 
-      }
-      if ( i < (nr-1) && j < (nc-1) ) { 
-        qs[i+1][j+1][to]++; // downright
-        qs[i+1][j+1][from]--; 
-      }
-    }
-    
-  }
-  
-}
-
-inline uword one_prob_line(const uchar m[nr][nc], 
-                           const uword i, 
-                           const uword j) { 
-  
-  // Compute the neighbor vector for this cell 
-  uchar this_qs[ns]; 
-  memset(this_qs, 0, sizeof(this_qs)); 
-  
-  if ( wrap ) { 
-    
-    uchar state_left = m[i][(nc + j - 1) % nc];
-    this_qs[state_left]++; // left 
-    
-    uchar state_right = m[i][(nc + j + 1) % nc];
-    this_qs[state_right]++; // right
-    
-    uchar state_up = m[(nr + i - 1) % nr][j];
-    this_qs[state_up]++; // up
-    
-    uchar state_down = m[(nr + i + 1) % nr][j];
-    this_qs[state_down]++; // down
-    
-    if ( use_8_nb ) { 
-      
-      uchar state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
-      this_qs[state_upleft]++; // upleft
-      
-      uchar state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
-      this_qs[state_upright]++; // upright
-      
-      uchar state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
-      this_qs[state_downleft]++; // downleft
-      
-      uchar state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
-      this_qs[state_downright]++; // downright
-    }
-    
-  } else { 
-    
-    if ( i > 0 ) { 
-      uchar state_up = m[i-1][j];
-      this_qs[state_up]++; // up
-    }
-    if ( i < (nr-1) ) { 
-      uchar state_down = m[i+1][j]; 
-      this_qs[state_down]++; // down
-    }
-    if ( j > 0 ) { 
-      uchar state_left = m[i][j-1]; 
-      this_qs[state_left]++; // left
-    }
-    if ( j < (nc-1) ) { 
-      uchar state_right = m[i][j+1]; 
-      this_qs[state_right]++; // right
-    }
-    
-    if ( use_8_nb ) { 
-      if ( i > 0 && j > 0 ) { 
-        uchar state_upleft = m[i-1][j-1]; 
-        this_qs[state_upleft]++; // upleft
-      }
-      if ( i > 0 && j < (nc-1) ) { 
-        uchar state_upright = m[i-1][j+1]; 
-        this_qs[state_upright]++; // upright
-      }
-      if ( i < (nr-1) && j > 0 ) { 
-        uchar state_downleft = m[i+1][j-1]; 
-        this_qs[state_downleft]++; // downleft
-      }
-      if ( i < (nr-1) && j < (nc-1) ) { 
-        uchar state_downright = m[i+1][j+1]; 
-        this_qs[state_downright]++; // downright
-      }
-    }
-    
-  }
-  
-  // Rcpp::Rcout << "_adj i: " << i << " j: " << j << " "; 
-  // for ( uchar k=0; k<ns; k++ ) { 
-  //   Rcpp::Rcout << (int) this_qs[k] << " "; 
-  // }
+// This function will adjust the probability lines to all neighbors of a cell that has 
+// changed state. 
+inline void adjust_prob_line(arma::uword prob_lines[nr][nc], 
+                             const uchar qs[nr][nc][ns], 
+                             const uword i, 
+                             const uword j) { 
   
   // Get line in pre-computed transition probability table 
   uword line = 0; 
   for ( uchar k = 0; k<ns; k++ ) { 
-    line = line * (1+max_nb) + this_qs[k]; 
+    line = line * (1+max_nb) + qs[i][j][k]; 
   }
   line -= 1; 
   
@@ -337,89 +180,108 @@ inline uword one_prob_line(const uchar m[nr][nc],
     line = (line+1) / max_nb - 1; 
   }
   
-//   Rcpp::Rcout << " line: " << line << "\n"; 
-  
-  return line; 
+  prob_lines[i][j] = line; 
 }
 
-// This function will adjust the probability lines to all neighbors of a cell that has 
-// changed state. 
-inline void adjust_prob_lines(arma::uword prob_line[nr][nc], 
-                              const uchar mat[nr][nc], 
-                              const uword i, 
-                              const uword j) { 
+// Adjust the local densities of the neighboring cells of a cell along with the lines 
+// of the precomputations. 
+inline void adjust_local_density(uchar qs[nr][nc][ns], 
+                                 uword pline[nr][nc], 
+                                 const uword i, 
+                                 const uword j, 
+                                 const uchar from, 
+                                 const uchar to) { 
   
   // Get neighbors to the left 
   if ( wrap ) { 
     
     // left 
-    prob_line[i][(nc + j - 1) % nc] = one_prob_line(mat, i, (nc + j - 1) % nc); 
+    qs[i][(nc + j - 1) % nc][to]++; 
+    qs[i][(nc + j - 1) % nc][from]--; 
+    adjust_prob_line(pline, qs, i, (nc + j - 1) % nc); 
     
     // right
-    prob_line[i][(nc + j + 1) % nc] = one_prob_line(mat, i, (nc + j + 1) % nc); 
+    qs[i][(nc + j + 1) % nc][to]++; 
+    qs[i][(nc + j + 1) % nc][from]--; 
+    adjust_prob_line(pline, qs, i, (nc + j + 1) % nc); 
     
     // up
-    prob_line[(nr + i - 1) % nr][j] = one_prob_line(mat, (nr + i - 1) % nr, j); 
+    qs[(nr + i - 1) % nr][j][to]++; 
+    qs[(nr + i - 1) % nr][j][from]--; 
+    adjust_prob_line(pline, qs, (nr + i - 1) % nr, j); 
     
     // down
-    prob_line[(nr + i + 1) % nr][j] = one_prob_line(mat, (nr + i - 1) % nr, j); 
+    qs[(nr + i + 1) % nr][j][to]++;
+    qs[(nr + i + 1) % nr][j][from]--;
+    adjust_prob_line(pline, qs, (nr + i + 1) % nr, j); 
     
     if ( use_8_nb ) { 
+      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
+      qs[(nr + i - 1) % nr][(nc + j - 1) % nc][from]--; 
+      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j - 1) % nc); 
       
-      // upleft
-      prob_line[(nr + i - 1) % nr][(nc + j - 1) % nc] = 
-        one_prob_line(mat, (nr + i - 1) % nr, (nc + j - 1) % nc); 
+      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][to]++; // upright
+      qs[(nr + i - 1) % nr][(nc + j + 1) % nc][from]--; 
+      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j + 1) % nc); 
       
-      // upright
-      prob_line[(nr + i - 1) % nr][(nc + j + 1) % nc] = 
-        one_prob_line(mat, (nr + i - 1) % nr, (nc + j + 1) % nc); 
+      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][to]++; // downleft
+      qs[(nr + i + 1) % nr][(nc + j - 1) % nc][from]--; 
+      adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j - 1) % nc); 
       
-      // downleft
-      prob_line[(nr + i + 1) % nr][(nc + j - 1) % nc] = 
-        one_prob_line(mat, (nr + i + 1) % nr, (nc + j - 1) % nc); 
-        
-      // downright
-      prob_line[(nr + i + 1) % nr][(nc + j + 1) % nc] = 
-        one_prob_line(mat, (nr + i + 1) % nr, (nc + j + 1) % nc); 
+      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
+      qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
+      adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j + 1) % nc); 
     }
     
   } else { 
     
     if ( i > 0 ) { 
-      prob_line[i-1][j] = one_prob_line(mat, i-1, j); 
+      qs[i-1][j][to]++; // up
+      qs[i-1][j][from]--;
+      adjust_prob_line(pline, qs, i-1, j); 
     }
     if ( i < (nr-1) ) { 
-      prob_line[i+1][j] = one_prob_line(mat, i+1, j); 
+      qs[i+1][j][to]++; // down
+      qs[i+1][j][from]--; 
+      adjust_prob_line(pline, qs, i+1, j); 
     }
     if ( j > 0 ) { 
-      prob_line[i][j-1] = one_prob_line(mat, i, j-1); 
+      qs[i][j-1][to]++; // left
+      qs[i][j-1][from]--; 
+      adjust_prob_line(pline, qs, i, j-1); 
     }
     if ( j < (nc-1) ) { 
-      prob_line[i][j+1] = one_prob_line(mat, i, j+1); 
+      qs[i][j+1][to]++; // right
+      qs[i][j+1][from]--; 
+      adjust_prob_line(pline, qs, i, j+1); 
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
-        // upleft
-        prob_line[i-1][j-1] = one_prob_line(mat, i-1, j-1); 
+        qs[i-1][j-1][to]++; // upleft
+        qs[i-1][j-1][from]--; 
+        adjust_prob_line(pline, qs, i-1, j-1); 
       }
       if ( i > 0 && j < (nc-1) ) { 
-        // upright
-        prob_line[i-1][j+1] = one_prob_line(mat, i-1, j+1); 
+        qs[i-1][j+1][to]++; // upright
+        qs[i-1][j+1][from]++; 
+        adjust_prob_line(pline, qs, i-1, j+1); 
       }
       if ( i < (nr-1) && j > 0 ) { 
-        // downleft
-        prob_line[i+1][j-1] = one_prob_line(mat, i+1, j-1); 
+        qs[i+1][j-1][from]++; // downleft
+        qs[i+1][j-1][to]--; 
+        adjust_prob_line(pline, qs, i+1, j-1); 
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
-        // downright
-        prob_line[i+1][j+1] = one_prob_line(mat, i+1, j+1); 
+        qs[i+1][j+1][to]++; // downright
+        qs[i+1][j+1][from]--; 
+        adjust_prob_line(pline, qs, i+1, j+1); 
       }
     }
     
   }
+  
 }
-
 
 void console_callback_wrap(const arma::uword iter, 
                            const arma::uword ps[ns], 
