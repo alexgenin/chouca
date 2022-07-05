@@ -1,6 +1,6 @@
 # 
 # Make sure the compiled engine always returns the same results regardless of 
-# compilation options. 
+# whether we precompute the probabilities or not. 
 # 
 
 ncols <- 128
@@ -22,6 +22,7 @@ initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
 iters <- 256
 # iters <- 1
 control <- list(save_covers_every = 1, 
+                console_output_every = 0, 
                 engine = "compiled", 
                 precompute_probas = TRUE)
 set.seed(123)
@@ -30,13 +31,11 @@ set.seed(123)
 o2 <- run_camodel(mod, initmm, iters, 
                   control = { control[["precompute_probas"]] <- FALSE; control })
 
-# benchmark_compiled_model(mod, initmm, nrepeats = 1) 
-
-par(mfrow = c(1, 2))
-ts1 <- o[["output"]][["covers"]]
-matplot(ts1[ ,1], ts1[ ,-1], type = "l")
-ts2 <- o2[["output"]][["covers"]]
-matplot(ts2[ ,1], ts2[ ,-1], type = "l")
+# par(mfrow = c(1, 2))
+# ts1 <- o[["output"]][["covers"]]
+# matplot(ts1[ ,1], ts1[ ,-1], type = "l")
+# ts2 <- o2[["output"]][["covers"]]
+# matplot(ts2[ ,1], ts2[ ,-1], type = "l")
 
 expect_true({ 
   all( abs(ts1 - ts2) < 1e-8 )

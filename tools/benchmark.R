@@ -9,7 +9,7 @@ library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "9feeda5e06adaa8290c1bc51cdafe685e7c4a431")
+                  "f8dea11cdb3493bad21ac78569fc69561ffb6325")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -56,6 +56,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
       init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
       tmax <- round(1000 * 1 / log(size))
       control[["engine"]] <- engine
+      control[["precompute_probas"]] <- TRUE
       
       # We first run a small simulation to warm up the engine (= compile the code)
       warmup <- time_mod(mod, init, control, 10)
@@ -82,7 +83,7 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
 
 
 
-# Benchmark chouca 
+# Benchmark last commit  
 if ( FALSE ) { 
   COMMIT_LAST <- tail(TEST_COMMITS, 1)
   bench_engines <- mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST)

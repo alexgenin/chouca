@@ -4,9 +4,9 @@
 // 
 
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
 
 // Define some column names for clarity
 #define _from 0
@@ -165,8 +165,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
     }
   }
   
-  // Convert all_qs to char array 
 #ifdef PRECOMPUTE_TRANS_PROBAS
+  // Convert all_qs to char array 
   auto all_qs = new uchar[all_qs_nrow][ns+1]; 
   for ( uword i=0; i<all_qs_nrow; i++ ) { 
     for ( uword k=0; k<(ns+1); k++ ) { 
@@ -196,8 +196,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   get_local_densities(old_qs, old_mat); 
   memcpy(new_qs, old_qs, sizeof(uchar)*nr*nc*ns); 
   
-  // Matrix holding probability line 
 #ifdef PRECOMPUTE_TRANS_PROBAS
+  // Matrix holding probability line 
   auto old_pline = new uword[nr][nc]; 
   auto new_pline = new uword[nr][nc]; 
   for ( uword i=0; i<nr; i++ ) { 
@@ -242,90 +242,91 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
       snapshot_callback_wrap(iter, old_mat, snapshot_callback); 
     }
     
-    for ( uword substep=0; substep < substeps; substep++ ) { 
 #ifdef PRECOMPUTE_TRANS_PROBAS
-      precompute_transition_probabilites(tprobs, 
-                                         all_qs, 
-                                         alpha_index, 
-                                         alpha_vals, 
-                                         pmat_index, 
-                                         pmat_vals, 
-                                         qmat_index, 
-                                         qmat_vals, 
-                                         old_ps); 
-      // for ( uword l=0; l<all_qs_nrow; l++ ) { 
-      //   for ( ushort j=0; j<ns; j++ ) {
-      //     for ( ushort k=0; k<ns; k++ ) {
-      //       Rcpp::Rcout << "l: " << l << " j: " << j << " k: " << k << " " << 
-      //         tprobs[l][j][k] << " \n"; 
-      //     }
-      //   }
-      // }
+    precompute_transition_probabilites(tprobs, 
+                                      all_qs, 
+                                      alpha_index, 
+                                      alpha_vals, 
+                                      pmat_index, 
+                                      pmat_vals, 
+                                      qmat_index, 
+                                      qmat_vals, 
+                                      old_ps); 
+    // for ( uword l=0; l<all_qs_nrow; l++ ) { 
+    //   for ( ushort j=0; j<ns; j++ ) {
+    //     for ( ushort k=0; k<ns; k++ ) {
+    //       Rcpp::Rcout << "l: " << l << " j: " << j << " k: " << k << " " << 
+    //         tprobs[l][j][k] << " \n"; 
+    //     }
+    //   }
+    // }
 #endif 
-      for ( uword i=0; i<nr; i++ ) { 
+    
+    for ( uword i=0; i<nr; i++ ) { 
+      
+      for ( uword j=0; j<nc; j++ ) { 
+          
+        uchar cstate = old_mat[i][j]; 
+          
+#ifndef PRECOMPUTE_TRANS_PROBAS
+        // Normalized local densities to proportions
+        uword qs_total = number_of_neighbors(i, j); 
         
-        for ( uword j=0; j<nc; j++ ) { 
+        // Factor to convert the number of neighbors into the point at which the 
+        // dependency on q is sampled.
+        uword qpointn_factorf = (xpoints - 1) / qs_total; 
+        
+        // Compute probability transitions 
+        for ( ushort to=0; to<ns; to++ ) { 
+          // Init probability
+          ptrans[to] = 0; 
           
-          uchar cstate = old_mat[i][j]; 
-          
-#ifdef PRECOMPUTE_TRANS_PROBAS
-#else
-          // Normalized local densities to proportions
-          uword qs_total = number_of_neighbors(i, j); 
-          
-          // Factor to convert the number of neighbors into the point at which the 
-          // dependency on q is sampled.
-          uword qpointn_factorf = (xpoints - 1) / qs_total; 
-          
-          // Compute probability transitions 
-          for ( ushort to=0; to<ns; to++ ) { 
-            // Init probability
-            ptrans[to] = 0; 
-            
-            // Scan the table of alphas 
-            for ( uword k=0; k<alpha_nrow; k++ ) { 
-              ptrans[to] += 
-                ( alpha_index(k, _from) == cstate ) * 
-                ( alpha_index(k, _to) == to) * 
-                alpha_vals(k); 
-            }
-            
-            // Scan the table of pmat to reconstruct probabilities -> where is ps?
-            for ( uword k=0; k<pmat_nrow; k++ ) { 
-              ptrans[to] += 
-                ( pmat_index(k, _from) == cstate ) * 
-                ( pmat_index(k, _to) == to) * 
-                pmat_vals(k, _coef) * pow( old_ps[pmat_index(k, _state)] / ncells, 
-                                           pmat_vals(k, _expo) );
-            }
-            
-            // Scan the table of qmat to reconstruct probabilities 
-            for ( uword k=0; k<qmat_nrow; k++ ) { 
-              
-              // Lookup which point in the qs function we need to use for the 
-              // current neighbor situation.
-              uword qthis = old_qs[i][j][qmat_index(k, _state)] * qpointn_factorf;
-              
-              ptrans[to] += 
-                ( qmat_index(k, _from) == cstate ) * 
-                ( qmat_index(k, _to) == to) * 
-                // Given the observed local abundance of this state, which line in 
-                // qmat should be retained ? 
-                ( qmat_index(k, _qs) == qthis ) * 
-                qmat_vals(k); 
-            }
+          // Scan the table of alphas 
+          for ( uword k=0; k<alpha_nrow; k++ ) { 
+            ptrans[to] += 
+              ( alpha_index(k, _from) == cstate ) * 
+              ( alpha_index(k, _to) == to) * 
+              alpha_vals(k); 
           }
           
-          // Compute cumsum 
-          for ( uchar k=1; k<ns; k++ ) { 
-            ptrans[k] += ptrans[k-1];
+          // Scan the table of pmat to reconstruct probabilities -> where is ps?
+          for ( uword k=0; k<pmat_nrow; k++ ) { 
+            ptrans[to] += 
+              ( pmat_index(k, _from) == cstate ) * 
+              ( pmat_index(k, _to) == to) * 
+              pmat_vals(k, _coef) * pow( old_ps[pmat_index(k, _state)] / ncells, 
+                                          pmat_vals(k, _expo) );
           }
+          
+          // Scan the table of qmat to reconstruct probabilities 
+          for ( uword k=0; k<qmat_nrow; k++ ) { 
+            
+            // Lookup which point in the qs function we need to use for the 
+            // current neighbor situation.
+            uword qthis = old_qs[i][j][qmat_index(k, _state)] * qpointn_factorf;
+            
+            ptrans[to] += 
+              ( qmat_index(k, _from) == cstate ) * 
+              ( qmat_index(k, _to) == to) * 
+              // Given the observed local abundance of this state, which line in 
+              // qmat should be retained ? 
+              ( qmat_index(k, _qs) == qthis ) * 
+              qmat_vals(k); 
+          }
+        }
+        
+        // Compute cumsum 
+        for ( uchar k=1; k<ns; k++ ) { 
+          ptrans[k] += ptrans[k-1];
+        }
 #endif
-          // Check if we actually transition.  
-          // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
-          //               ^ p0 < rn < (p0+p1) => p1 wins
-          // Of course the sum of probabilities must be lower than one, otherwise we are 
-          // making an approximation since the random number is always below one. 
+        // Check if we actually transition.  
+        // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
+        //               ^ p0 < rn < (p0+p1) => p1 wins
+        // Of course the sum of probabilities must be lower than one, otherwise we are 
+        // making an approximation since the random number is always below one. 
+        for ( uword substep=0; substep < substeps; substep++ ) { 
+          
           uchar new_cell_state = cstate; 
           double rn = randunif(); // get random number
           for ( signed char k=(ns-1); k>=0; k-- ) { 
@@ -348,19 +349,21 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
 #endif
 //             Rcpp::Rcout << " switch " << (int) cstate << " -> " << 
 //               (int) new_cell_state << "\n"; 
+            // If the transition occurs in one of the substeps, we break the for loop
+            break; 
           } 
-        }
+        } // end of substep loop
       }
-      
-      // Copy old matrix to new, etc. 
-      memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
-      memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
-      memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
+    } 
+    
+    // Copy old matrix to new, etc. 
+    memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
+    memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
+    memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
 #ifdef PRECOMPUTE_TRANS_PROBAS
-      memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
+    memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
 #endif
       
-    } // end of substep loop
     
     iter++; 
   }
