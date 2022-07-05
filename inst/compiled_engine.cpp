@@ -4,9 +4,9 @@
 // 
 
 
-// #ifndef ARMA_NO_DEBUG
-// #define ARMA_NO_DEBUG
-// #endif 
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
 
 // Define some column names for clarity
 #define _from 0
@@ -259,6 +259,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             line = line * (1+max_nb) + old_qs[i][j][k]; 
           }
           line -= 1; 
+          
+          // If we have constant neighborhood, then all_qs only contains the values 
+          // at each max_nb values, so we need to divide by 8 here to fall on the 
+          // right line in the table of probabilities. 
+          if ( wrap ) { 
+            line = (line+1) / max_nb - 1; 
+//             Rcpp::Rcout << "i: " << i << "j: " << j << " line: " << line << "\n"; 
+          }
           
 #else
           // Normalized local densities to proportions

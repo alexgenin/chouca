@@ -115,13 +115,24 @@ camodel_compiled_engine <- function(alpha_index,
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   
   # Make the table with all combinations of qs 
-  max_nb <- ifelse(use_8_nb, 8, 4)
-  all_qs <- rep( list(seq(0, max_nb) ), each = ns)
-  all_qs <- as.matrix(do.call(expand.grid, all_qs)) # !!! very large matrix
-  all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
-  colnames(all_qs) <- rownames(all_qs) <- NULL
-  all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
-  all_qs <- all_qs[-1, ] # this has sum zero which produces division by zero
+  if ( precompute_probas ) { 
+    max_nb <- ifelse(use_8_nb, 8, 4)
+    all_qs <- rep( list(seq(0, max_nb) ), each = ns)
+    all_qs <- as.matrix(do.call(expand.grid, all_qs)) # !!! very large matrix
+    all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
+    colnames(all_qs) <- rownames(all_qs) <- NULL
+    all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
+    
+    # If the number of neighbors is constant, we can discard some data here. 
+    if ( wrap ) { 
+      all_qs <- all_qs[seq(0, nrow(all_qs)-1) %% max_nb == 0, ]
+    }
+    
+    all_qs <- all_qs[-1, ] # this has sum zero which produces division by zero. Discard it.
+  } else { 
+    # This is a dummy matrix just to make sure we pass something to the c++ function.
+    all_qs <- matrix(0, nrow = 1, ncol = ns)
+  }
   
   # Replace size in compiled code
   cmaxlines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), cmaxlines)

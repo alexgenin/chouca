@@ -8,6 +8,13 @@ expect_warning({
                                        alpha = 0.2))
 })
 
+expect_error({ 
+  camodel(transition(from = "a", to = "b", ~ 1), 
+          parms = list(p = 1), 
+          neighbors = 4, 
+          wrap = TRUE)
+}, "no parameters must be named")
+
 
 # Test updating of models. Internal coefficient matrix should have changed 
 #TODO
