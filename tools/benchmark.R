@@ -8,12 +8,10 @@ library(ggplot2)
 library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
-TEST_COMMITS <- c("1b889584e49d8af12a7ce11059445b5d987a0d00", # 2022-04-30
-                  "4e35aa5e408fc1ae29ffc7ba3c2803b0d9ef1510", 
-                  "724838a11277dd38d15fd661bfa391fc14f6f7df", 
-                  "fea6ff41c3cda84e138012bc6a719327a8aba56f")
+TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
+                  "9a72d9ff7e1fa3ba441ab49657035c1a300ccaaf")
 
-CTRL_LIST_VERS <- c(1, 2, 2, 2)
+CTRL_LIST_VERS <- c(2, 2)
 stopifnot(length(TEST_COMMITS) == length(CTRL_LIST_VERS))
 
 # Download latest chouca package in directory, compile and load it 

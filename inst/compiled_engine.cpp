@@ -354,6 +354,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
 #ifdef PRECOMPUTE_TRANS_PROBAS
+            // NOTE: adjusting prob lines take too much time, but we could recompute 
+            // the lines only when we adjust qs, then just pick it up in the main loop. 
+            // NOTE2: if we get a sufficiently low number of updates, we could consider
+            // increasing the cost of the line-finding, which would mean we could get 
+            // back the combinatorics code from before, and all_qs would have a much 
+            // lower size. 
             adjust_prob_lines(new_pline, new_mat, i, j); 
 #else
             adjust_local_densities(new_qs, i, j, cstate, new_cell_state); 
