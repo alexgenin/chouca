@@ -31,6 +31,13 @@ static inline double randunif() {
 }
 
 
+inline uword intpow(uchar a, uchar b) { 
+  uword p = 1; 
+  for ( uchar k=0; k<b; k++ ) { 
+    p *= a; 
+  }
+  return p; 
+}
 
 inline void get_local_densities(uchar qs[nr][nc][ns], 
                                 const uchar m[nr][nc]) { 
@@ -161,10 +168,10 @@ inline uword number_of_neighbors(const arma::uword i,
 
 // This function will adjust the probability lines to all neighbors of a cell that has 
 // changed state. 
-inline void adjust_prob_line(arma::uword prob_lines[nr][nc], 
-                             const uchar qs[nr][nc][ns], 
-                             const uword i, 
-                             const uword j) { 
+inline void set_prob_line(arma::uword prob_lines[nr][nc], 
+                          const uchar qs[nr][nc][ns], 
+                          const uword i, 
+                          const uword j) { 
   
   // Get line in pre-computed transition probability table 
   uword line = 0; 
@@ -176,29 +183,22 @@ inline void adjust_prob_line(arma::uword prob_lines[nr][nc],
   // If we have constant number of neighbors, then all_qs only contains the 
   // values at each max_nb values, so we need to divide by 8 here to fall on the 
   // right line in the table of probabilities. 
-  if ( wrap ) { 
-    line = (line+1) / max_nb - 1; 
-  }
+  // TODO: reenable me
+  // if ( wrap ) { 
+  //   line = (line+1) / max_nb - 1; 
+  // }
   
   prob_lines[i][j] = line; 
 }
 
 // Adjust the local densities of the neighboring cells of a cell along with the lines 
 // of the precomputations. 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-inline void adjust_local_density(uchar qs[nr][nc][ns], 
-                                 uword pline[nr][nc], 
-                                 const uword i, 
-                                 const uword j, 
-                                 const uchar from, 
-                                 const uchar to) { 
-#else
 inline void adjust_local_density(uchar qs[nr][nc][ns], 
                                  const uword i, 
                                  const uword j, 
                                  const uchar from, 
                                  const uchar to) { 
-#endif
+  
   // Get neighbors to the left 
   if ( wrap ) { 
     
@@ -217,12 +217,6 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
     // down
     qs[(nr + i + 1) % nr][j][to]++;
     qs[(nr + i + 1) % nr][j][from]--;
-#ifdef PRECOMPUTE_TRANS_PROBAS
-    adjust_prob_line(pline, qs, i, (nc + j - 1) % nc); 
-    adjust_prob_line(pline, qs, i, (nc + j + 1) % nc); 
-    adjust_prob_line(pline, qs, (nr + i - 1) % nr, j); 
-    adjust_prob_line(pline, qs, (nr + i + 1) % nr, j); 
-#endif
     
     if ( use_8_nb ) { 
       qs[(nr + i - 1) % nr][(nc + j - 1) % nc][to]++; // upleft
@@ -236,12 +230,6 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
       
       qs[(nr + i + 1) % nr][(nc + j + 1) % nc][to]++; // downright
       qs[(nr + i + 1) % nr][(nc + j + 1) % nc][from]--;
-#ifdef PRECOMPUTE_TRANS_PROBAS
-      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j - 1) % nc); 
-      adjust_prob_line(pline, qs, (nr + i - 1) % nr, (nc + j + 1) % nc); 
-      adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j - 1) % nc); 
-      adjust_prob_line(pline, qs, (nr + i + 1) % nr, (nc + j + 1) % nc); 
-#endif
     }
     
   } else { 
@@ -249,60 +237,124 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
     if ( i > 0 ) { 
       qs[i-1][j][to]++; // up
       qs[i-1][j][from]--;
-#ifdef PRECOMPUTE_TRANS_PROBAS
-      adjust_prob_line(pline, qs, i-1, j); 
-#endif
     }
     if ( i < (nr-1) ) { 
       qs[i+1][j][to]++; // down
       qs[i+1][j][from]--; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-      adjust_prob_line(pline, qs, i+1, j); 
-#endif
     }
     if ( j > 0 ) { 
       qs[i][j-1][to]++; // left
       qs[i][j-1][from]--; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-      adjust_prob_line(pline, qs, i, j-1); 
-#endif
     }
     if ( j < (nc-1) ) { 
       qs[i][j+1][to]++; // right
       qs[i][j+1][from]--; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-      adjust_prob_line(pline, qs, i, j+1); 
-#endif
     }
     
     if ( use_8_nb ) { 
       if ( i > 0 && j > 0 ) { 
         qs[i-1][j-1][to]++; // upleft
         qs[i-1][j-1][from]--; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-        adjust_prob_line(pline, qs, i-1, j-1); 
-#endif
       }
       if ( i > 0 && j < (nc-1) ) { 
         qs[i-1][j+1][to]++; // upright
         qs[i-1][j+1][from]++; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-        adjust_prob_line(pline, qs, i-1, j+1); 
-#endif
       }
       if ( i < (nr-1) && j > 0 ) { 
         qs[i+1][j-1][from]++; // downleft
         qs[i+1][j-1][to]--; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-        adjust_prob_line(pline, qs, i+1, j-1); 
-#endif
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
         qs[i+1][j+1][to]++; // downright
         qs[i+1][j+1][from]--; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-        adjust_prob_line(pline, qs, i+1, j+1); 
-#endif
+      }
+    }
+    
+  }
+  
+}
+
+// This is the adjustment to the line at which to get the probability in the 
+// precomputed probability table. 
+// NOTE: we used a signed integer here because the pline adjustment can be negative 
+inline sword pline_adjustment(uword from, uword to) { 
+  return intpow(max_nb+1, ns-1-to) - intpow(max_nb+1, ns-1-from); 
+}
+
+inline void adjust_nb_plines(uword pline[nr][nc], 
+                             const uword i, 
+                             const uword j, 
+                             const uchar from, 
+                             const uchar to) { 
+  
+  // Get neighbors to the left 
+  if ( wrap ) { 
+    
+    // left 
+    // Rcpp::Rcout << "adjusting_pline" << "\n"; 
+    // Rcpp::Rcout << "pline_old: " << pline[i][(nc + j - 1) % nc] << "\n"; 
+    pline[i][(nc + j - 1) % nc] += pline_adjustment(from, to); 
+    // Rcpp::Rcout << "pline_adj: " << pline_adjustment(from, to) << "\n"; 
+    // Rcpp::Rcout << "pline_new: " << pline[i][(nc + j - 1) % nc] << "\n"; 
+    
+    // right
+    pline[i][(nc + j + 1) % nc] += pline_adjustment(from, to); 
+    
+    // up
+    pline[(nr + i - 1) % nr][j] += pline_adjustment(from, to); 
+    
+    // down
+    pline[(nr + i + 1) % nr][j] += pline_adjustment(from, to); 
+    
+    if ( use_8_nb ) { 
+      // upleft
+      pline[(nr + i - 1) % nr][(nc + j - 1) % nc] += pline_adjustment(from, to); 
+      
+      // upright
+      pline[(nr + i - 1) % nr][(nc + j + 1) % nc] += pline_adjustment(from, to); 
+      
+      // downleft
+      pline[(nr + i + 1) % nr][(nc + j - 1) % nc] += pline_adjustment(from, to); 
+      
+      // downright
+      pline[(nr + i + 1) % nr][(nc + j + 1) % nc] += pline_adjustment(from, to); 
+    }
+    
+  } else { 
+    
+    // left
+    if ( i > 0 ) { 
+      pline[i-1][j] += pline_adjustment(from, to); 
+    }
+    // right
+    if ( i < (nr-1) ) { 
+      pline[i+1][j] += pline_adjustment(from, to); 
+    }
+    // up
+    if ( j > 0 ) { 
+      pline[i][j-1] += pline_adjustment(from, to); 
+    }
+    // down
+    if ( j < (nc-1) ) { 
+      pline[i][j+1] += pline_adjustment(from, to); 
+    }
+    
+    if ( use_8_nb ) { 
+      // upleft
+      if ( i > 0 && j > 0 ) { 
+        pline[i-1][j-1] += pline_adjustment(from, to); 
+      }
+      // upright
+      if ( i > 0 && j < (nc-1) ) { 
+        pline[i-1][j+1] += pline_adjustment(from, to); 
+      }
+      // downleft
+      if ( i < (nr-1) && j > 0 ) { 
+        pline[i+1][j-1] += pline_adjustment(from, to); 
+      }
+      // downrighgt
+      if ( i < (nr-1) && j < (nc-1) ) { 
+        pline[i+1][j+1] += pline_adjustment(from, to); 
       }
     }
     

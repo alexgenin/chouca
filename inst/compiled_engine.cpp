@@ -191,6 +191,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   memcpy(new_ps, old_ps, sizeof(uword)*ns); 
   
   // Compute local densities 
+//   TODO: we just use this to initialize pline (and for debugging, but we should 
+//   get rid of it).
   auto old_qs = new uchar[nr][nc][ns]; 
   auto new_qs = new uchar[nr][nc][ns]; 
   get_local_densities(old_qs, old_mat); 
@@ -202,7 +204,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   auto new_pline = new uword[nr][nc]; 
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
-      adjust_prob_line(old_pline, old_qs, i, j); 
+      set_prob_line(old_pline, old_qs, i, j); 
     }
   }
   memcpy(new_pline, old_pline, sizeof(uword)*nr*nc); 
@@ -333,7 +335,36 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           for ( signed char k=(ns-1); k>=0; k-- ) { 
 #ifdef PRECOMPUTE_TRANS_PROBAS
             uword line = old_pline[i][j]; 
+            
+            // Also print the line at which it is supposed to be 
+            
+            // Get line in pre-computed transition probability table 
+            // uword line2 = 0; 
+            // for ( uchar k = 0; k<ns; k++ ) { 
+            //   line2 = line2 * (1+max_nb) + old_qs[i][j][k]; 
+            // }
+            // line2 -= 1; 
+            
+            // if ( line2 != line && false ) { 
+            //   Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << 
+            //     (int) cstate << " to: " << (int) new_cell_state << "\n"; 
+            //   Rcpp::Rcout << "line:" << line << " line2: " << line2 << "\n"; 
+            //   Rcpp::Rcout << "nbs: "; 
+            //   for ( uword k=0; k<ns; k++ ) { 
+            //     Rcpp::Rcout << k << ": " << (int) old_qs[i][j][k] << " "; 
+            //   }
+            //   Rcpp::Rcout << "\n"; 
+            //   
+            //   Rcpp::Rcout << 
+            //   "linechange_" << (int) cstate << ": " <<  
+            //     (int) - intpow(max_nb+1, ns-1-cstate) << " " <<
+            //   "linechange_" << (int) new_cell_state << ": "   <<    
+            //     intpow(max_nb+1, ns-1-new_cell_state) << "\n"; 
+            // }
+            
             new_cell_state = rn < tprobs[line][cstate][k] ? k : new_cell_state; 
+            
+            
 #else 
             new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
 #endif
@@ -343,16 +374,40 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
+            adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
 #ifdef PRECOMPUTE_TRANS_PROBAS
+            // if ( j < (nc-1) ) { 
+            //   Rcpp::Rcout << "from: " << (int) cstate << " to: " << (int) new_cell_state << 
+            //     " at " << i << ", " << j << "\n"; 
+            //   Rcpp::Rcout << "old_nbs at i/j+1: "; 
+            //   
+            //   for ( uword k=0; k<ns; k++ ) { 
+            //     Rcpp::Rcout << (int) old_qs[(nr + i + 1) % nr][j][k] << " "; 
+            //   }
+            //   Rcpp::Rcout << "\n"; 
+            //   
+            //   Rcpp::Rcout << "new_nbs at i/j+1: "; 
+            //   for ( uword k=0; k<ns; k++ ) { 
+            //     Rcpp::Rcout << (int) new_qs[(nr + i + 1) % nr][j][k] << " "; 
+            //   }
+            //   Rcpp::Rcout << "\n"; 
+            //   
+            // }
             // TODO: this will update every neighbors of the target cell, doing work 
             // multiple times when two neighbors change state. Consider doing a 
             // dirty/clean matrix, and update all required lines at once. 
-            adjust_local_density(new_qs, new_pline, i, j, cstate, new_cell_state); 
+            adjust_nb_plines(new_pline, i, j, cstate, new_cell_state); 
+            
+            // Consider the neighbor below
+            // if ( j < nc ) { 
+            //   Rcpp::Rcout << "oline: " << old_pline[i][j+1] << 
+            //   " nline: " << new_pline[i][j+1] << "\n"; 
+            // }
+            
+            
 #else 
-            adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
+            //TODO: adjust local density here instead of doing it all the time 
 #endif
-//             Rcpp::Rcout << " switch " << (int) cstate << " -> " << 
-//               (int) new_cell_state << "\n"; 
             // If the transition occurs in one of the substeps, we break the for loop
             break; 
           } 
@@ -362,12 +417,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
     
     // Copy old matrix to new, etc. 
     memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
-    memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
     memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
+    memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); // TODO: get rid of this
 #ifdef PRECOMPUTE_TRANS_PROBAS
     memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
 #endif
-      
     
     iter++; 
   }
@@ -375,6 +429,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   // Free up heap-allocated arrays
   delete [] old_mat; 
   delete [] new_mat; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
+  delete [] old_pline; 
+  delete [] new_pline; 
+#endif
   delete [] old_qs; 
   delete [] new_qs; 
   

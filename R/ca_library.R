@@ -224,7 +224,6 @@ ca_library <- function(model,
       neighbors = neighbors
     )
     
-    initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
   }
   
   

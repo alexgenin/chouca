@@ -32,9 +32,9 @@ o2 <- run_camodel(mod, initmm, iters,
                   control = { control[["precompute_probas"]] <- FALSE; control })
 
 # par(mfrow = c(1, 2))
-# ts1 <- o[["output"]][["covers"]]
+ts1 <- o[["output"]][["covers"]]
 # matplot(ts1[ ,1], ts1[ ,-1], type = "l")
-# ts2 <- o2[["output"]][["covers"]]
+ts2 <- o2[["output"]][["covers"]]
 # matplot(ts2[ ,1], ts2[ ,-1], type = "l")
 
 expect_true({ 

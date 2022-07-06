@@ -9,7 +9,7 @@ library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "6acea0ca151d6b64632435afb8a8f2cfe35230b2")
+                  "06a7e291ada8d810de2be580282c5331dc983da2")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -166,7 +166,7 @@ ggplot(subset(bench_commits, finished),
 ggplot(subset(bench_commits, finished), 
        aes(x = size, y = tmax / elapsed / 1e3, color = commit)) + 
   geom_point() + 
-  geom_line(aes(group = paste(nrep, commit, engine))) + 
+  geom_line(aes(group = paste(nrep, commit, engine, model))) + 
 #   facet_grid( ~ engine ) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
