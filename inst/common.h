@@ -31,7 +31,8 @@ static inline double randunif() {
 }
 
 
-inline uword intpow(uchar a, uchar b) { 
+inline uword intpow(uchar a, 
+                    uchar b) { 
   uword p = 1; 
   for ( uchar k=0; k<b; k++ ) { 
     p *= a; 
@@ -166,29 +167,102 @@ inline uword number_of_neighbors(const arma::uword i,
   return nnb; 
 }
 
-// This function will adjust the probability lines to all neighbors of a cell that has 
-// changed state. 
-inline void set_prob_line(arma::uword prob_lines[nr][nc], 
-                          const uchar qs[nr][nc][ns], 
-                          const uword i, 
-                          const uword j) { 
-  
-  // Get line in pre-computed transition probability table 
-  uword line = 0; 
-  for ( uchar k = 0; k<ns; k++ ) { 
-    line = line * (1+max_nb) + qs[i][j][k]; 
+// This function will set the probability lines
+inline void initialize_prob_line(arma::uword prob_lines[nr][nc], 
+                                 const uchar m[nr][nc]) { 
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      uword this_qs[ns]; 
+      memset(this_qs, 0, sizeof(this_qs)); 
+      
+      // Get neighbors to the left 
+      if ( wrap ) { 
+        
+        uchar state_left = m[i][(nc + j - 1) % nc];
+        this_qs[state_left]++; // left 
+        
+        uchar state_right = m[i][(nc + j + 1) % nc];
+        this_qs[state_right]++; // right
+        
+        uchar state_up = m[(nr + i - 1) % nr][j];
+        this_qs[state_up]++; // up
+        
+        uchar state_down = m[(nr + i + 1) % nr][j];
+        this_qs[state_down]++; // down
+        
+        if ( use_8_nb ) { 
+          
+          uchar state_upleft = m[(nr + i - 1) % nr][(nc + j - 1) % nc]; 
+          this_qs[state_upleft]++; // upleft
+          
+          uchar state_upright = m[(nr + i - 1) % nr][(nc + j + 1) % nc]; 
+          this_qs[state_upright]++; // upright
+          
+          uchar state_downleft = m[(nr + i + 1) % nr][(nc + j - 1) % nc]; 
+          this_qs[state_downleft]++; // downleft
+          
+          uchar state_downright = m[(nr + i + 1) % nr][(nc + j + 1) % nc]; 
+          this_qs[state_downright]++; // downright
+        }
+        
+      } else { 
+        
+        if ( i > 0 ) { 
+          uchar state_up = m[i-1][j];
+          this_qs[state_up]++; // up
+        }
+        if ( i < (nr-1) ) { 
+          uchar state_down = m[i+1][j]; 
+          this_qs[state_down]++; // down
+        }
+        if ( j > 0 ) { 
+          uchar state_left = m[i][j-1]; 
+          this_qs[state_left]++; // left
+        }
+        if ( j < (nc-1) ) { 
+          uchar state_right = m[i][j+1]; 
+          this_qs[state_right]++; // right
+        }
+        
+        if ( use_8_nb ) { 
+          if ( i > 0 && j > 0 ) { 
+            uchar state_upleft = m[i-1][j-1]; 
+            this_qs[state_upleft]++; // upleft
+          }
+          if ( i > 0 && j < (nc-1) ) { 
+            uchar state_upright = m[i-1][j+1]; 
+            this_qs[state_upright]++; // upright
+          }
+          if ( i < (nr-1) && j > 0 ) { 
+            uchar state_downleft = m[i+1][j-1]; 
+            this_qs[state_downleft]++; // downleft
+          }
+          if ( i < (nr-1) && j < (nc-1) ) { 
+            uchar state_downright = m[i+1][j+1]; 
+            this_qs[state_downright]++; // downright
+          }
+        }
+        
+      }
+      
+      // Get line in pre-computed transition probability table 
+      uword line = 0; 
+      for ( uchar k = 0; k<ns; k++ ) { 
+        line = line * (1+max_nb) + this_qs[k]; 
+      }
+      line -= 1; 
+      
+      // If we have constant number of neighbors, then all_qs only contains the 
+      // values at each max_nb values, so we need to divide by max_nb here to fall on the 
+      // right line in the table of probabilities. 
+      if ( wrap ) { 
+        line = (line+1) / max_nb - 1; 
+      }
+      
+      prob_lines[i][j] = line; 
+    }
   }
-  line -= 1; 
   
-  // If we have constant number of neighbors, then all_qs only contains the 
-  // values at each max_nb values, so we need to divide by 8 here to fall on the 
-  // right line in the table of probabilities. 
-  // TODO: reenable me
-  // if ( wrap ) { 
-  //   line = (line+1) / max_nb - 1; 
-  // }
-  
-  prob_lines[i][j] = line; 
 }
 
 // Adjust the local densities of the neighboring cells of a cell along with the lines 
@@ -278,7 +352,12 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
 // precomputed probability table. 
 // NOTE: we used a signed integer here because the pline adjustment can be negative 
 inline sword pline_adjustment(uword from, uword to) { 
-  return intpow(max_nb+1, ns-1-to) - intpow(max_nb+1, ns-1-from); 
+  sword ans = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from); 
+  // If we wrap, then what would go max_nb by max_nb goes instead one by one, so 
+  // we need to divide the line jump here. 
+  ans = wrap ? ans / ( (sword) max_nb ) : ans; 
+  
+  return ans; 
 }
 
 inline void adjust_nb_plines(uword pline[nr][nc], 
@@ -291,11 +370,11 @@ inline void adjust_nb_plines(uword pline[nr][nc],
   if ( wrap ) { 
     
     // left 
-    // Rcpp::Rcout << "adjusting_pline" << "\n"; 
-    // Rcpp::Rcout << "pline_old: " << pline[i][(nc + j - 1) % nc] << "\n"; 
+//     Rcpp::Rcout << "adjusting_pline" << "\n"; 
+//     Rcpp::Rcout << "pline_old: " << pline[i][(nc + j - 1) % nc] << "\n"; 
+//     Rcpp::Rcout << "pline_adj: " << pline_adjustment(from, to) << "\n"; 
     pline[i][(nc + j - 1) % nc] += pline_adjustment(from, to); 
-    // Rcpp::Rcout << "pline_adj: " << pline_adjustment(from, to) << "\n"; 
-    // Rcpp::Rcout << "pline_new: " << pline[i][(nc + j - 1) % nc] << "\n"; 
+//     Rcpp::Rcout << "pline_new: " << pline[i][(nc + j - 1) % nc] << "\n"; 
     
     // right
     pline[i][(nc + j + 1) % nc] += pline_adjustment(from, to); 

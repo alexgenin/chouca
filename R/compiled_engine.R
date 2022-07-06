@@ -128,17 +128,15 @@ camodel_compiled_engine <- function(alpha_index,
     
     # If the number of neighbors is constant, we can discard the data that is present 
     # every 4 or 8 neighbors. 
-    # TODO: reenable me 
-    # if ( wrap ) { 
-    #   all_qs <- all_qs[seq(0, nrow(all_qs)-1) %% max_nb == 0, ]
-    # }
+    if ( wrap ) { 
+      all_qs <- all_qs[seq(0, nrow(all_qs)-1) %% max_nb == 0, ]
+    }
     
     all_qs <- all_qs[-1, ] # this has sum zero which produces division by zero. Discard it.
   } else { 
     # This is a dummy matrix just to make sure we pass something to the c++ function.
     all_qs <- matrix(0, nrow = 1, ncol = ns)
   }
-#   print(all_qs)
   
   # Replace size in compiled code
   cmaxlines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), cmaxlines)

@@ -321,8 +321,10 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
 }
 
 # Update a ca_model with new arguments 
+# first argument needs to be 'object' to respect S3 method naming
 #'@export
-update.ca_model <- function(object, parms, 
+update.ca_model <- function(object, 
+                            parms = NULL, 
                             neighbors = NULL, 
                             wrap = NULL, 
                             check_model = TRUE, 
@@ -334,6 +336,9 @@ update.ca_model <- function(object, parms,
   }
   if ( is.null(neighbors) ) { 
     neighbors <- object[["neighbors"]]
+  }
+  if ( is.null(parms) ) { 
+    parms <- object[["parms"]]
   }
   
   # Extract model parameters, and do the call

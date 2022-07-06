@@ -1,6 +1,6 @@
 # 
 # Make sure the compiled engine always returns the same results regardless of 
-# whether we precompute the probabilities or not. 
+# whether we precompute the probabilities or not, and respects the R seed. 
 # 
 
 ncols <- 128
@@ -37,9 +37,32 @@ ts1 <- o[["output"]][["covers"]]
 ts2 <- o2[["output"]][["covers"]]
 # matplot(ts2[ ,1], ts2[ ,-1], type = "l")
 
+# This should give exactly the same result 
 expect_true({ 
   all( abs(ts1 - ts2) < 1e-8 )
 })
+
+
+# Make sure it works also if we do not wraparound
+mod <- update(mod, wrap = FALSE)
+
+set.seed(123)
+o <- run_camodel(mod, initmm, iters, control = control)
+set.seed(123)
+o2 <- run_camodel(mod, initmm, iters, 
+                  control = { control[["precompute_probas"]] <- FALSE; control })
+
+# par(mfrow = c(1, 2))
+ts1 <- o[["output"]][["covers"]]
+matplot(ts1[ ,1], ts1[ ,-1], type = "l")
+ts2 <- o2[["output"]][["covers"]]
+matplot(ts2[ ,1], ts2[ ,-1], type = "l")
+
+# This should give exactly the same result 
+expect_true({ 
+  all( abs(ts1 - ts2) < 1e-8 )
+})
+
 
 
 
