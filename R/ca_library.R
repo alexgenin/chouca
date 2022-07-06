@@ -211,11 +211,15 @@ ca_library <- function(model,
     
     neighbors <- ifelse(is.null(neighbors), 8, neighbors)
     
+    if ( is.null(parms) ) { 
+      parms <- list(prob = 1)
+    }
+    
     mod <- camodel(
       transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
       transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
       transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
-      parms = list(prob = 1), 
+      parms = parms, 
       wrap = wrap, 
       neighbors = neighbors
     )

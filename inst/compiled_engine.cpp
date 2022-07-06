@@ -4,9 +4,9 @@
 // 
 
 
-// #ifndef ARMA_NO_DEBUG
-// #define ARMA_NO_DEBUG
-// #endif 
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
 
 // Define some column names for clarity
 #define _from 0
