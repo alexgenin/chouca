@@ -348,23 +348,18 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
   
 }
 
-// This is the adjustment to the line at which to get the probability in the 
-// precomputed probability table. 
-// NOTE: we used a signed integer here because the pline adjustment can be negative 
-inline sword pline_adjustment(uword from, uword to) { 
-  sword ans = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from); 
-  // If we wrap, then what would go max_nb by max_nb goes instead one by one, so 
-  // we need to divide the line jump here. 
-  ans = wrap ? ans / ( (sword) max_nb ) : ans; 
-  
-  return ans; 
-}
-
 inline void adjust_nb_plines(uword pline[nr][nc], 
                              const uword i, 
                              const uword j, 
                              const uchar from, 
                              const uchar to) { 
+  
+  // NOTE: we used a signed integer here because the pline adjustment can be negative 
+  sword adj = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from); 
+  
+  // If we wrap, then what would go max_nb by max_nb goes instead one by one, so 
+  // we need to divide the line jump here. 
+  adj = wrap ? adj / ( (sword) max_nb ) : adj; 
   
   // Get neighbors to the left 
   if ( wrap ) { 
@@ -373,67 +368,67 @@ inline void adjust_nb_plines(uword pline[nr][nc],
 //     Rcpp::Rcout << "adjusting_pline" << "\n"; 
 //     Rcpp::Rcout << "pline_old: " << pline[i][(nc + j - 1) % nc] << "\n"; 
 //     Rcpp::Rcout << "pline_adj: " << pline_adjustment(from, to) << "\n"; 
-    pline[i][(nc + j - 1) % nc] += pline_adjustment(from, to); 
+    pline[i][(nc + j - 1) % nc] += adj; 
 //     Rcpp::Rcout << "pline_new: " << pline[i][(nc + j - 1) % nc] << "\n"; 
     
     // right
-    pline[i][(nc + j + 1) % nc] += pline_adjustment(from, to); 
+    pline[i][(nc + j + 1) % nc] += adj; 
     
     // up
-    pline[(nr + i - 1) % nr][j] += pline_adjustment(from, to); 
+    pline[(nr + i - 1) % nr][j] += adj; 
     
     // down
-    pline[(nr + i + 1) % nr][j] += pline_adjustment(from, to); 
+    pline[(nr + i + 1) % nr][j] += adj; 
     
     if ( use_8_nb ) { 
       // upleft
-      pline[(nr + i - 1) % nr][(nc + j - 1) % nc] += pline_adjustment(from, to); 
+      pline[(nr + i - 1) % nr][(nc + j - 1) % nc] += adj; 
       
       // upright
-      pline[(nr + i - 1) % nr][(nc + j + 1) % nc] += pline_adjustment(from, to); 
+      pline[(nr + i - 1) % nr][(nc + j + 1) % nc] += adj; 
       
       // downleft
-      pline[(nr + i + 1) % nr][(nc + j - 1) % nc] += pline_adjustment(from, to); 
+      pline[(nr + i + 1) % nr][(nc + j - 1) % nc] += adj; 
       
       // downright
-      pline[(nr + i + 1) % nr][(nc + j + 1) % nc] += pline_adjustment(from, to); 
+      pline[(nr + i + 1) % nr][(nc + j + 1) % nc] += adj; 
     }
     
   } else { 
     
     // left
     if ( i > 0 ) { 
-      pline[i-1][j] += pline_adjustment(from, to); 
+      pline[i-1][j] += adj; 
     }
     // right
     if ( i < (nr-1) ) { 
-      pline[i+1][j] += pline_adjustment(from, to); 
+      pline[i+1][j] += adj; 
     }
     // up
     if ( j > 0 ) { 
-      pline[i][j-1] += pline_adjustment(from, to); 
+      pline[i][j-1] += adj; 
     }
     // down
     if ( j < (nc-1) ) { 
-      pline[i][j+1] += pline_adjustment(from, to); 
+      pline[i][j+1] += adj; 
     }
     
     if ( use_8_nb ) { 
       // upleft
       if ( i > 0 && j > 0 ) { 
-        pline[i-1][j-1] += pline_adjustment(from, to); 
+        pline[i-1][j-1] += adj; 
       }
       // upright
       if ( i > 0 && j < (nc-1) ) { 
-        pline[i-1][j+1] += pline_adjustment(from, to); 
+        pline[i-1][j+1] += adj; 
       }
       // downleft
       if ( i < (nr-1) && j > 0 ) { 
-        pline[i+1][j-1] += pline_adjustment(from, to); 
+        pline[i+1][j-1] += adj; 
       }
       // downrighgt
       if ( i < (nr-1) && j < (nc-1) ) { 
-        pline[i+1][j+1] += pline_adjustment(from, to); 
+        pline[i+1][j+1] += adj; 
       }
     }
     

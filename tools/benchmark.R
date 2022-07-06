@@ -9,7 +9,8 @@ library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "06a7e291ada8d810de2be580282c5331dc983da2")
+                  "06a7e291ada8d810de2be580282c5331dc983da2", 
+                  "ae6dc9eb937edec0075ea760f3d2d132c4ca6f76")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -22,6 +23,7 @@ CXXF <- "-O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
 ENGINES <- c("compiled") 
 ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor")
+ALL_MODELS <- c("musselbed")
 
 time_mod <- function(mod, init, control, niter) { 
   timings <- system.time({ 
