@@ -259,70 +259,73 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
     // }
 #endif 
     
-    for ( uword i=0; i<nr; i++ ) { 
+    for ( uword substep=0; substep < substeps; substep++ ) { 
       
-      for ( uword j=0; j<nc; j++ ) { 
-          
-        uchar cstate = old_mat[i][j]; 
+      for ( uword i=0; i<nr; i++ ) { 
         
-#ifndef PRECOMPUTE_TRANS_PROBAS
-        // Normalized local densities to proportions
-        uword qs_total = number_of_neighbors(i, j); 
-        
-        // Factor to convert the number of neighbors into the point at which the 
-        // dependency on q is sampled.
-        uword qpointn_factorf = (xpoints - 1) / qs_total; 
-        
-        // Compute probability transitions 
-        for ( ushort to=0; to<ns; to++ ) { 
-          // Init probability
-          ptrans[to] = 0; 
-          
-          // Scan the table of alphas 
-          for ( uword k=0; k<alpha_nrow; k++ ) { 
-            ptrans[to] += 
-              ( alpha_index(k, _from) == cstate ) * 
-              ( alpha_index(k, _to) == to) * 
-              alpha_vals(k); 
-          }
-          
-          // Scan the table of pmat to reconstruct probabilities -> where is ps?
-          for ( uword k=0; k<pmat_nrow; k++ ) { 
-            ptrans[to] += 
-              ( pmat_index(k, _from) == cstate ) * 
-              ( pmat_index(k, _to) == to) * 
-              pmat_vals(k, _coef) * pow( old_ps[pmat_index(k, _state)] / ncells, 
-                                          pmat_vals(k, _expo) );
-          }
-          
-          // Scan the table of qmat to reconstruct probabilities 
-          for ( uword k=0; k<qmat_nrow; k++ ) { 
+        for ( uword j=0; j<nc; j++ ) { 
             
-            // Lookup which point in the qs function we need to use for the 
-            // current neighbor situation.
-            uword qthis = old_qs[i][j][qmat_index(k, _state)] * qpointn_factorf;
+          uchar cstate = old_mat[i][j]; 
+          
+#ifdef PRECOMPUTE_TRANS_PROBAS
+#else
+          // Normalized local densities to proportions
+          uword qs_total = number_of_neighbors(i, j); 
+          
+          // Factor to convert the number of neighbors into the point at which the 
+          // dependency on q is sampled.
+          uword qpointn_factorf = (xpoints - 1) / qs_total; 
+          
+          // Compute probability transitions 
+          for ( ushort to=0; to<ns; to++ ) { 
+            // Init probability
+            ptrans[to] = 0; 
             
-            ptrans[to] += 
-              ( qmat_index(k, _from) == cstate ) * 
-              ( qmat_index(k, _to) == to) * 
-              // Given the observed local abundance of this state, which line in 
-              // qmat should be retained ? 
-              ( qmat_index(k, _qs) == qthis ) * 
-              qmat_vals(k); 
+            // Scan the table of alphas 
+            for ( uword k=0; k<alpha_nrow; k++ ) { 
+              ptrans[to] += 
+                ( alpha_index(k, _from) == cstate ) * 
+                ( alpha_index(k, _to) == to) * 
+                alpha_vals(k); 
+            }
+            
+            // Scan the table of pmat to reconstruct probabilities -> where is ps?
+            for ( uword k=0; k<pmat_nrow; k++ ) { 
+              ptrans[to] += 
+                ( pmat_index(k, _from) == cstate ) * 
+                ( pmat_index(k, _to) == to) * 
+                pmat_vals(k, _coef) * pow( old_ps[pmat_index(k, _state)] / ncells, 
+                                            pmat_vals(k, _expo) );
+            }
+            
+            // Scan the table of qmat to reconstruct probabilities 
+            for ( uword k=0; k<qmat_nrow; k++ ) { 
+              
+              // Lookup which point in the qs function we need to use for the 
+              // current neighbor situation.
+              uword qthis = old_qs[i][j][qmat_index(k, _state)] * qpointn_factorf;
+              
+              ptrans[to] += 
+                ( qmat_index(k, _from) == cstate ) * 
+                ( qmat_index(k, _to) == to) * 
+                // Given the observed local abundance of this state, which line in 
+                // qmat should be retained ? 
+                ( qmat_index(k, _qs) == qthis ) * 
+                qmat_vals(k); 
+            }
+
           }
-        }
-        
-        // Compute cumsum 
-        for ( uchar k=1; k<ns; k++ ) { 
-          ptrans[k] += ptrans[k-1];
-        }
+          
+          // Compute cumsum 
+          for ( uchar k=1; k<ns; k++ ) { 
+            ptrans[k] += ptrans[k-1];
+          }
 #endif
-        // Check if we actually transition.  
-        // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
-        //               ^ p0 < rn < (p0+p1) => p1 wins
-        // Of course the sum of probabilities must be lower than one, otherwise we are 
-        // making an approximation since the random number is always below one. 
-        for ( uword substep=0; substep < substeps; substep++ ) { 
+          // Check if we actually transition.  
+          // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
+          //               ^ p0 < rn < (p0+p1) => p1 wins
+          // Of course the sum of probabilities must be lower than one, otherwise we are 
+          // making an approximation since the random number is always below one. 
           
           uchar new_cell_state = cstate; 
           double rn = randunif(); // get random number
@@ -357,9 +360,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             //   Rcpp::Rcout << "\n"; 
             //   
             // }
-            // TODO: this will update every neighbors of the target cell, doing work 
-            // multiple times when two neighbors change state. Consider doing a 
-            // dirty/clean matrix, and update all required lines at once. 
             adjust_nb_plines(new_pline, i, j, cstate, new_cell_state); 
             
             // Consider the neighbor below
@@ -372,12 +372,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
 #else 
             adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
 #endif
-            // If the transition occurs in one of the substeps, we break the for loop
-            break; 
           } 
-        } // end of substep loop
+        } 
       }
-    } 
+    } // end of substep loop
     
     // Copy old matrix to new, etc. 
     memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
