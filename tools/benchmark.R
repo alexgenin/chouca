@@ -9,7 +9,7 @@ library(lubridate)
 
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "f8dea11cdb3493bad21ac78569fc69561ffb6325")
+                  "6acea0ca151d6b64632435afb8a8f2cfe35230b2")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -18,9 +18,10 @@ system(paste0("git clone -b master ", GIT_ORIG, " ", PKGDIR))
 
 BENCH_SIZES <- 2^seq(4, 10)
 NREPS       <- 3
-CXXF <- "-g -O2 -Wall"
+CXXF <- "-O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
 ENGINES <- c("compiled") 
+ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor")
 
 time_mod <- function(mod, init, control, niter) { 
   timings <- system.time({ 
@@ -44,41 +45,53 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
   withr::with_makevars(c(CXX11FLAGS = CXXF), load_all(PKGDIR))
   
   control <- list(console_output_every = 0)
-  
-  ldply(ENGINES, function(engine) { 
-    ldply(rev(sizes), function(size) { 
-      cat(sprintf("Benching engine %s with size %s\n", engine, size))
-      
-      # Model used for benchmark
-      mod <- chouca:::ca_library("musselbed")
-      
-      # We use rectangles because we always want to test the package on rectangles
-      init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
-      tmax <- round(1000 * 1 / log(size))
-      control[["engine"]] <- engine
-      control[["precompute_probas"]] <- TRUE
-      
-      # We first run a small simulation to warm up the engine (= compile the code)
-      warmup <- time_mod(mod, init, control, 10)
-      
-      ldply(seq.int(NREPS), function(nrep) { 
+  ldply(ALL_MODELS, function(model) { 
+    ldply(ENGINES, function(engine) { 
+      ldply(rev(sizes), function(size) { 
+        cat(sprintf("Benching engine %s with size %s\n", engine, size))
         
-        # Generate new matrix for each iteration
-        init <- generate_initmat(mod, c(0.5, 0.5, 0), size, size)
+        # Model used for benchmark
+        # NOTE: we use ::: because at some point ca_library() was not exported. And we 
+        # use try() because the model list has changed. 
+        mod <- try({ chouca:::ca_library(model) })
+        if ( inherits(mod, "try-error") ) { 
+          return( NULL ) 
+        }
         
-        timings <- time_mod(mod, init, control, tmax)
+        # Initialize matrix and parameters
+        inits <- sapply(mod$states, function(o) { 
+          mean(sample(mod$states, size = 1024, replace = TRUE) == o)
+        })
+        init <- generate_initmat(mod, inits / sum(inits), size, size)
+        tmax <- round(1000 * 1 / log(size))
+        control[["engine"]] <- engine
+        control[["precompute_probas"]] <- TRUE
         
-        mcells_per_s <- (tmax * size^2) / timings[["timings"]][["elapsed"]] / 1e6
-        data.frame(nrep = nrep, size = size, tmax = tmax, 
-                   mcells_per_s = mcells_per_s, 
-                   engine = engine, 
-                   finished = ! (timings[["error"]] | warmup[["error"]] ), 
-                   warmup = warmup[["timings"]]["elapsed"], 
-                   elapsed = timings[["timings"]]["elapsed"])
+        # We first run a small simulation to warm up the engine (= compile the code)
+        warmup <- time_mod(mod, init, control, 1)
+        
+        ldply(seq.int(NREPS), function(nrep) { 
+          
+          inits <- sapply(mod$states, function(o) { 
+            mean(sample(mod$states, size = 1024, replace = TRUE) == o)
+          })
+          # Generate new matrix for each iteration
+          init <- generate_initmat(mod, inits / sum(inits), size, size)
+          
+          timings <- time_mod(mod, init, control, tmax)
+          
+          mcells_per_s <- (tmax * size^2) / timings[["timings"]][["elapsed"]] / 1e6
+          data.frame(nrep = nrep, size = size, tmax = tmax, 
+                     model = model, 
+                     mcells_per_s = mcells_per_s, 
+                     engine = engine, 
+                     finished = ! (timings[["error"]] | warmup[["error"]] ), 
+                     warmup = warmup[["timings"]]["elapsed"], 
+                     elapsed = timings[["timings"]]["elapsed"])
+        })
       })
     })
-   }, .progress = "time")
-  
+  }, .progress = "time")
 }
 
 
@@ -94,13 +107,14 @@ if ( FALSE ) {
     scale_x_continuous(trans = "log", 
                       breaks = BENCH_SIZES) + 
     scale_color_brewer(palette = "Set2") + 
+    facet_wrap( ~ model ) + 
     labs(x = "Matrix size", 
          y = "Million cells evaluated per second")
   
   ggplot(subset(bench_engines, finished), 
         aes(x = size, y = tmax / elapsed / 1e3, color = engine)) + 
     geom_point() + 
-    geom_line(aes(group = paste(nrep, engine))) + 
+    geom_line(aes(group = paste(nrep, engine, model))) + 
   #   facet_grid( ~ engine ) + 
     scale_x_continuous(trans = "log", 
                       breaks = BENCH_SIZES) + 
@@ -140,7 +154,7 @@ ggplot(subset(bench_commits, finished),
                           "-", day(commit_datetime), " ", 
                           substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
-  geom_line(aes(group = paste(nrep, commit))) + 
+  geom_line(aes(group = paste(nrep, commit, model))) + 
   facet_wrap( ~ engine, scales = "free_y") + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
@@ -150,7 +164,7 @@ ggplot(subset(bench_commits, finished),
 
 
 ggplot(subset(bench_commits, finished), 
-       aes(x = size, y = tmax / elapsed / 1e3, color = engine)) + 
+       aes(x = size, y = tmax / elapsed / 1e3, color = commit)) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit, engine))) + 
 #   facet_grid( ~ engine ) + 

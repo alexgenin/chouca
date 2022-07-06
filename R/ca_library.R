@@ -203,10 +203,29 @@ ca_library <- function(model,
   }
   
   
+  # Rock-Paper-Scissor model (not sure where it comes from)
+  # More than two neighbors that beat it -> switch
+  # https://www.youtube.com/watch?v=TvZI6Xc0J1Y
+  if ( model == "rock-paper-scissor" || model == "rockpaperscissor" || 
+       model == "rpc") { 
+    
+    neighbors <- ifelse(is.null(neighbors), 8, neighbors)
+    
+    mod <- camodel(
+      transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
+      transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
+      transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
+      parms = list(prob = 1), 
+      wrap = wrap, 
+      neighbors = neighbors
+    )
+    
+    initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
+  }
   
   
   if ( is.null(mod) ) { 
-    all_models <- c("forestgap", "musselbed", "gameoflife")
+    all_models <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor")
     stop(paste0(model, " is an unknown model. Available models:", 
                 paste(" - ", all_models, collapse = "\n")))
   }

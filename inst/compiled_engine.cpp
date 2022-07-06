@@ -220,6 +220,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   // The first number returned by the RNG is garbage, probably because randi returns 
   // something too short for s (i.e. not 64 bits long if I got it right).
   // TODO: find a way to feed 64 bits integers to xoshiro
+  //   -> we could feed it 64/8 = 8 chars taken from randi(). 
   randunif(); 
   
   // Allocate some things we will reuse later
@@ -244,14 +245,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
     
 #ifdef PRECOMPUTE_TRANS_PROBAS
     precompute_transition_probabilites(tprobs, 
-                                      all_qs, 
-                                      alpha_index, 
-                                      alpha_vals, 
-                                      pmat_index, 
-                                      pmat_vals, 
-                                      qmat_index, 
-                                      qmat_vals, 
-                                      old_ps); 
+                                       all_qs, 
+                                       alpha_index, 
+                                       alpha_vals, 
+                                       pmat_index, 
+                                       pmat_vals, 
+                                       qmat_index, 
+                                       qmat_vals, 
+                                       old_ps); 
     // for ( uword l=0; l<all_qs_nrow; l++ ) { 
     //   for ( ushort j=0; j<ns; j++ ) {
     //     for ( ushort k=0; k<ns; k++ ) {
@@ -267,7 +268,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
       for ( uword j=0; j<nc; j++ ) { 
           
         uchar cstate = old_mat[i][j]; 
-          
+        
 #ifndef PRECOMPUTE_TRANS_PROBAS
         // Normalized local densities to proportions
         uword qs_total = number_of_neighbors(i, j); 
@@ -343,6 +344,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
 #ifdef PRECOMPUTE_TRANS_PROBAS
+            // TODO: this will update every neighbors of the target cell, doing work 
+            // multiple times when two neighbors change state. Consider doing a 
+            // dirty/clean matrix, and update all required lines at once. 
             adjust_local_density(new_qs, new_pline, i, j, cstate, new_cell_state); 
 #else 
             adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
