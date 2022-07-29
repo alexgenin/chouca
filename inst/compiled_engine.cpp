@@ -54,7 +54,7 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 
 // Compute transition probabilities between all possible qs states 
 inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns], 
-                                               const uchar all_qs[all_qs_nrow][ns+1], 
+                                               const uchar all_qs[all_qs_nrow][ns], 
                                                const arma::Mat<ushort>& alpha_index, 
                                                const arma::Col<double>& alpha_vals, 
                                                const arma::Mat<ushort>& pmat_index, 
@@ -95,8 +95,8 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
           tprobs[l][from][to] += 
             ( pmat_index(k, _from) == from ) * 
             ( pmat_index(k, _to) == to) * 
-            pmat_vals(k, _coef) * pow( ps[pmat_index(k, _state)] / ncells, 
-                                        pmat_vals(k, _expo) );
+            pmat_vals(k, _coef) * pow(ps[pmat_index(k, _state)] / ncells, 
+                                      pmat_vals(k, _expo));
         }
         
         // Scan the table of qmat to reconstruct probabilities 
@@ -343,32 +343,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
 #ifdef PRECOMPUTE_TRANS_PROBAS
-            // if ( j < (nc-1) ) { 
-            //   Rcpp::Rcout << "from: " << (int) cstate << " to: " << (int) new_cell_state << 
-            //     " at " << i << ", " << j << "\n"; 
-            //   Rcpp::Rcout << "old_nbs at i/j+1: "; 
-            //   
-            //   for ( uword k=0; k<ns; k++ ) { 
-            //     Rcpp::Rcout << (int) old_qs[(nr + i + 1) % nr][j][k] << " "; 
-            //   }
-            //   Rcpp::Rcout << "\n"; 
-            //   
-            //   Rcpp::Rcout << "new_nbs at i/j+1: "; 
-            //   for ( uword k=0; k<ns; k++ ) { 
-            //     Rcpp::Rcout << (int) new_qs[(nr + i + 1) % nr][j][k] << " "; 
-            //   }
-            //   Rcpp::Rcout << "\n"; 
-            //   
-            // }
             adjust_nb_plines(new_pline, i, j, cstate, new_cell_state); 
-            
-            // Consider the neighbor below
-            // if ( j < nc ) { 
-            //   Rcpp::Rcout << "oline: " << old_pline[i][j+1] << 
-            //   " nline: " << new_pline[i][j+1] << "\n"; 
-            // }
-            
-            
 #else 
             adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
 #endif
@@ -383,7 +358,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
 #ifdef PRECOMPUTE_TRANS_PROBAS
     memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
 #else 
-    memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); // TODO: get rid of this
+    memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
 #endif
     
     iter++; 

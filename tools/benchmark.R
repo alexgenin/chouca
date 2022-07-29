@@ -10,7 +10,7 @@ library(lubridate)
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
                   "06a7e291ada8d810de2be580282c5331dc983da2", 
-                  "11fd5d66ace2012382048d5701aa3f749b5c077b")
+                  "c9cebaa15784cfc989f5dd5f1549d8efa09fd133")
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -21,9 +21,9 @@ BENCH_SIZES <- 2^seq(4, 10)
 NREPS       <- 3
 CXXF <- "-O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
-ENGINES <- c("compiled") 
+# ENGINES <- c("compiled") 
 ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor")
-ALL_MODELS <- c("musselbed")
+# ALL_MODELS <- c("musselbed")
 
 time_mod <- function(mod, init, control, niter) { 
   timings <- system.time({ 
@@ -157,7 +157,7 @@ ggplot(subset(bench_commits, finished),
                           substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit, model))) + 
-  facet_wrap( ~ engine, scales = "free_y") + 
+  facet_grid( engine ~ model, scales = "free_y") + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
@@ -169,7 +169,7 @@ ggplot(subset(bench_commits, finished),
        aes(x = size, y = tmax / elapsed / 1e3, color = commit)) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit, engine, model))) + 
-#   facet_grid( ~ engine ) + 
+  facet_grid( engine ~ model, scales = "free_y") + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_y_continuous(trans = "log10") + 
@@ -178,6 +178,9 @@ ggplot(subset(bench_commits, finished),
   labs(x = "Matrix size", 
        y = "kIter/s")
 
+
+
+# TODO: make a short simulation scenario for benchmarking
 
 
 # Check the effect of compiling native with O3, or native with Ofast 

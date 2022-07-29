@@ -124,7 +124,6 @@ camodel_compiled_engine <- function(alpha_index,
     # revert because the math expects the states in that order
     all_qs <- all_qs[ ,seq(ncol(all_qs), 1)]
     colnames(all_qs) <- rownames(all_qs) <- NULL
-    all_qs <- cbind(all_qs, apply(all_qs, 1, sum))
     
     # If the number of neighbors is constant, we can discard the data that is present 
     # every 4 or 8 neighbors. 

@@ -51,7 +51,7 @@ ca_library <- function(model,
                     delta = 0.5, 
                     alpha = 0.2)
     }
-    #TODO: what is the default number of neighbors of the forestgap model ?
+    
     neighbors <- ifelse(is.null(neighbors), 4, neighbors)
     
     mod <- camodel(

@@ -348,6 +348,7 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
   
 }
 
+
 inline void adjust_nb_plines(uword pline[nr][nc], 
                              const uword i, 
                              const uword j, 
@@ -365,11 +366,7 @@ inline void adjust_nb_plines(uword pline[nr][nc],
   if ( wrap ) { 
     
     // left 
-//     Rcpp::Rcout << "adjusting_pline" << "\n"; 
-//     Rcpp::Rcout << "pline_old: " << pline[i][(nc + j - 1) % nc] << "\n"; 
-//     Rcpp::Rcout << "pline_adj: " << pline_adjustment(from, to) << "\n"; 
     pline[i][(nc + j - 1) % nc] += adj; 
-//     Rcpp::Rcout << "pline_new: " << pline[i][(nc + j - 1) % nc] << "\n"; 
     
     // right
     pline[i][(nc + j + 1) % nc] += adj; 
