@@ -6,11 +6,7 @@ test_that("all_qs is generated correctly", {
   ns <- 5 
   wrap <- TRUE 
   
-  
   all_qs <- rep( list(seq(0, max_nb) ), each = ns)
-
-  # !!! very large matrix -> TODO: find a way to make this smaller directly, not 
-  # after the fact when we subset it. 
   all_qs <- as.matrix(do.call(expand.grid, all_qs)) 
   
   # revert because the math expects the states in that order
@@ -24,6 +20,8 @@ test_that("all_qs is generated correctly", {
   }
 
   all_qs <- all_qs[-1, ] # this has sum zero which produces division by zero. Discard it.
+  
+  all_qs <- cbind(all_qs, rowSums(all_qs))
   
   all_qs2 <- generate_all_qs(max_nb, ns, filter = wrap)
   

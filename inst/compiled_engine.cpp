@@ -54,7 +54,7 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 
 // Compute transition probabilities between all possible qs states 
 inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns], 
-                                               const uchar all_qs[all_qs_nrow][ns], 
+                                               const uchar all_qs[all_qs_nrow][ns+1], 
                                                const arma::Mat<ushort>& alpha_index, 
                                                const arma::Col<double>& alpha_vals, 
                                                const arma::Mat<ushort>& pmat_index, 

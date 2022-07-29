@@ -2,55 +2,6 @@
 #include <RcppArmadillo.h>
 using namespace arma; 
 
-// Return the line in the table of neighbor combinations to get the probability of 
-// transition
-// TODO: expand the rationale behind this
-// 
-// When working with pre-computed probabilities, we do not need to store the local 
-// densities: we just need to know at which line to go grab the probability we are 
-// interested in. 
-// 
-// When a cell changes states, we need to update the line. However, computing the line 
-// itself is quite expensive. Instead we precompute how the line needs to be adjusted 
-// in a matrix, so on state change we can just go get the adjustment value. There is 
-// probability a mathematical formula to compute the change in lines, but this it is 
-// too hard for my small ecologist brain.
-// 
-// 
-// [[Rcpp::export]]
-arma::uword getline(arma::urowvec qs, 
-                    arma::uword nb, 
-                    arma::uword ns) { 
-  
-  uword lines_before = 0; 
-  uword remaining = nb; 
-  
-  for ( uword k=1; k<ns; k++ ) { 
-    uword choose_low = ns - 1 - k; 
-    // Compute choose(remaining - qi + choose_low, choose_low)
-    uword prod_low = 1; 
-    for ( uword l=1; l<=choose_low; l++ ) { 
-      prod_low *= l; 
-    }
-    uword curqs = qs(k-1); 
-    
-    for ( uword qi=0; qi<curqs; qi++ ) { 
-      uword choose_high = remaining - qi + ns - 1 - k; 
-      uword prod_high = 1; 
-      for ( uword l=choose_high; l>=choose_high - choose_low + 1; l-- ) { 
-        prod_high *= l;
-      }
-      // Add to the total of lines seen 
-      lines_before += prod_high / prod_low; 
-    }
-    
-    remaining -= qs(k-1); 
-  }
-  
-  return( lines_before ); 
-}
-
-
 
 
 inline uword intpow(arma::uword a, 
@@ -78,7 +29,7 @@ arma::umat generate_all_qs(arma::uword nb,
   last_qs(0) = nb; 
   uword out_nrows = intpow(nb+1, ns) / ( filter ? nb : 1 ); 
   
-  umat all_qs(out_nrows, ns); 
+  umat all_qs(out_nrows, ns+1); 
   
   urowvec this_qs(ns); 
   uword line=0; 
@@ -100,9 +51,11 @@ arma::umat generate_all_qs(arma::uword nb,
       }
     }
     
-    // If we sum to nb, save the value 
-    if ( filter && total % nb == 0 ) { 
-      all_qs.row(line) = this_qs; 
+    // If we every 4/8 neighbor values, save the value. Or if we do not filter, then 
+    // keep everything. 
+    if ( (! filter) || total % nb == 0 ) { 
+      all_qs.submat(line, 0, line, ns-1) = this_qs; 
+      all_qs(line, ns) = total; 
       line++; 
     }
     

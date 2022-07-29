@@ -27,6 +27,7 @@ control <- list(save_covers_every = 1,
                 precompute_probas = TRUE)
 set.seed(123)
 o <- run_camodel(mod, initmm, iters, control = control)
+
 set.seed(123)
 o2 <- run_camodel(mod, initmm, iters, 
                   control = { control[["precompute_probas"]] <- FALSE; control })
