@@ -166,11 +166,9 @@ camodel <- function(...,
     }
   }
   
-  # TODO: check if some transitions are declared twice 
-  
   msg(sprintf("Using %s cell states\n", nstates))
   msg(sprintf("Using %s transitions\n", length(transitions)))
-
+  
   # Parse transitions
   # In the worst case scenario, we need 25 points, so that the number of neighbors is 
   # always divisible by 2, 3, 4 or 8. (25 because zero included)
@@ -267,6 +265,11 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   prob_with <- function(p, q) { 
     p <- as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
     
+    if ( is.na(p) ) { 
+      m <- "NA/NaNs in model probabilities, please check your model definition."
+      stop(m)
+    }
+    
     if ( p < 0 ) { 
       m <- paste0("Transition probabilities may go below zero. Problematic transition:\n", 
                  "  ", tr[["from"]], " -> ", tr[["to"]])
@@ -318,7 +321,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     all_qss <- generate_all_qs(neighbors, ns, filter = TRUE)[ ,1:ns]
     all_qss <- all_qss[apply(all_qss, 1, sum) == neighbors, ]
     colnames(all_qss) <- state_names
-    ps <- matrix(runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
+    ps <- matrix(stats::runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
     colnames(ps) <- state_names
     
     p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 

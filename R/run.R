@@ -200,13 +200,6 @@ run_camodel <- function(mod, initmat, niter,
   # Read parameters
   control <- load_control_list(control)
   
-  
-  # Check that there is no NA in transition rates 
-  #TODO:
-#   if ( any(is.na(tests)) ) { 
-#     stop("NAs in computed coefficients, please make sure your model definition is correct")
-#   }
-  
   # NOTE: callbacks defined below will modify things in the currenct environment
   
   # Handle cover-storage callback 

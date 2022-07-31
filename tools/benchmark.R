@@ -10,7 +10,9 @@ library(lubridate)
 GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
 TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
                   "06a7e291ada8d810de2be580282c5331dc983da2", 
-                  "c9cebaa15784cfc989f5dd5f1549d8efa09fd133")
+                  "c9cebaa15784cfc989f5dd5f1549d8efa09fd133", 
+                  "2994a802fda6d7b65052bbb9b911b61c223f9f11")
+COMMIT_LAST <- tail(TEST_COMMITS, 1)
 
 # Download latest chouca package in directory, compile and load it 
 PKGDIR <- file.path(tempdir(), "choucabench")
@@ -105,7 +107,6 @@ mkbench <- function(sizes, nrep, cxxf, commit, tmax = "auto") {
 
 # Benchmark last commit  
 if ( FALSE ) { 
-  COMMIT_LAST <- tail(TEST_COMMITS, 1)
   bench_engines <- mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST)
   
   ggplot(subset(bench_engines, finished), 
@@ -138,9 +139,10 @@ if ( FALSE ) {
 bench_engines <- mkbench(c(64, 128), 12, CXXF, COMMIT_LAST, tmax = 128)
 
 ggplot(subset(bench_engines, finished), 
-      aes(x = size, y = elapsed, color = engine)) + 
+       aes(x = size, y = elapsed, color = engine)) + 
   geom_point() + 
-  geom_line(aes(group = paste(nrep, engine, model))) + 
+  geom_line(aes(group = paste(nrep, engine, model, precompute_probas), 
+                linetype = precompute_probas)) + 
   facet_grid( ~ model ) + 
   scale_x_continuous(trans = "log", 
                     breaks = BENCH_SIZES) + 
@@ -198,9 +200,6 @@ ggplot(subset(bench_commits, finished),
        y = "kIter/s")
 
 
-
-# TODO: make a short simulation scenario for benchmarking
-mkbench(
 
 
 # Check the effect of compiling native with O3, or native with Ofast 
