@@ -8,6 +8,7 @@ expect_warning({
                                        alpha = 0.2))
 })
 
+# Error in reserved names for parameters
 expect_error({ 
   camodel(transition(from = "a", to = "b", ~ 1), 
           parms = list(p = 1), 
@@ -15,11 +16,31 @@ expect_error({
           wrap = TRUE)
 }, "no parameters must be named")
 
+# Error when things not defined using transition()
+expect_error({ 
+  camodel(list(a = "fdsqfdqs", ~ 1), 
+          neighbors = 4, 
+          wrap = TRUE)
+}, "model transition was not processed by the transition()")
 
 # Test updating of models. Internal coefficient matrix should have changed 
-#TODO
 mod <- ca_library("forestgap")
 mod2 <- update(mod, parms = list(d = 0, delta = 0.5, alpha = 0.01))
+expect_true({ 
+  any(mod[["pmat"]] != mod2[["pmat"]])
+})
+
+
+# Test printing of camodel() objects 
+mod <- ca_library("forestgap")
+expect_true({ 
+  any( grepl("States: EMPTY TREE", capture.output( print(mod) ) ) )
+})
+
+tr <- transition(from = "a", to = "b", ~ 1 )
+expect_true({ 
+  any( grepl("Transition from a to b", capture.output( print(tr) ) ) )
+})
 
 
 

@@ -195,23 +195,29 @@ camodel_compiled_engine <- function(alpha_index,
 #'   benchmark_compiled_model(mod, inimat, niter = 100) 
 #' }
 #'@export
-benchmark_compiled_model <- function(mod, init, niter = 100, 
+benchmark_compiled_model <- function(mod, init, 
+                                     niter = 100, 
                                      olevel = c("O2", "O3", "Ofast"), 
                                      unroll_loops = c(TRUE, FALSE), 
                                      control = list(), 
+                                     precompute_probas = c(TRUE, FALSE), 
                                      nrepeats = 1) { 
   
   all_combs <- expand.grid(olevel = olevel, 
                            unroll_loops = unroll_loops, 
                            rep = seq.int(nrepeats), 
+                           precompute_probas = precompute_probas, 
                            stringsAsFactors = FALSE)
   
   timings <- plyr::ldply(seq.int(nrow(all_combs)), function(i) { 
     control[["olevel"]]       <- all_combs[i, "olevel"]
     control[["unroll_loops"]] <- all_combs[i, "unroll_loops"]
+    control[["precompute_probas"]]       <- all_combs[i, "precompute_probas"]
     control[["engine"]]       <- "compiled"
+    
     # warmup for compilation
     system.time( run_camodel(mod, init, niter, control = control) )
+    
     # benchmark running time 
     timings <- system.time( run_camodel(mod, init, niter, control = control) )
     data.frame(all_combs[i, ], iter_per_s = niter / timings["elapsed"] )

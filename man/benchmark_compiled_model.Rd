@@ -11,6 +11,7 @@ benchmark_compiled_model(
   olevel = c("O2", "O3", "Ofast"),
   unroll_loops = c(TRUE, FALSE),
   control = list(),
+  precompute_probas = c(TRUE, FALSE),
   nrepeats = 1
 )
 }

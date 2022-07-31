@@ -189,8 +189,7 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'@export
 run_camodel <- function(mod, initmat, niter, 
                         control = list()) { 
-  #TODO: use column names in the output$covers matrix 
-  # Pack transition coefficients into 3D array that RcppArmadillo understands
+  
   ns <- mod[["nstates"]]
   states <- mod[["states"]]
   
@@ -200,7 +199,7 @@ run_camodel <- function(mod, initmat, niter,
   # Read parameters
   control <- load_control_list(control)
   
-  # NOTE: callbacks defined below will modify things in the currenct environment
+  # NOTE: callbacks defined below will modify things in the current environment
   
   # Handle cover-storage callback 
   cover_callback <- function(t, ps, n) { }  
@@ -224,6 +223,9 @@ run_camodel <- function(mod, initmat, niter,
     snapshots <- list()
     
     snapshot_callback <- function(t, m) { 
+#       dev.hold()
+#       image(m)
+#       dev.flush()
       d <- dim(m)
       m <- factor(states[m+1], levels = states)
       dim(m) <- d
