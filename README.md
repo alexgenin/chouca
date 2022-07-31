@@ -17,7 +17,7 @@ but with a given probability.
 ## What this package implements 
 
 This package is an *engine* for probabilistic cellular automata (PCA), although it can 
-also do deterministic cellular automata. The objective is to provide a high-leve, 
+also do deterministic cellular automata. The objective is to provide a high-level, 
 declarative interface to a PCA model, and leave the implementation details to the 
 package. 
 
@@ -45,7 +45,7 @@ kubo <- camodel(
 Running the model for 200 iterations on a 100x100 grid is another couple of lines: 
 
 ```r
-initmat <- generate_initmat(kubo, c(0.5, 0.5), nr = 100, nc = 100)
+initmat <- generate_initmat(kubo, c(TREE = 0.5, EMPTY = 0.5), nr = 100, nc = 100)
 run_camodel(kubo, initmat, niter = 200)
 ```
 

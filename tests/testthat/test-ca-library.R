@@ -8,6 +8,14 @@
 test_that("Example models produce correct results", { 
 
   # 
+  # ARID VEGETATION MODEL 
+  # ---------------------
+  # This model is unsupported -> it should produce an error 
+  expect_error({ 
+    update(ca_library("aridvege"), wrap = TRUE, check_model = TRUE)
+  })
+  
+  # 
   # GAME OF LIFE
   # ------------
   gol <- ca_library("gameoflife")

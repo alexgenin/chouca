@@ -329,7 +329,10 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     })
     
     p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
-      qslong <- data.frame(state = state_names, qs = all_qss[i, ])
+      qslong <- data.frame(state = state_names, 
+                           # this gets the qs point corresponding to this proportion 
+                           # of neighbors. 
+                           qs = all_qss[i, ] / neighbors * (xpoints - 1))
       qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong))
       qssum <- sum(qslong[ ,"ys"])
       
