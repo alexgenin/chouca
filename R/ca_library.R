@@ -64,7 +64,8 @@ ca_library <- function(model,
       neighbors = neighbors, 
       wrap = wrap, 
       parms = parms, 
-      all_states = c("EMPTY", "TREE")
+      all_states = c("EMPTY", "TREE"), 
+      check_model = FALSE
     )
   
   }
@@ -94,7 +95,8 @@ ca_library <- function(model,
       neighbors = neighbors, 
       wrap = wrap, 
       parms = parms, 
-      all_states = c("MUSSEL", "EMPTY", "DISTURB")
+      all_states = c("MUSSEL", "EMPTY", "DISTURB"), 
+      check_model = FALSE
     )
   }
   
@@ -132,7 +134,7 @@ ca_library <- function(model,
                  ~ r + q["VEGE"] * f), 
       transition("EMPTY", "VEGE", 
                  ~ ( delta * p["VEGE"] + ( 1 - delta ) * 
-                   q["VEGE"]) * ( b - c * p["VEGE"] )), 
+                     q["VEGE"]) * ( b - c * p["VEGE"] )), 
       transition("EMPTY", "DEGR", 
                  ~ d), 
       transition("VEGE", "EMPTY", 
@@ -140,7 +142,8 @@ ca_library <- function(model,
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 
-      all_states = c("DEGR", "EMPTY", "VEGE")
+      all_states = c("DEGR", "EMPTY", "VEGE"), 
+      check_model = FALSE
     )
     
   }
@@ -179,7 +182,8 @@ ca_library <- function(model,
       neighbors = neighbors, 
       wrap = wrap, 
       parms = parms, 
-      all_states = c("BARE", "ALGAE", "CORAL")
+      all_states = c("BARE", "ALGAE", "CORAL"), 
+      check_model = FALSE
     )
   }
   
@@ -221,7 +225,8 @@ ca_library <- function(model,
       transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
       parms = parms, 
       wrap = wrap, 
-      neighbors = neighbors
+      neighbors = neighbors, 
+      check_model = FALSE
     )
     
   }

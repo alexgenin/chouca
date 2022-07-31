@@ -176,7 +176,7 @@ camodel <- function(...,
   # always divisible by 2, 3, 4 or 8. (25 because zero included)
   xpoints <- 1 + ifelse(wrap, neighbors, ifelse(neighbors == 8, 120, 24))
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
-                               epsilon)
+                               epsilon, neighbors, check_model)
   
   # Pack transitions into matrices
   qmat <- plyr::ldply(transitions_parsed, function(tr) { 
@@ -243,7 +243,8 @@ transition <- function(from, to, prob) {
   return(o)
 }
 
-parse_transition <- function(tr, state_names, parms, xpoints, epsilon) { 
+parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors, 
+                             check_model) { 
   
   if ( ! inherits(tr, "camodel_transition") ) { 
     m <- paste("The transition definition has not been defined using transition().", 
@@ -253,7 +254,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
   ns <- length(state_names)
   
   # Make sure the environment for the formula is set to the empty environment. Otherwise
-  # it trips up hash computing of the model, which is used to determine whether we have 
+  # it trips the hash computing of the model, which is used to determine whether we have 
   # to recompile or not when using the 'compiled' engine.
   environment(tr[["prob"]]) <- emptyenv()
   
@@ -265,6 +266,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
   warn <- character()
   prob_with <- function(p, q) { 
     p <- as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
+    
     if ( p < 0 ) { 
       m <- paste0("Transition probabilities may go below zero. Problematic transition:\n", 
                  "  ", tr[["from"]], " -> ", tr[["to"]])
@@ -309,6 +311,38 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon) {
     # Some of them may be repeated
     warn <- unique(warn) 
     lapply(warn, warning, call. = FALSE)
+  }
+  
+  # Check if we reconstruct the probabilities correctly 
+  if ( check_model ) { 
+    all_qss <- generate_all_qs(neighbors, ns, filter = TRUE)[ ,1:ns]
+    all_qss <- all_qss[apply(all_qss, 1, sum) == neighbors, ]
+    colnames(all_qss) <- state_names
+    ps <- matrix(runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
+    colnames(ps) <- state_names
+    
+    p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
+      prob_with(q = all_qss[i, ]/neighbors, p = ps[i, ])
+    })
+    
+    p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
+      qslong <- data.frame(state = state_names, qs = all_qss[i, ])
+      qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong))
+      qssum <- sum(qslong[ ,"ys"])
+      
+      pslong <- data.frame(state = state_names, ps = ps[i, ])
+      pslong <- plyr::join(beta_p, pslong, type = "left", by = "state")
+      pssum <- with(pslong, sum(coef * ps ^ expo) )
+      
+      alpha0 + qssum + pssum
+    })
+    
+    if ( ! all( abs(p_refs - p_preds) < epsilon ) ) { 
+      msg <- paste0("Residual error in computed probabilities... make sure your model is supported by chouca\n", 
+                  "  mean error: ", format(mean(abs(p_refs - p_preds)), digits = 3), "\n", 
+                    "  max error: ", format(max(abs(p_refs - p_preds))), digits = 3)
+      stop(msg)
+    }
   }
   
   list(from = tr[["from"]], 

@@ -32,7 +32,7 @@ time_mod <- function(mod, init, control, niter) {
   list(error = inherits(a, "try-error"), timings = timings)
 }
 
-mkbench <- function(sizes, nrep, cxxf, commit) { 
+mkbench <- function(sizes, nrep, cxxf, commit, tmax = "auto") { 
   
   # Checkout correct commit in PKGDIR
   system(sprintf("cd '%s' && git stash save && git checkout %s", PKGDIR, commit))
@@ -65,31 +65,36 @@ mkbench <- function(sizes, nrep, cxxf, commit) {
           mean(sample(mod$states, size = 1024, replace = TRUE) == o)
         })
         init <- generate_initmat(mod, inits / sum(inits), size, size)
-        tmax <- round(1000 * 1 / log(size))
+        if ( tmax == "auto" ) { 
+          tmax <- round(1000 * 1 / log(size))
+        }
         control[["engine"]] <- engine
-        control[["precompute_probas"]] <- TRUE
+        ldply(c(TRUE, FALSE), function(precompute_probas) { 
+          control[["precompute_probas"]] <- precompute_probas
         
-        # We first run a small simulation to warm up the engine (= compile the code)
-        warmup <- time_mod(mod, init, control, 1)
-        
-        ldply(seq.int(NREPS), function(nrep) { 
+          # We first run a small simulation to warm up the engine (= compile the code)
+          warmup <- time_mod(mod, init, control, 1)
           
-          inits <- sapply(mod$states, function(o) { 
-            mean(sample(mod$states, size = 1024, replace = TRUE) == o)
+          ldply(seq.int(NREPS), function(nrep) { 
+            
+            inits <- sapply(mod$states, function(o) { 
+              mean(sample(mod$states, size = 1024, replace = TRUE) == o)
+            })
+            # Generate new matrix for each iteration
+            init <- generate_initmat(mod, inits / sum(inits), size, size)
+            
+            timings <- time_mod(mod, init, control, tmax)
+            
+            mcells_per_s <- (tmax * size^2) / timings[["timings"]][["elapsed"]] / 1e6
+            data.frame(nrep = nrep, size = size, tmax = tmax, 
+                       precompute_probas = precompute_probas, 
+                       model = model, 
+                       mcells_per_s = mcells_per_s, 
+                       engine = engine, 
+                       finished = ! (timings[["error"]] | warmup[["error"]] ), 
+                       warmup = warmup[["timings"]]["elapsed"], 
+                       elapsed = timings[["timings"]]["elapsed"])
           })
-          # Generate new matrix for each iteration
-          init <- generate_initmat(mod, inits / sum(inits), size, size)
-          
-          timings <- time_mod(mod, init, control, tmax)
-          
-          mcells_per_s <- (tmax * size^2) / timings[["timings"]][["elapsed"]] / 1e6
-          data.frame(nrep = nrep, size = size, tmax = tmax, 
-                     model = model, 
-                     mcells_per_s = mcells_per_s, 
-                     engine = engine, 
-                     finished = ! (timings[["error"]] | warmup[["error"]] ), 
-                     warmup = warmup[["timings"]]["elapsed"], 
-                     elapsed = timings[["timings"]]["elapsed"])
         })
       })
     })
@@ -126,8 +131,22 @@ if ( FALSE ) {
 }
 
 
+# 
+# Many small simulations setting
+# 
 
+bench_engines <- mkbench(c(64, 128), 12, CXXF, COMMIT_LAST, tmax = 128)
 
+ggplot(subset(bench_engines, finished), 
+      aes(x = size, y = elapsed, color = engine)) + 
+  geom_point() + 
+  geom_line(aes(group = paste(nrep, engine, model))) + 
+  facet_grid( ~ model ) + 
+  scale_x_continuous(trans = "log", 
+                    breaks = BENCH_SIZES) + 
+  scale_y_continuous(trans = "log10") + 
+  labs(x = "Matrix size", 
+       y = "Elapsed time")
 
 
 
@@ -181,6 +200,7 @@ ggplot(subset(bench_commits, finished),
 
 
 # TODO: make a short simulation scenario for benchmarking
+mkbench(
 
 
 # Check the effect of compiling native with O3, or native with Ofast 
