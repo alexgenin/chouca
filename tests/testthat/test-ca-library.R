@@ -51,3 +51,10 @@ test_that("Example models produce correct results", {
   })
 
 })
+
+
+test_that("Errors in ca_library are handled", { 
+  expect_error({ 
+    ca_library("gsqgcxwbwfsdcxwvcwxvefaezaq")
+  })
+})
