@@ -73,6 +73,11 @@ test_that("Compiled model produces OK results regardless of proba precomputation
 # Make sure things are printed when we use verbose compilation 
 test_that("Verbose compilation prints something", { 
   
+  control <- list(save_covers_every = 1, 
+                  console_output_every = 0, 
+                  engine = "compiled", 
+                  precompute_probas = TRUE)
+  
   mod <- update(mod, wrap = FALSE, parms = list(prob = 0.001))
   o <- capture.output({ 
     a <- run_camodel(mod, initmm, 2, 
