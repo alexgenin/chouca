@@ -14,7 +14,7 @@ test_that("Custom callbacks work", {
   ccb <- function(t, mat) { 
     data.frame(t = t, 
                cover = mean(mat == "r"), 
-               corr  = spatialwarnings::raw_moran(mat))
+               sd  = sd(mat))
   }
   
   ctrl <- list(engine = "cpp", 
@@ -35,16 +35,19 @@ test_that("Custom callbacks work", {
   # Test compiled engine against cpp engine. It works because the model is deterministic
   # so the values are exactly equal. We only check that spatial autocorrelations are 
   # equal. 
-  cpp_compiled_ans <- plyr::ldply(seq.int(128), function(i) { 
-    ctrl[["engine"]] <- "cpp"
-    out_cpp <- run_camodel(mod, initmm, niters, ctrl)[["output"]][["custom_output"]]
-    out_cpp <- out_cpp[[length(out_cpp)]][ ,"corr"]
-    
-    ctrl[["engine"]] <- "compiled"
-    out_compiled <- run_camodel(mod, initmm, niters, ctrl)[["output"]][["custom_output"]]
-    out_compiled <- out_compiled[[length(out_compiled)]][ ,"corr"]
-    
-    expect_true( abs(out_cpp - out_compiled) < 1e-10 ) 
-  }, .progress = "none")
+  ctrl <- list(engine = "cpp", 
+                console_output_every = 0, 
+                custom_output_every = 1, 
+                custom_output_fun = ccb)
+  
+  ctrl[["engine"]] <- "cpp"
+  out_cpp <- run_camodel(mod, initmm, niters, ctrl)[["output"]][["custom_output"]]
+  out_cpp <- out_cpp[[length(out_cpp)]][ ,"sd"]
+  
+  ctrl[["engine"]] <- "compiled"
+  out_compiled <- run_camodel(mod, initmm, niters, ctrl)[["output"]][["custom_output"]]
+  out_compiled <- out_compiled[[length(out_compiled)]][ ,"sd"]
+  
+  expect_true( abs(out_cpp - out_compiled) < 1e-10 ) 
   
 })

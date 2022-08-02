@@ -268,7 +268,8 @@ run_camodel <- function(mod, initmat, niter,
   if ( custom_callback_active ) { 
     custom_output <- list() 
     custom_callback <- function(t, mat) { 
-      custom_output <<- append(custom_output, list(ctrl[["custom_output_fun"]](t, mat)))
+      custom_output <<- append(custom_output, 
+                               list(control[["custom_output_fun"]](t, mat)))
     }
   }
   
