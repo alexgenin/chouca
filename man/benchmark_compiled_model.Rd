@@ -27,8 +27,11 @@ benchmark_compiled_model(
 
 \item{unroll_loops}{The loop unrolling options to try (one or both of TRUE and FALSE)}
 
-\item{control}{The options to use for the simulations. See the full list of options 
+\item{control}{Other options to use for the simulations. See the full list of options 
 documented in \code{\link{run_camodel}}.}
+
+\item{precompute_probas}{The different values to be taken for precompute_probas (TRUE, 
+FALSE, or the vector c(TRUE, FALSE)).}
 
 \item{nrepeats}{The number of samples to take when measuring run time.}
 }
@@ -60,4 +63,5 @@ inimat <- generate_initmat(mod, c(0.5, 0.5), 1024)
 \dontrun{ 
   benchmark_compiled_model(mod, inimat, niter = 100) 
 }
+
 }
