@@ -8,6 +8,8 @@
 #define ARMA_NO_DEBUG
 #endif 
 
+#define USE_OMP __USE_OMP__
+
 // Define some column names for clarity
 #define _from 0
 #define _to 1
@@ -43,7 +45,10 @@ constexpr uword pmat_nrow = __PMAT_NROW__;
 constexpr uword qmat_nrow = __QMAT_NROW__; 
 constexpr uword all_qs_nrow = __ALL_QS_NROW__; 
 
+constexpr uword cores = __CORES__; 
+
 // Whether we want to precompute probabilities or not 
+// TODO: convert to value def for clarity
 __PRECOMPUTE_TRANS_PROBAS_DEFINE__
 
 // The maximum number of neighbors
@@ -135,24 +140,28 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
                                            const arma::Mat<ushort> qmat_index, 
                                            const arma::Col<double> qmat_vals, 
                                            const arma::Mat<ushort> all_qs_arma, 
-                                           const Rcpp::List ctrl, 
-                                           const Rcpp::Function console_callback, 
-                                           const Rcpp::Function cover_callback, 
-                                           const Rcpp::Function snapshot_callback) { 
+                                           const Rcpp::List ctrl) { 
   
   // Unpack control list
   Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
   uword niter      = ctrl["niter"]; // TODO: think about overflow in those values
   
-  bool console_callback_active = ctrl["console_callback_active"]; 
   uword console_callback_every = ctrl["console_callback_every"]; 
+  bool console_callback_active = console_callback_every > 0; 
+  Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  bool cover_callback_active = ctrl["cover_callback_active"]; 
   uword cover_callback_every = ctrl["cover_callback_every"]; 
+  bool cover_callback_active = cover_callback_every > 0; 
+  Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  bool snapshot_callback_active = ctrl["snapshot_callback_active"]; 
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  bool snapshot_callback_active = snapshot_callback_every > 0; 
+  Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
   
+  uword custom_callback_every = ctrl["custom_callback_every"]; 
+  bool custom_callback_active = custom_callback_every > 0; 
+  Rcpp::Function custom_callback = ctrl["custom_callback"]; 
+    
   // Initialize some things as c arrays
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
   // the size of the C stack beyond what is acceptable.
@@ -219,6 +228,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   //   -> we could feed it 64/8 = 8 chars taken from randi(). 
   randunif(); 
   
+  // This matrix holds all random numbers 
+#if USE_OMP
+  auto randnums = new double[nr][nc]; 
+#endif
   // Allocate some things we will reuse later
   double ptrans[ns]; 
   
@@ -237,6 +250,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
     
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
       snapshot_callback_wrap(iter, old_mat, snapshot_callback); 
+    }
+    
+    if ( custom_callback_active && iter % custom_callback_every == 0 ) { 
+      custom_callback_wrap(iter, old_mat, custom_callback); 
     }
     
 #ifdef PRECOMPUTE_TRANS_PROBAS
@@ -261,10 +278,21 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
       
+#if USE_OMP
+      // Fill array with random numbers
       for ( uword i=0; i<nr; i++ ) { 
-        
         for ( uword j=0; j<nc; j++ ) { 
-            
+          randnums[i][j] = randunif(); 
+        }
+      }
+#pragma omp parallel for num_threads(cores) default(shared) private(ptrans) 
+#endif
+      for ( uword i=0; i<nr; i++ ) { 
+       // TODO: when parallel, we can walk the matrix with an offset: this guarantees 
+       // that we will not update two neighboring cells, and thus that there will not 
+       // be race conditions when updating.   
+        for ( uword j=0; j<nc; j++ ) { 
+          
           uchar cstate = old_mat[i][j]; 
           
 #ifdef PRECOMPUTE_TRANS_PROBAS
@@ -321,14 +349,19 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             ptrans[k] += ptrans[k-1];
           }
 #endif
+          
+#if USE_OMP
+          double rn = randnums[i][j]; // get random number
+#else 
+          double rn = randunif(); 
+#endif
+          
           // Check if we actually transition.  
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ p0 < rn < (p0+p1) => p1 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are 
           // making an approximation since the random number is always below one. 
-          
           uchar new_cell_state = cstate; 
-          double rn = randunif(); // get random number
           for ( signed char k=(ns-1); k>=0; k-- ) { 
 #ifdef PRECOMPUTE_TRANS_PROBAS
             uword line = old_pline[i][j]; 
@@ -342,6 +375,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
+            // TODO: walk the matrix so that no neighbors are updated
+            // Only one thread can call this function at any time. It is not thread safe
+            // because if two neighboring cells are updated, we need to block,
+            // (I think), but that shouldn't happen very often. This tanks the 
+            // performance unfortunately when probabilities are precomputed, because 
+            // each for loop iteration has trivial work to do, so the lock is hit very 
+            // often.
+#pragma omp critical (line_adjustment) hint(omp_sync_hint_uncontended)
 #ifdef PRECOMPUTE_TRANS_PROBAS
             adjust_nb_plines(new_pline, i, j, cstate, new_cell_state); 
 #else 
@@ -350,16 +391,16 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
           } 
         } 
       }
-    } // end of substep loop
-    
-    // Copy old matrix to new, etc. 
-    memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
-    memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
+      
+      // Copy old matrix to new, etc. 
+      memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
+      memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
 #ifdef PRECOMPUTE_TRANS_PROBAS
-    memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
+      memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
 #else 
-    memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
+      memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
 #endif
+    } // end of substep loop
     
     iter++; 
   }
@@ -367,6 +408,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
   // Free up heap-allocated arrays
   delete [] old_mat; 
   delete [] new_mat; 
+#if USE_OMP
+  delete [] randnums; 
+#endif
 #ifdef PRECOMPUTE_TRANS_PROBAS
   delete [] old_pline; 
   delete [] new_pline; 

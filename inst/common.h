@@ -458,6 +458,21 @@ void snapshot_callback_wrap(const arma::uword iter,
   snapshot_callback(iter, m); 
 }
 
+void custom_callback_wrap(const arma::uword iter, 
+                            const uchar omat[nr][nc],
+                            const Rcpp::Function custom_callback) { 
+    
+  // Make arma array to give back to R
+  Mat<ushort> m(nr, nc);
+  for ( uword i=0; i<nr; i++ ) { 
+    for ( uword j=0; j<nc; j++ ) { 
+      m(i,j) = (ushort) omat[i][j]; 
+    }
+  }
+  
+  custom_callback(iter, m); 
+}
+
 void cover_callback_wrap(const arma::uword iter, 
                          const arma::uword ps[ns], 
                          Rcpp::Function cover_callback) { 

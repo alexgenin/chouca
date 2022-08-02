@@ -229,10 +229,7 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
                         const arma::Mat<double> pmat_vals, 
                         const arma::Mat<ushort> qmat_index, 
                         const arma::Col<double> qmat_vals, 
-                        const Rcpp::List ctrl, 
-                        const Rcpp::Function console_callback, 
-                        const Rcpp::Function cover_callback, 
-                        const Rcpp::Function snapshot_callback) { 
+                        const Rcpp::List ctrl) { 
   
   // Unpack control list
   const uword substeps     = ctrl["substeps"]; 
@@ -246,14 +243,22 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
   
-  bool console_callback_active = ctrl["console_callback_active"]; 
   uword console_callback_every = ctrl["console_callback_every"]; 
+  bool console_callback_active = console_callback_every > 0; 
+  Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  bool cover_callback_active = ctrl["cover_callback_active"]; 
   uword cover_callback_every = ctrl["cover_callback_every"]; 
+  bool cover_callback_active = cover_callback_every > 0; 
+  Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  bool snapshot_callback_active = ctrl["snapshot_callback_active"]; 
   uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  bool snapshot_callback_active = snapshot_callback_every > 0; 
+  Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
+  
+  uword custom_callback_every = ctrl["custom_callback_every"]; 
+  bool custom_callback_active = custom_callback_every > 0; 
+  Rcpp::Function custom_callback = ctrl["custom_callback"]; 
+  
   uword nr = init.n_rows; 
   uword nc = init.n_cols; 
   double n = (double) nr * (double) nc;
@@ -292,8 +297,13 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
       cover_callback(iter, ps, n); 
     }
+    
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
       snapshot_callback(iter, omat); 
+    }
+    
+    if ( custom_callback_active && iter % custom_callback_every == 0 ) { 
+      custom_callback(iter, omat); 
     }
     
     for ( uword substep = 0; substep < substeps; substep++ ) { 

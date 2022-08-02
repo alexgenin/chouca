@@ -4,8 +4,7 @@
 # the cpp engine. 
 # 
 
-camodel_cpp_engine_wrap <- function(alpha, pmat, qmat, control_list, 
-                                    console_callback, cover_callback, snapshot_callback) { 
+camodel_cpp_engine_wrap <- function(alpha, pmat, qmat, ctrl) { 
   
   
   # Split alpha 
@@ -26,7 +25,7 @@ camodel_cpp_engine_wrap <- function(alpha, pmat, qmat, control_list,
                      pmat_vals, 
                      qmat_index, 
                      qmat_vals, 
-                     control_list, console_callback, cover_callback, snapshot_callback)
+                     ctrl)
   
 }
 

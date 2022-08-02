@@ -237,6 +237,7 @@ run_camodel <- function(mod, initmat, niter,
   # Handle console output callback 
   console_callback <- function(t, ps, n) { } 
   console_callback_active <- is_positive(control[["console_output_every"]])
+  
   if ( console_callback_active ) { 
     last_time <- proc.time()["elapsed"]
     first_time <- last_time
@@ -246,24 +247,37 @@ run_camodel <- function(mod, initmat, niter,
       new_time <- proc.time()["elapsed"]
       iter_per_s <- (t - last_iter) / (new_time - last_time) 
       
-      cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 2), 
+      cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 2, width = 3), 
                             sep = ":", collapse = " ")
-      perc <- paste0(round(100 * (t / niter)), " %")
+      
+      perc  <- paste0(format(100 * (t / niter), digits = 1, width = 3), " %")
+      
       speed <- ifelse(is.nan(iter_per_s) | iter_per_s < 0, "", 
                       paste("[", sprintf("%0.2f", iter_per_s), " iter/s]", sep = ""))
       
-      tstring <- sprintf("t = %03i", t)
+      tstring <- paste0("t = ", format(t, width = ceiling(log10(niter))))
       cat(paste0(tstring, " (", perc, ") ", cover_string, " ", speed, "\n"))
       last_time <<- new_time
       last_iter <<- t 
     }
   }
   
+  # TODO: add custom callback 
+  custom_callback <- function(t, mat) { } 
+  custom_callback_active <- is_positive(control[["custom_output_every"]])
+  if ( custom_callback_active ) { 
+    custom_output <- list() 
+    custom_callback <- function(t, mat) { 
+      custom_output <<- append(custom_output, list(ctrl[["custom_output_fun"]](t, mat)))
+    }
+  }
   
   # Convert initmat to internal representation 
   d <- dim(initmat)
   initmat <- as.integer(initmat) - 1
   dim(initmat) <- d 
+  
+  #TODO: warn when there is only 1/0 in probas but we are using substeps
   
   # Convert transition matrices to internal representation (and to actual matrices)
   fix <- function(x) as.integer(factor(as.character(x), levels = states)) - 1 
@@ -300,25 +314,29 @@ run_camodel <- function(mod, initmat, niter,
                        xpoints  = mod[["xpoints"]], 
                        console_callback_active  = console_callback_active, 
                        console_callback_every   = control[["console_output_every"]], 
+                       console_callback         = console_callback, 
                        cover_callback_active    = cover_callback_active, 
                        cover_callback_every     = control[["save_covers_every"]], 
+                       cover_callback           = cover_callback, 
                        snapshot_callback_active = snapshot_callback_active, 
                        snapshot_callback_every  = control[["save_snapshots_every"]], 
+                       snapshot_callback        = snapshot_callback, 
+                       custom_callback_active = custom_callback_active, 
+                       custom_callback_every  = control[["custom_output_every"]], 
+                       custom_callback        = custom_callback, 
                        olevel = control[["olevel"]], 
                        precompute_probas = control[["precompute_probas"]], 
                        unroll_loops = control[["unroll_loops"]], 
+                       cores = control[["cores"]], 
                        verbose_compilation = control[["verbose_compilation"]])
   
   engine <- control[["engine"]][1]
   if ( tolower(engine) == "r" ) { 
-    camodel_r_engine(alpha, pmat, qmat, control_list, 
-                     console_callback, cover_callback, snapshot_callback)
+    camodel_r_engine(alpha, pmat, qmat, control_list)
   } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
-    camodel_cpp_engine_wrap(alpha, pmat, qmat, control_list, 
-                            console_callback, cover_callback, snapshot_callback)
+    camodel_cpp_engine_wrap(alpha, pmat, qmat, control_list)
   } else if ( tolower(engine) %in% c("compiled") ) { 
-    camodel_compiled_engine_wrap(alpha, pmat, qmat, control_list, 
-                                 console_callback, cover_callback, snapshot_callback)
+    camodel_compiled_engine_wrap(alpha, pmat, qmat, control_list)
   } else { 
     stop(sprintf("%s is an unknown CA engine", engine))
   }
@@ -338,24 +356,33 @@ run_camodel <- function(mod, initmat, niter,
     results[["output"]][["snapshots"]] <- snapshots
   }
   
+  if ( custom_callback_active ) { 
+    results[["output"]][["custom_output"]] <- custom_output
+  }
+  
   class(results) <- list("ca_model_result", "list")
   return(results)
 }
 
 
 load_control_list <- function(l) { 
+  #TODO: make sure all elements of l are named 
+  #TODO: update doc with new options
   
   control_list <- list(
     substeps = 1, 
     save_covers_every = 1, 
     save_snapshots_every = 0, 
     console_output_every = 10, 
+    custom_output_every = 0, 
+    custom_output_fun = NULL, 
     engine = "cpp", 
     # Compiled engine options
     olevel = "default", 
     unroll_loops = FALSE, 
     precompute_probas = "auto", 
-    verbose_compilation = FALSE 
+    cores = 1, 
+    verbose_compilation = FALSE
   )
   
   for ( nm in names(l) ) { 
@@ -370,6 +397,7 @@ load_control_list <- function(l) {
   check_length1_integer(control_list[["save_covers_every"]], "save_covers_every", 0)
   check_length1_integer(control_list[["save_snapshots_every"]], "save_snapshots_every", 0)
   check_length1_integer(control_list[["console_output_every"]], "console_output_every", 0)
+  check_length1_integer(control_list[["cores"]], "cores", 1)
   
   if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 
     stop(sprintf("Engine must be one of 'cpp', 'compiled' or 'r'"))
@@ -390,6 +418,11 @@ load_control_list <- function(l) {
   if ( ! ( is.logical(control_list[["precompute_probas"]]) || 
           control_list[["precompute_probas"]] == "auto") ) { 
     stop("precompute probas must be TRUE, FALSE or 'auto'")
+  }
+  
+  if ( control_list[["custom_output_every"]] > 0 && 
+       ! is.function(control_list[["custom_output_fun"]]) ) { 
+    stop("Custom output was turned on but no custom function was given")
   }
   
   control_list

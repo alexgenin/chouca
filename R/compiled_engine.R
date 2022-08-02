@@ -86,6 +86,11 @@ camodel_compiled_engine <- function(alpha_index,
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
   
+  # Set code lines that control the number of cores 
+  cores <- ctrl[["cores"]]
+  cmaxlines <- gsubf("__CORES__", format(cores), cmaxlines)
+  cmaxlines <- gsubf("__USE_OMP__", ifelse(cores > 1, 1, 0), cmaxlines)
+  
   # Set #define on whether to precompute transition probabilities 
   precompute_probas <- ctrl[["precompute_probas"]]
   if ( precompute_probas == "auto" ) { 
@@ -140,10 +145,7 @@ camodel_compiled_engine <- function(alpha_index,
        qmat_index, 
        qmat_vals, 
        all_qs, 
-       ctrl, 
-       console_callback, 
-       cover_callback, 
-       snapshot_callback)
+       ctrl)
 }
 
 
@@ -162,7 +164,10 @@ camodel_compiled_engine <- function(alpha_index,
 #'
 #'@param unroll_loops The loop unrolling options to try (one or both of TRUE and FALSE)
 #'
-#'@param control The options to use for the simulations. See the full list of options 
+#'@param precompute_probas The different values to be taken for precompute_probas (TRUE, 
+#'  FALSE, or the vector c(TRUE, FALSE)).
+#'
+#'@param control Other options to use for the simulations. See the full list of options 
 #'  documented in \code{\link{run_camodel}}. 
 #'
 #'@param nrepeats The number of samples to take when measuring run time. 
@@ -194,6 +199,7 @@ camodel_compiled_engine <- function(alpha_index,
 #' \dontrun{ 
 #'   benchmark_compiled_model(mod, inimat, niter = 100) 
 #' }
+#' 
 #'@export
 benchmark_compiled_model <- function(mod, init, 
                                      niter = 100, 

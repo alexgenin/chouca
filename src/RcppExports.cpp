@@ -43,8 +43,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // camodel_cpp_engine
-void camodel_cpp_engine(const arma::Mat<ushort> alpha_index, const arma::Col<double> alpha_vals, const arma::Mat<ushort> pmat_index, const arma::Mat<double> pmat_vals, const arma::Mat<ushort> qmat_index, const arma::Col<double> qmat_vals, const Rcpp::List ctrl, const Rcpp::Function console_callback, const Rcpp::Function cover_callback, const Rcpp::Function snapshot_callback);
-RcppExport SEXP _chouca_camodel_cpp_engine(SEXP alpha_indexSEXP, SEXP alpha_valsSEXP, SEXP pmat_indexSEXP, SEXP pmat_valsSEXP, SEXP qmat_indexSEXP, SEXP qmat_valsSEXP, SEXP ctrlSEXP, SEXP console_callbackSEXP, SEXP cover_callbackSEXP, SEXP snapshot_callbackSEXP) {
+void camodel_cpp_engine(const arma::Mat<ushort> alpha_index, const arma::Col<double> alpha_vals, const arma::Mat<ushort> pmat_index, const arma::Mat<double> pmat_vals, const arma::Mat<ushort> qmat_index, const arma::Col<double> qmat_vals, const Rcpp::List ctrl);
+RcppExport SEXP _chouca_camodel_cpp_engine(SEXP alpha_indexSEXP, SEXP alpha_valsSEXP, SEXP pmat_indexSEXP, SEXP pmat_valsSEXP, SEXP qmat_indexSEXP, SEXP qmat_valsSEXP, SEXP ctrlSEXP) {
 BEGIN_RCPP
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type alpha_index(alpha_indexSEXP);
@@ -54,10 +54,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type qmat_index(qmat_indexSEXP);
     Rcpp::traits::input_parameter< const arma::Col<double> >::type qmat_vals(qmat_valsSEXP);
     Rcpp::traits::input_parameter< const Rcpp::List >::type ctrl(ctrlSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::Function >::type console_callback(console_callbackSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::Function >::type cover_callback(cover_callbackSEXP);
-    Rcpp::traits::input_parameter< const Rcpp::Function >::type snapshot_callback(snapshot_callbackSEXP);
-    camodel_cpp_engine(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl, console_callback, cover_callback, snapshot_callback);
+    camodel_cpp_engine(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl);
     return R_NilValue;
 END_RCPP
 }
@@ -78,7 +75,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_chouca_local_dens", (DL_FUNC) &_chouca_local_dens, 6},
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
-    {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 10},
+    {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 7},
     {"_chouca_generate_all_qs", (DL_FUNC) &_chouca_generate_all_qs, 3},
     {NULL, NULL, 0}
 };

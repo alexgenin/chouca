@@ -2,8 +2,7 @@
 # PCA engine in pure R. Mainly here for testing/prototyping purposes
 # 
 
-camodel_r_engine <- function(alpha, pmat, qmat, ctrl, 
-                             console_callback, cover_callback, snapshot_callback) { 
+camodel_r_engine <- function(alpha, pmat, qmat, ctrl) { 
   
   # Unwrap elements of the ctrl list 
   substeps <- ctrl[["substeps"]]
@@ -33,21 +32,27 @@ camodel_r_engine <- function(alpha, pmat, qmat, ctrl,
   while ( t <= niter ) { 
     
     # Make callback to progress display 
-    if ( ctrl[["console_callback_active"]] && 
+    if ( ctrl[["console_callback_every"]] > 0 && 
          t %% ctrl[["console_callback_every"]] == 0 ) { 
-      console_callback(t, ps, n)
+      ctrl[["console_callback"]](t, ps, n)
     }
     
     # Make callback to store global densities 
-    if ( ctrl[["cover_callback_active"]] && 
+    if ( ctrl[["cover_callback_every"]] > 0 && 
          t %% ctrl[["cover_callback_every"]] == 0 ) { 
-      cover_callback(t, ps, n)
+      ctrl[["cover_callback"]](t, ps, n)
     }
     
     # Make callback to store snapshots 
-    if ( ctrl[["snapshot_callback_active"]] && 
+    if ( ctrl[["snapshot_callback_every"]] > 0 && 
          t %% ctrl[["snapshot_callback_every"]] == 0 ) { 
-      snapshot_callback(t, omat)
+      ctrl[["snapshot_callback"]](t, omat)
+    }
+    
+    # Make custom callback
+    if ( ctrl[["custom_callback_every"]] > 0 && 
+         t %% ctrl[["custom_callback_every"]] == 0 ) { 
+      ctrl[["custom_callback"]](t, omat)
     }
     
     for ( s in seq.int(substeps) ) { 
