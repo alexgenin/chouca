@@ -80,6 +80,10 @@ performance typically by one or two orders of magnitude.
 
 
 
+## Benchmark 
+
+![benchmark_results](./benchmarks_last_commit.png)
+
 
 ## Authors and acknowledgements 
 
