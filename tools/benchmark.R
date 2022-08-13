@@ -109,26 +109,62 @@ mkbench <- function(sizes, nrep, cxxf, commit, tmax = "auto") {
 if ( FALSE ) { 
   bench_engines <- mkbench(BENCH_SIZES, NREPS, CXXF, COMMIT_LAST)
   
-  ggplot(subset(bench_engines, finished), 
-        aes(x = size, y = mcells_per_s, color = engine, shape = engine)) + 
-    geom_point() + geom_line(aes(group = paste(engine, nrep))) + 
-    scale_x_continuous(trans = "log", 
-                      breaks = BENCH_SIZES) + 
-    scale_color_brewer(palette = "Set2") + 
-    facet_wrap( ~ model ) + 
-    labs(x = "Matrix size", 
-         y = "Million cells evaluated per second")
+  # Take averages 
+  bench_engines_summ <- subset(bench_engines, finished)
+  bench_engines_summ <- ddply(bench_engines_summ, 
+                              ~ engine + size + precompute_probas, 
+                              function(df) { 
+    if ( df[1, "engine"] == "cpp" & df[1, "precompute_probas"] == TRUE ) { 
+      return(NULL) 
+    }
+    with(df, data.frame(mcells_per_s = mean(mcells_per_s), 
+                        kiter_per_s  = mean(tmax / elapsed / 1e3), 
+                        simu_type = paste0(engine[1], 
+                                           ifelse(precompute_probas[1], "+precomp", ""))))
+  })
   
-  ggplot(subset(bench_engines, finished), 
-        aes(x = size, y = tmax / elapsed / 1e3, color = engine)) + 
-    geom_point() + 
-    geom_line(aes(group = paste(nrep, engine, model))) + 
-  #   facet_grid( ~ engine ) + 
+  iter_per_s_plot <- ggplot(bench_engines_summ, 
+        aes(x = size, y = mcells_per_s, color = simu_type)) + 
+    geom_point() + geom_line(aes(group = simu_type)) + 
     scale_x_continuous(trans = "log", 
                       breaks = BENCH_SIZES) + 
-    scale_y_continuous(trans = "log10") + 
+    scale_y_continuous(trans = "log10", 
+                       labels = function(X) sprintf("%sM", format(X, digits = 2))) + 
+    scale_color_brewer(palette = "Set2", 
+                       name = "Engine type") + 
+    annotation_logticks(base = 10, 
+                        sides = "l", 
+                        long  = unit(0.2, "cm"), 
+                        mid   = unit(0.1, "cm"), , 
+                        short = unit(0.05, "cm"), 
+                        alpha = 0.5) + 
     labs(x = "Matrix size", 
-        y = "kIter/s")
+         y = "Cells evaluations.s⁻¹") 
+  
+  speed_plot <- ggplot(bench_engines_summ, 
+                       aes(x = size, y = kiter_per_s, color = simu_type)) + 
+    geom_point() + geom_line(aes(group = simu_type)) + 
+    scale_x_continuous(trans = "log10", 
+                       breaks = BENCH_SIZES) + 
+    scale_y_continuous(trans = "log10", 
+                       labels = function(X) sprintf("%sk", format(X, digits = 2))) + 
+    scale_color_brewer(palette = "Set2", 
+                       guide = "none", 
+                       name = "Engine type") + 
+    annotation_logticks(base = 10, 
+                        sides = "l", 
+                        long  = unit(0.2, "cm"), 
+                        mid   = unit(0.1, "cm"), , 
+                        short = unit(0.05, "cm"), 
+                        alpha = 0.5) + 
+    labs(x = "Matrix size", 
+         y = "Iterations.s⁻¹")
+  
+  library(patchwork)
+  ggsave({ 
+    speed_plot + iter_per_s_plot + plot_layout(nrow = 1, widths = c(.5, .5))
+  }, width = 10, height = 3, dpi = 200, file = "./benchmarks_last_commit.png")
+  
 }
 
 
