@@ -120,7 +120,7 @@ if ( FALSE ) {
     with(df, data.frame(mcells_per_s = mean(mcells_per_s), 
                         kiter_per_s  = mean(tmax / elapsed / 1e3), 
                         simu_type = paste0(engine[1], 
-                                           ifelse(precompute_probas[1], "+precomp", ""))))
+                                           ifelse(precompute_probas[1], "+memoise", ""))))
   })
   
   iter_per_s_plot <- ggplot(bench_engines_summ, 
@@ -160,11 +160,16 @@ if ( FALSE ) {
     labs(x = "Matrix size", 
          y = "Iterations.s⁻¹")
   
+  linuxcmd <- with(as.list(Sys.info()), paste(sysname, release))
+  proctype <- system("cat /proc/cpuinfo|grep 'model name'|head -n1|cut -d':' -f2", 
+                     intern = TRUE)
+  
   library(patchwork)
   ggsave({ 
-    speed_plot + iter_per_s_plot + plot_layout(nrow = 1, widths = c(.5, .5))
+    speed_plot + iter_per_s_plot + 
+      plot_layout(nrow = 1, widths = c(.5, .5)) + 
+      plot_annotation(caption = paste(linuxcmd, proctype, sep = "\n"))
   }, width = 10, height = 3, dpi = 200, file = "./benchmarks_last_commit.png")
-  
 }
 
 

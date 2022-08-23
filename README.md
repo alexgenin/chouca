@@ -80,7 +80,10 @@ performance typically by one or two orders of magnitude.
 
 
 
-## Benchmark 
+## Benchmarks
+
+Here are a few graphs that should help you judge what performance to expect from 
+`chouca`.
 
 ![benchmark_results](./benchmarks_last_commit.png)
 

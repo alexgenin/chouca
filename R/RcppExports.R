@@ -9,8 +9,8 @@ local_dens_col <- function(m, nstates, j, wrap, use_8_nb) {
     .Call(`_chouca_local_dens_col`, m, nstates, j, wrap, use_8_nb)
 }
 
-camodel_cpp_engine <- function(alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl) {
-    invisible(.Call(`_chouca_camodel_cpp_engine`, alpha_index, alpha_vals, pmat_index, pmat_vals, qmat_index, qmat_vals, ctrl))
+camodel_cpp_engine <- function(ctrl) {
+    invisible(.Call(`_chouca_camodel_cpp_engine`, ctrl))
 }
 
 generate_all_qs <- function(nb, ns, filter) {

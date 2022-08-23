@@ -9,9 +9,9 @@ test_that("The number of substeps is correctly implemented", {
                 ctrl = list(console_output_every = 0))
   init <- generate_initmat(mod, c(0.5, 0.4, 0.1), 32)
   
-  ctrl <- list(substeps = 10)
+  ctrl <- list(substeps = 10, console_output_every = 0)
   out1 <- run_camodel(mod, init, 100, ctrl)
-  ctrl <- list(substeps = 20)
+  ctrl <- list(substeps = 20, console_output_every = 0)
   out2 <- run_camodel(mod, init, 100, ctrl)
   
   with(out1[["output"]], plot(covers[ ,"t"],  covers[ , "MUSSEL"], type = "n"))

@@ -81,11 +81,11 @@ test_that("Verbose compilation prints something", {
   mod <- update(mod, wrap = FALSE, parms = list(prob = 0.001))
   o <- capture.output({ 
     a <- run_camodel(mod, initmm, 2, 
-                control = c(control, list(verbose_compilation = TRUE)))
+                     control = c(control, list(verbose_compilation = TRUE)))
   })
   
   expect_true({ 
-    any(grepl("Setting __SUBSTEPS__ to 1", o))
+    any(grepl("Setting __SUBSTEPS__ to", o))
   })
   
 })

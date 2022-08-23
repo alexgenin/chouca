@@ -8,14 +8,6 @@
 test_that("Example models produce correct results", { 
 
   # 
-  # ARID VEGETATION MODEL 
-  # ---------------------
-  # This model is unsupported -> it should produce an error 
-  expect_error({ 
-    update(ca_library("aridvege"), wrap = TRUE, check_model = TRUE)
-  })
-  
-  # 
   # GAME OF LIFE
   # ------------
   gol <- ca_library("gameoflife")
@@ -26,7 +18,7 @@ test_that("Example models produce correct results", {
   imat[1:3, 1:3] <- glider
   fmat <- factor(ifelse(imat > 0, "LIVE", "DEAD"), levels = c("DEAD", "LIVE"))
   dim(fmat) <- dim(imat)
-
+  
   control <- list(substeps = 1, 
                   console_output_every = 0, 
                   save_covers_every = 1, 

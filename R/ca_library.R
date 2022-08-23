@@ -116,29 +116,30 @@ ca_library <- function(model,
   if ( model == "aridvege" || model == "arid vege" || model == "arid-vege" ) { 
     
     if ( is.null(parms) ) { 
-    parms <- list(r = 0.01, 
-                  f = 0.9, 
-                  delta = 0.1, 
-                  c = 0.2, 
-                  d = 0.1, 
-                  m0 = 0.05, 
-                  g0 = 0.1, # g0 and b in the bistable range
-                  b = 0.4)
+      parms <- list(r = 0.01, 
+                    f = 0.9, 
+                    delta = 0.1, 
+                    c = 0.2, 
+                    d = 0.1, 
+                    m0 = 0.05, 
+                    g0 = 0.1, # g0 and b in the bistable range
+                    b = 0.4, 
+                    pr = 1)
     }
     
     wrap <- ifelse(is.null(wrap), TRUE, wrap)
     neighbors <- ifelse(is.null(neighbors), 4, neighbors) 
     
     mod <- camodel(
-      transition("DEGR", "VEGE", 
+      transition("DEGR", "EMPTY", 
                  ~ r + q["VEGE"] * f), 
       transition("EMPTY", "VEGE", 
-                 ~ ( delta * p["VEGE"] + ( 1 - delta ) * 
-                     q["VEGE"]) * ( b - c * p["VEGE"] )), 
+                 ~ ( delta * p["VEGE"] + ( 1 - delta ) * q["VEGE"] ) * 
+                     ( b - c * p["VEGE"] ) ), 
       transition("EMPTY", "DEGR", 
                  ~ d), 
       transition("VEGE", "EMPTY", 
-                 ~ m0 + g0 * ( 1 - q["VEGE"] )), 
+                 ~ m0 + g0 * ( 1 - pr * q["VEGE"] )), 
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 

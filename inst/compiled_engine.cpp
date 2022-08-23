@@ -4,9 +4,9 @@
 // 
 
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
 
 #define USE_OMP __USE_OMP__
 
@@ -43,6 +43,7 @@ constexpr double ncells = nr * nc;
 constexpr uword alpha_nrow = __ALPHA_NROW__; 
 constexpr uword pmat_nrow = __PMAT_NROW__; 
 constexpr uword qmat_nrow = __QMAT_NROW__; 
+constexpr uword pqmat_nrow = __PQMAT_NROW__; 
 constexpr uword all_qs_nrow = __ALL_QS_NROW__; 
 
 constexpr uword cores = __CORES__; 
@@ -66,6 +67,8 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
                                                const arma::Mat<double>& pmat_vals, 
                                                const arma::Mat<ushort>& qmat_index, 
                                                const arma::Col<double>& qmat_vals, 
+                                               const arma::Mat<ushort>& pqmat_index, 
+                                               const arma::Mat<double>& pqmat_vals, 
                                                const arma::uword ps[ns]) { 
   
   // Note tprob_interval here. In all combinations of neighbors, only some of them 
@@ -95,14 +98,20 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
             alpha_vals(k); 
         }
         
+//         Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << from << " to: " 
+//           << to << "alpha tp: " << tprobs[l][from][to]; 
+          
         // Scan the table of pmat to reconstruct probabilities -> where is ps?
         for ( uword k=0; k<pmat_nrow; k++ ) { 
+          double p =ps[pmat_index(k, _state)] / ncells; 
+          
           tprobs[l][from][to] += 
             ( pmat_index(k, _from) == from ) * 
             ( pmat_index(k, _to) == to) * 
-            pmat_vals(k, _coef) * pow(ps[pmat_index(k, _state)] / ncells, 
-                                      pmat_vals(k, _expo));
+            pmat_vals(k, _coef) * pow(p, pmat_vals(k, _expo));
         }
+//         Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << from << " to: " 
+//           << to << "p tp: " << tprobs[l][from][to]; 
         
         // Scan the table of qmat to reconstruct probabilities 
         for ( uword k=0; k<qmat_nrow; k++ ) { 
@@ -119,6 +128,25 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
             ( qmat_index(k, _qs) == qthis ) * 
             qmat_vals(k); 
         }
+        
+//         Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << from << " to: " 
+//           << to << "q tp: " << tprobs[l][from][to]; 
+        
+        // Scan the table of pqmat to reconstruct probabilities 
+        for ( uword k=0; k<pqmat_nrow; k++ ) { 
+          
+          // Lookup which point in the qs function we need to use for the 
+          // current neighbor situation.
+          // all_qs[ ][ns] holds the total number of neighbors
+          double q = (double) all_qs[l][pqmat_index(k, _state)] / all_qs[l][ns];
+          double p = (double) ps[pqmat_index(k, _state)] / ncells; 
+          
+          tprobs[l][from][to] += 
+            ( pqmat_index(k, _from) == from ) * 
+            ( pqmat_index(k, _to) == to) * 
+            pqmat_vals(k, _coef) * 
+            pow(q * p, pqmat_vals(k, _expo));
+        }
       }
       
       // Compute cumsum 
@@ -133,35 +161,39 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
 
 
 // [[Rcpp::export]]
-void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index, 
-                                           const arma::Col<double> alpha_vals, 
-                                           const arma::Mat<ushort> pmat_index, 
-                                           const arma::Mat<double> pmat_vals, 
-                                           const arma::Mat<ushort> qmat_index, 
-                                           const arma::Col<double> qmat_vals, 
-                                           const arma::Mat<ushort> all_qs_arma, 
+void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma, 
                                            const Rcpp::List ctrl) { 
   
   // Unpack control list
-  Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
-  uword niter      = ctrl["niter"]; // TODO: think about overflow in those values
+  const Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
+  const uword niter      = ctrl["niter"]; // TODO: think about overflow in those values
   
-  uword console_callback_every = ctrl["console_callback_every"]; 
-  bool console_callback_active = console_callback_every > 0; 
+  const uword console_callback_every = ctrl["console_callback_every"]; 
+  const bool console_callback_active = console_callback_every > 0; 
   Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  uword cover_callback_every = ctrl["cover_callback_every"]; 
-  bool cover_callback_active = cover_callback_every > 0; 
+  const uword cover_callback_every = ctrl["cover_callback_every"]; 
+  const bool cover_callback_active = cover_callback_every > 0; 
   Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
-  bool snapshot_callback_active = snapshot_callback_every > 0; 
+  const uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  const bool snapshot_callback_active = snapshot_callback_every > 0; 
   Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
   
-  uword custom_callback_every = ctrl["custom_callback_every"]; 
-  bool custom_callback_active = custom_callback_every > 0; 
+  const uword custom_callback_every = ctrl["custom_callback_every"]; 
+  const bool custom_callback_active = custom_callback_every > 0; 
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
-    
+  
+  // Extract things from list 
+  const arma::Mat<ushort> alpha_index = ctrl["alpha_index"];
+  const arma::Col<double> alpha_vals  = ctrl["alpha_vals"];
+  const arma::Mat<ushort> pmat_index  = ctrl["pmat_index"];
+  const arma::Mat<double> pmat_vals   = ctrl["pmat_vals"];
+  const arma::Mat<ushort> qmat_index  = ctrl["qmat_index"];
+  const arma::Col<double> qmat_vals   = ctrl["qmat_vals"];
+  const arma::Mat<ushort> pqmat_index  = ctrl["pqmat_index"];
+  const arma::Mat<double> pqmat_vals   = ctrl["pqmat_vals"];
+  
   // Initialize some things as c arrays
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
   // the size of the C stack beyond what is acceptable.
@@ -265,6 +297,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
                                        pmat_vals, 
                                        qmat_index, 
                                        qmat_vals, 
+                                       pqmat_index, 
+                                       pqmat_vals, 
                                        old_ps); 
     // for ( uword l=0; l<all_qs_nrow; l++ ) { 
     //   for ( ushort j=0; j<ns; j++ ) {
@@ -341,7 +375,24 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> alpha_index,
                 ( qmat_index(k, _qs) == qthis ) * 
                 qmat_vals(k); 
             }
-
+            
+            // Scan the table of pqmat to reconstruct probabilities 
+            for ( uword k=0; k<pqmat_nrow; k++ ) { 
+              
+              // Lookup which point in the qs function we need to use for the 
+              // current neighbor situation.
+              // all_qs[ ][ns] holds the total number of neighbors
+              double pq = (double) old_qs[i][j][pqmat_index(k, _state)] / 
+                            (double) qs_total;
+              pq *= (double) old_ps[pqmat_index(k, _state)] / ncells; 
+              
+              ptrans[to] += 
+                ( pqmat_index(k, _from) == cstate ) * 
+                ( pqmat_index(k, _to) == to) * 
+                pqmat_vals(k, _coef) * 
+                pow(pq, pqmat_vals(k, _expo));
+            }
+            
           }
           
           // Compute cumsum 

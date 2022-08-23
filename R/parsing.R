@@ -189,6 +189,13 @@ camodel <- function(...,
                tr[["beta_p"]])
   })
   
+  
+  pqmat <- plyr::ldply(transitions_parsed, function(tr) { 
+    data.frame(from = tr[["from"]], 
+               to = tr[["to"]], 
+               tr[["beta_pq"]])
+  })
+  
   alpha <- plyr::ldply(transitions_parsed, function(tr) { 
     data.frame(from = tr[["from"]], 
                to = tr[["to"]], 
@@ -203,6 +210,7 @@ camodel <- function(...,
                 alpha = alpha, 
                 pmat = pmat, 
                 qmat = qmat, 
+                pqmat = pqmat, 
                 wrap = wrap, 
                 neighbors = neighbors, 
                 epsilon = epsilon, 
@@ -289,7 +297,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     nqs <- seq_along(xs) - 1
     ys <- sapply(xs, function(x) { 
       q[s] <- x
-      prob_with(p = zero, q = q) - alpha0
+      prob_with(p = zero, q = q) - prob_with(p = zero, q = zero)
     })
     
     data.frame(state = s, qs = nqs, ys = ys)
@@ -297,17 +305,35 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   
   beta_p <- plyr::ldply(state_names, function(s) { 
     p <- zero
-    # In the worst case scenario, we need 9 points, in the case of 8 possible neighbors
     xs <- seq(0, 1, length.out = 25) 
     ys <- sapply(xs, function(x) { 
       p[s] <- x
-      prob_with(p = p, q = zero) - alpha0
+      prob_with(p = p, q = zero) - prob_with(p = zero, q = zero)
     })
     
     # Fit polynomial to this 
     poly <- fitpoly(xs, ys, epsilon)
     data.frame(state = s, coef = poly, expo = seq_along(poly))
   })
+  
+  beta_pq <- plyr::ldply(state_names, function(s) { 
+    p <- zero
+    q <- zero
+    xs <- seq(0, 1, length.out = 25) 
+    ys <- sapply(xs, function(x) { 
+      p[s] <- x
+      q[s] <- x
+      prob_with(p = p, q = q) - prob_with(p = p, q = zero) - 
+        prob_with(p = zero, q = q) + prob_with(p = zero, q = zero)
+    })
+    
+    # Fit polynomial to this 
+    # NOTE: here we fit proportional to x^2, because the coefficients are proportional 
+    # to the product pq and not just p or q
+    poly <- fitpoly(xs^2, ys, epsilon)
+    data.frame(state = s, coef = poly, expo = seq_along(poly))
+  })
+  
   
   # Print all the warnings accumulated so far
   if ( length(warn) > 0 ) { 
@@ -316,12 +342,15 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     lapply(warn, warning, call. = FALSE)
   }
   
+  
+  
   # Check if we reconstruct the probabilities correctly 
   if ( check_model ) { 
     all_qss <- generate_all_qs(neighbors, ns, filter = TRUE)[ ,1:ns]
     all_qss <- all_qss[apply(all_qss, 1, sum) == neighbors, ]
     colnames(all_qss) <- state_names
     ps <- matrix(stats::runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
+    ps <- t(apply(ps, 1, function(X) X / sum(X)))
     colnames(ps) <- state_names
     
     p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
@@ -329,6 +358,8 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     })
     
     p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
+      
+      # q component
       qslong <- data.frame(state = state_names, 
                            # this gets the qs point corresponding to this proportion 
                            # of neighbors. 
@@ -336,11 +367,18 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong))
       qssum <- sum(qslong[ ,"ys"])
       
+      # p component
       pslong <- data.frame(state = state_names, ps = ps[i, ])
       pslong <- plyr::join(beta_p, pslong, type = "left", by = "state")
       pssum <- with(pslong, sum(coef * ps ^ expo) )
       
-      alpha0 + qssum + pssum
+      # pq component
+      pqslong <- data.frame(state = state_names, 
+                            pqs = all_qss[i, ]/neighbors * ps[i, ])
+      pqslong <- plyr::join(beta_pq, pqslong, type = "left", by = "state")
+      pqssum <- with(pqslong, sum(coef * pqs ^ expo) )
+      
+      alpha0 + qssum + pssum + pqssum
     })
     
     if ( ! all( abs(p_refs - p_preds) < epsilon ) ) { 
@@ -356,8 +394,8 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
        alpha0 = alpha0, 
        beta_q = beta_q, 
        beta_p = beta_p, 
+       beta_pq = beta_pq, 
        prob = pexpr)
-  
 }
 
 # Update a ca_model with new arguments 
@@ -399,8 +437,8 @@ fitpoly <- function(x, y, epsilon) {
   force(x)
   force(y)
   
-  # If 
-  if ( all(y < epsilon) ) { 
+  # If all zero, return zero
+  if ( all(abs(y) < epsilon) ) { 
     return( 0 ) 
   }
   

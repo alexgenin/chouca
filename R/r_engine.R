@@ -2,7 +2,7 @@
 # PCA engine in pure R. Mainly here for testing/prototyping purposes
 # 
 
-camodel_r_engine <- function(alpha, pmat, qmat, ctrl) { 
+camodel_r_engine <- function(ctrl) { 
   
   # Unwrap elements of the ctrl list 
   substeps <- ctrl[["substeps"]]
@@ -11,8 +11,12 @@ camodel_r_engine <- function(alpha, pmat, qmat, ctrl) {
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
-  
   xpoints <- ctrl[["xpoints"]] 
+  
+  alpha <- ctrl[["alpha"]]
+  pmat <- ctrl[["pmat"]]
+  qmat <- ctrl[["qmat"]]
+  pqmat <- ctrl[["pqmat"]]
   
   # Initialize some elements
   # NOTE: we work in integer representation minus one internally, because it makes 
@@ -87,6 +91,15 @@ camodel_r_engine <- function(alpha, pmat, qmat, ctrl) {
               (qmat[sub, "from"] == this_cell_state) * 
                 ( qmat[sub, "qs"] == qpointn[ 1+qmat[sub, "state"] ] ) * 
                 qmat[sub, "ys"]
+            )
+          }
+          
+          for ( k in unique(pqmat[ ,"to"]) ) { 
+            sub <- which(pqmat[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum(
+              (pqmat[sub, "from"] == this_cell_state) * 
+                pqmat[sub, "coef"] * 
+                (qs[ 1 + pqmat[sub, "state"] ] * ps[ 1+pqmat[sub, "state"] ] / n)^pqmat[sub, "expo"]
             )
           }
           

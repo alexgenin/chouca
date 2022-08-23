@@ -4,29 +4,25 @@
 # the cpp engine. 
 # 
 
-camodel_cpp_engine_wrap <- function(alpha, pmat, qmat, ctrl) { 
+camodel_cpp_engine_wrap <- function(ctrl) { 
   
+  # Split coefficient tables
+  alpha <- ctrl[["alpha"]]
+  pmat <- ctrl[["pmat"]]
+  qmat <- ctrl[["qmat"]]
+  pqmat <- ctrl[["pqmat"]]
   
-  # Split alpha 
-  alpha_index <- intmat(alpha[ ,c("from", "to"), drop = FALSE])
-  alpha_vals  <- as.numeric(alpha[ ,c("a0")]) # vector of length nstates
+  ctrl <- c(ctrl, 
+            list(alpha_index = intmat(alpha[ ,c("from", "to"), drop = FALSE]), 
+                 alpha_vals = as.numeric(alpha[ ,c("a0")]), # vector
+                 pmat_index = intmat(pmat[ ,c("from", "to", "state"), drop = FALSE]), 
+                 pmat_vals = pmat[ ,c("coef", "expo"), drop = FALSE], 
+                 qmat_index = intmat(qmat[ ,c("from", "to", "state", "qs"), drop = FALSE]), 
+                 qmat_vals = qmat[ ,"ys"],
+                 pqmat_index = intmat(pqmat[ ,c("from", "to", "state"), drop = FALSE]), 
+                 pqmat_vals = pqmat[ ,c("coef", "expo"), drop = FALSE]))
   
-  # Split pmat 
-  pmat_index <- intmat(pmat[ ,c("from", "to", "state"), drop = FALSE])
-  pmat_vals  <- pmat[ ,c("coef", "expo"), drop = FALSE]
-  
-  # Split qmat 
-  qmat_index <- intmat(qmat[ ,c("from", "to", "state", "qs"), drop = FALSE])
-  qmat_vals  <- qmat[ ,"ys"] # vector
-  
-  camodel_cpp_engine(alpha_index, 
-                     alpha_vals, 
-                     pmat_index, 
-                     pmat_vals, 
-                     qmat_index, 
-                     qmat_vals, 
-                     ctrl)
-  
+  camodel_cpp_engine(ctrl)
 }
 
 

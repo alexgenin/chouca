@@ -1,4 +1,5 @@
 
+// TODO: uncomment
 // #ifndef ARMA_NO_DEBUG
 // #define ARMA_NO_DEBUG
 // #endif 
@@ -223,13 +224,7 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m,
 // This file contains the main c++ engine to run CAs 
 // 
 // [[Rcpp::export]]
-void camodel_cpp_engine(const arma::Mat<ushort> alpha_index, 
-                        const arma::Col<double> alpha_vals, 
-                        const arma::Mat<ushort> pmat_index, 
-                        const arma::Mat<double> pmat_vals, 
-                        const arma::Mat<ushort> qmat_index, 
-                        const arma::Col<double> qmat_vals, 
-                        const Rcpp::List ctrl) { 
+void camodel_cpp_engine(const Rcpp::List ctrl) { 
   
   // Unpack control list
   const uword substeps     = ctrl["substeps"]; 
@@ -243,25 +238,38 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
   
-  uword console_callback_every = ctrl["console_callback_every"]; 
-  bool console_callback_active = console_callback_every > 0; 
+  const uword console_callback_every = ctrl["console_callback_every"]; 
+  const bool console_callback_active = console_callback_every > 0; 
   Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  uword cover_callback_every = ctrl["cover_callback_every"]; 
-  bool cover_callback_active = cover_callback_every > 0; 
+  const uword cover_callback_every = ctrl["cover_callback_every"]; 
+  const bool cover_callback_active = cover_callback_every > 0; 
   Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
-  bool snapshot_callback_active = snapshot_callback_every > 0; 
+  const uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  const bool snapshot_callback_active = snapshot_callback_every > 0; 
   Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
   
-  uword custom_callback_every = ctrl["custom_callback_every"]; 
-  bool custom_callback_active = custom_callback_every > 0; 
+  const uword custom_callback_every = ctrl["custom_callback_every"]; 
+  const bool custom_callback_active = custom_callback_every > 0; 
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
-  uword nr = init.n_rows; 
-  uword nc = init.n_cols; 
-  double n = (double) nr * (double) nc;
+  // Extract things from list 
+  const arma::Mat<ushort> alpha_index = ctrl["alpha_index"];
+  const arma::Col<double> alpha_vals  = ctrl["alpha_vals"];
+  const arma::Mat<ushort> pmat_index  = ctrl["pmat_index"];
+  const arma::Mat<double> pmat_vals   = ctrl["pmat_vals"];
+  const arma::Mat<ushort> qmat_index  = ctrl["qmat_index"];
+  const arma::Col<double> qmat_vals   = ctrl["qmat_vals"];
+  const arma::Mat<ushort> pqmat_index  = ctrl["pqmat_index"];
+  const arma::Mat<double> pqmat_vals   = ctrl["pqmat_vals"];
+  
+//   Rcpp::Rcout << pqmat_index << "\n"; 
+//   Rcpp::Rcout << pqmat_vals << "\n"; 
+  
+  const uword nr = init.n_rows; 
+  const uword nc = init.n_cols; 
+  const double n = (double) nr * (double) nc;
   
   // Initialize some things 
   Mat<ushort> omat = init; 
@@ -288,6 +296,7 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
   Col<double> ptrans(ns); 
   
   while ( iter <= niter ) { 
+//     Rcpp::Rcout << omat << "\n"; 
     
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
@@ -316,7 +325,6 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
         
         for ( uword i=0; i<nr; i++ ) { 
           
-          
           // Normalized local densities to proportions
           uword qs_total = accu(qs.row(i)); 
           
@@ -341,14 +349,23 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
                 alpha_vals(k); 
             }
             
+//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate << " to: " 
+//               << to << "alpha tp: " << ptrans(to) << "\n";
+            
             // Scan the table of pmat to reconstruct probabilities -> where is ps?
             for ( uword k=0; k<pmat_index.n_rows; k++ ) { 
+              
+              double p = ps(pmat_index(k, _state)) / (double) n; 
+              
               ptrans(to) += 
                 ( pmat_index(k, _from) == cstate ) * 
-                ( pmat_index(k, _to) == to) * 
-                pmat_vals(k, _coef) * pow( ps(pmat_index(k, _state)) / (double) n, 
-                                           pmat_vals(k, _expo) );
+                ( pmat_index(k, _to) == to ) * 
+                pmat_vals(k, _coef) * 
+                pow(p, pmat_vals(k, _expo) );
             }
+            
+//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate << " to: " 
+//               << to << "p tp: " << ptrans(to) << "\n";
             
             // Scan the table of qmat to reconstruct probabilities 
             for ( uword k=0; k<qmat_index.n_rows; k++ ) { 
@@ -366,8 +383,43 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
                 qmat_vals(k); 
             }
             
-//             ptrans(to) /= substeps; 
+//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate << " to: " 
+//               << to << "q tp: " << ptrans(to) << "\n";
+            
+            // Scan the table of pmat to reconstruct probabilities -> where is ps?
+            for ( uword k=0; k<pqmat_index.n_rows; k++ ) { 
+              
+              
+              double pq = (double) qs(i, pqmat_index(k, _state)) / (double) qs_total; 
+              pq *= (double) ps(pqmat_index(k, _state)) / (double) n; 
+              // Rcpp::Rcout << "i: " << i << " j: " << j << 
+              //   " p: " << ps(pqmat_index(k, _state)) / (double) n << 
+              //   " q: " << qs(i, pqmat_index(k, _state)) / (double) qs_total << 
+              //   " pq: " << pq << 
+              //   " k: " << k << "pqmat(k, coef): " << pqmat_vals(k, _coef) << 
+              //   " product: " << pqmat_vals(k, _coef) * pow(pq, pqmat_vals(k, _expo) ) << 
+              //   "\n";
+                
+              ptrans(to) += 
+                ( pqmat_index(k, _from) == cstate ) * 
+                ( pqmat_index(k, _to) == to) * 
+                pqmat_vals(k, _coef) * 
+                pow(pq, pqmat_vals(k, _expo) );
+              
+            }
+            
+//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate  << " to: " 
+//               << to << "pq tp: " << ptrans(to) << "\n";
           }
+          
+//           Rcpp::Rcout << 
+//             "i: " << i << " j: " << j << "from: " << cstate << " " << 
+//             "ptrans: " << ptrans << "\n"; 
+          
+//           if ( cstate == 1 ) { 
+//             Rcpp::Rcout << "t: " << iter << " i: " << i << " j: " << j << 
+//               " from: " << cstate << " toveg: " << ptrans(2) << "\n";
+//           }
           
           // Check if we actually transition. We scan all states and switch to the 
           // one with the highest probability. 
@@ -384,8 +436,6 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
             ptrans(k) += ptrans(k-1);
           }
           
-          //TODO: consider substepping only the probability step, maybe that works 
-          // better. 
           ushort new_cell_state = cstate; 
           double rn = Rf_runif(0, 1); 
           for ( signed short k=(ns-1); k>=0; k-- ) { 
@@ -410,7 +460,7 @@ void camodel_cpp_engine(const arma::Mat<ushort> alpha_index,
       omat = nmat; 
       
     } // end of substep loop
-//     return 1; 
+    
     iter++; 
   }
   

@@ -69,5 +69,43 @@ if ( dir.exists("./caspr_output") ) {
            abs(guichard_caspr[ ,"-"] - guichard_chouca[ ,"d"]) < 0.1) )
   })
   
+  
+  
+  
+  
+  # Kéfi arid vegetation model 
+  # 
+  aridvege_caspr <- readRDS("./caspr_output/caspr_ts_grazing.rds")
+  p <- list(delta = 0.9, b = 0.5, c = 0.2, m0 = 0.05, g0 = 0.2, 
+            r = 0.01, f = 0.9, d = 0.1, pr = 1)
+  
+  aridvege_mod <- ca_library("aridvege", parms = p)
+  # Init configuration in caspr:
+  # l <- init_landscape(c("+","0", "-"),  c(0.6, 0.2, 0.2), width = 100) 
+  initmat <- generate_initmat(aridvege_mod, c(VEGE = 0.6, EMPTY = 0.2, DEGR = 0.2), 
+                              nr = 100, nc = 100)
+  ctrl <- list(substeps = 10, engine = "compiled", console_output_every = 0)
+  run <- run_camodel(aridvege_mod, initmat, 200, control = ctrl)
+  aridvege_chouca <- as.data.frame(run[["output"]][["covers"]])
+  names(aridvege_chouca) <- c("time", "-", "0", "+")
+  
+  # Display graphs
+  if ( FALSE ) { 
+    with(aridvege_caspr, 
+         plot(time, sample(c(0, 1), size = length(time), replace = TRUE), type = "n"))
+    with(aridvege_caspr,  lines(time, `+`, col = "red"))
+    with(aridvege_chouca, lines(time, `+`, col = "red", lty = 2))
+    with(aridvege_caspr,  lines(time, `0`, col = "blue"))
+    with(aridvege_chouca, lines(time, `0`, col = "blue", lty = 2))
+    with(aridvege_caspr,  lines(time, `-`, col = "darkgreen"))
+    with(aridvege_chouca,  lines(time, `-`, col = "darkgreen", lty = 2))
+  }
+  
+  expect_true({ 
+    all( c(abs(aridvege_caspr[ ,"+"] - aridvege_chouca[ ,"+"]) < 0.1, 
+           abs(aridvege_caspr[ ,"0"] - aridvege_chouca[ ,"0"]) < 0.1, 
+           abs(aridvege_caspr[ ,"-"] - aridvege_chouca[ ,"-"]) < 0.1) )
+  })
+  
 }
 

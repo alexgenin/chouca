@@ -46,8 +46,8 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
     if ( length(diff) > 0 ) { 
       stop("State names in 'pvec' do not match the states defined in the model")
     }
-    # Make sure order is right 
-    pvec <- pvec[mod[["states"]]]
+    # Make sure order is right. /!\ indexing with factors == indexing with integers !!!
+    pvec <- pvec[ as.character(mod[["states"]]) ]
   }
   
   spvec <- sum(pvec)
@@ -63,6 +63,9 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   
   m <- factor(m, levels = mod[["states"]])
   dim(m) <- c(nr, nc)
+  
+  # Set classe 
+  class(m) <- c("camodel_initmat", "factor")
   
   return(m)
 }
@@ -189,6 +192,7 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'@export
 run_camodel <- function(mod, initmat, niter, 
                         control = list()) { 
+  check_length1_integer(niter, "niter", 1)
   
   ns <- mod[["nstates"]]
   states <- mod[["states"]]
@@ -223,7 +227,7 @@ run_camodel <- function(mod, initmat, niter,
     snapshots <- list()
     
     snapshot_callback <- function(t, m) { 
-#       dev.hold()
+#       dev.hold() # plot it
 #       image(m)
 #       dev.flush()
       d <- dim(m)
@@ -247,7 +251,7 @@ run_camodel <- function(mod, initmat, niter,
       new_time <- proc.time()["elapsed"]
       iter_per_s <- (t - last_iter) / (new_time - last_time) 
       
-      cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 2, width = 3), 
+      cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 3, width = 4), 
                             sep = ":", collapse = " ")
       
       perc  <- paste0(format(100 * (t / niter), digits = 1, width = 3), " %")
@@ -280,30 +284,41 @@ run_camodel <- function(mod, initmat, niter,
   
   #TODO: warn when there is only 1/0 in probas but we are using substeps
   
-  # Convert transition matrices to internal representation (and to actual matrices)
-  fix <- function(x) as.integer(factor(as.character(x), levels = states)) - 1 
+  # Convert state factors to internal representation
+  fix <- function(x) { 
+    as.integer(factor(as.character(x), levels = states)) - 1 
+  }
+  
   alpha <- mod[["alpha"]]
   pmat  <- mod[["pmat"]]
   qmat  <- mod[["qmat"]]
+  pqmat  <- mod[["pqmat"]]
+  
   for ( c in c("from", "to") ) { 
     pmat[ ,c]  <- fix(pmat[ ,c])
     qmat[ ,c]  <- fix(qmat[ ,c])
+    pqmat[ ,c]  <- fix(pqmat[ ,c])
     alpha[ ,c] <- fix(alpha[ ,c])
   }
   pmat[ ,"state"] <- fix(pmat[ ,"state"])
   qmat[ ,"state"] <- fix(qmat[ ,"state"])
+  pqmat[ ,"state"] <- fix(pqmat[ ,"state"])
+  
   alpha <- as.matrix(alpha)
   pmat <- as.matrix(pmat)
   qmat <- as.matrix(qmat)
+  pqmat <- as.matrix(pqmat)
   
   # Subset matrices for speed 
   pmat <- pmat[ abs(pmat[ ,"coef"]) > mod[["epsilon"]], , drop = FALSE]
   qmat <- qmat[ abs(qmat[ ,"ys"])   > mod[["epsilon"]], , drop = FALSE]
+  pqmat <- pqmat[ abs(pqmat[ ,"coef"]) > mod[["epsilon"]], , drop = FALSE]
   
   # Take into account substeps 
-  qmat[ ,"ys"] <- qmat[ ,"ys"] / control[["substeps"]]
-  pmat[ ,"coef"] <- pmat[ ,"coef"] / control[["substeps"]]
-  alpha[ ,"a0"] <- alpha[ ,"a0"] / control[["substeps"]]
+  qmat[ ,"ys"]    <- qmat[ ,"ys"] / control[["substeps"]]
+  pmat[ ,"coef"]  <- pmat[ ,"coef"] / control[["substeps"]]
+  pqmat[ ,"coef"] <- pqmat[ ,"coef"] / control[["substeps"]]
+  alpha[ ,"a0"]   <- alpha[ ,"a0"] / control[["substeps"]]
   
   # TODO: this is ugly
   control_list <- list(substeps = control[["substeps"]], 
@@ -313,6 +328,10 @@ run_camodel <- function(mod, initmat, niter,
                        nstates  = ns, 
                        neighbors = mod[["neighbors"]], 
                        xpoints  = mod[["xpoints"]], 
+                       pmat = pmat, 
+                       qmat = qmat, 
+                       pqmat = pqmat, 
+                       alpha = alpha, 
                        console_callback_active  = console_callback_active, 
                        console_callback_every   = control[["console_output_every"]], 
                        console_callback         = console_callback, 
@@ -333,11 +352,11 @@ run_camodel <- function(mod, initmat, niter,
   
   engine <- control[["engine"]][1]
   if ( tolower(engine) == "r" ) { 
-    camodel_r_engine(alpha, pmat, qmat, control_list)
+    camodel_r_engine(control_list)
   } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
-    camodel_cpp_engine_wrap(alpha, pmat, qmat, control_list)
+    camodel_cpp_engine_wrap(control_list)
   } else if ( tolower(engine) %in% c("compiled") ) { 
-    camodel_compiled_engine_wrap(alpha, pmat, qmat, control_list)
+    camodel_compiled_engine_wrap(control_list)
   } else { 
     stop(sprintf("%s is an unknown CA engine", engine))
   }
@@ -431,7 +450,7 @@ load_control_list <- function(l) {
 
 check_length1_integer <- function(x, str, minx = 0) { 
   err <- FALSE
-  if ( is.null(x) || is.na(x) || length(x) != 1 ) { 
+  if ( is.null(x) || is.na(x) || length(x) != 1 || ( ! is.numeric(x) ) ) { 
     err <- TRUE
   } else if ( x < minx ) { 
     err <- TRUE

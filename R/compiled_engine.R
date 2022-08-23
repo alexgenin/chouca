@@ -2,52 +2,29 @@
 # Interface to the compiled engine
 # 
 
-camodel_compiled_engine_wrap <- function(alpha, pmat, qmat, control_list, 
-                                    console_callback, cover_callback, snapshot_callback) { 
+camodel_compiled_engine_wrap <- function(ctrl, 
+                                         console_callback, cover_callback, snapshot_callback) { 
   
   
-  # Split alpha 
-  alpha_index <- intmat(alpha[ ,c("from", "to"), drop = FALSE])
-  alpha_vals  <- as.numeric(alpha[ ,c("a0")]) # vector of length nstates
+  # Split coefficient tables
+  alpha <- ctrl[["alpha"]]
+  pmat <- ctrl[["pmat"]]
+  qmat <- ctrl[["qmat"]]
+  pqmat <- ctrl[["pqmat"]]
   
-  # Split pmat 
-  pmat_index <- intmat(pmat[ ,c("from", "to", "state"), drop = FALSE])
-  pmat_vals  <- pmat[ ,c("coef", "expo"), drop = FALSE]
+  # Add them to internal control list
+  ctrl <- c(ctrl, 
+            list(alpha_index = intmat(alpha[ ,c("from", "to"), drop = FALSE]), 
+                 alpha_vals = as.numeric(alpha[ ,c("a0")]), # vector
+                 pmat_index = intmat(pmat[ ,c("from", "to", "state"), drop = FALSE]), 
+                 pmat_vals = pmat[ ,c("coef", "expo"), drop = FALSE], 
+                 qmat_index = intmat(qmat[ ,c("from", "to", "state", "qs"), drop = FALSE]), 
+                 qmat_vals = qmat[ ,"ys"],
+                 pqmat_index = intmat(pqmat[ ,c("from", "to", "state"), drop = FALSE]), 
+                 pqmat_vals = pqmat[ ,c("coef", "expo"), drop = FALSE]))
   
-  # Split qmat 
-  qmat_index <- intmat(qmat[ ,c("from", "to", "state", "qs"), drop = FALSE])
-  qmat_vals  <- qmat[ ,"ys"] # vector
   
-  # Reduce pmat/qmat sizes to non-zero coefficients
-  non_zero_pmat <- which(pmat_vals[ ,"coef"] > 1e-8)
-  pmat_vals <- pmat_vals[non_zero_pmat, , drop = FALSE]
-  pmat_index <- pmat_index[non_zero_pmat, , drop = FALSE]
   
-  non_zero_qmat <- which(qmat_vals > 1e-8)
-  qmat_vals <- qmat_vals[non_zero_qmat]
-  qmat_index <- qmat_index[non_zero_qmat, , drop = FALSE]
-  
-  camodel_compiled_engine(alpha_index, 
-                          alpha_vals, 
-                          pmat_index, 
-                          pmat_vals, 
-                          qmat_index, 
-                          qmat_vals, 
-                          control_list, console_callback, cover_callback, snapshot_callback)
-  
-}
-
-
-camodel_compiled_engine <- function(alpha_index, 
-                                    alpha_vals, 
-                                    pmat_index, 
-                                    pmat_vals, 
-                                    qmat_index, 
-                                    qmat_vals, 
-                                    ctrl, 
-                                    console_callback, 
-                                    cover_callback, 
-                                    snapshot_callback) { 
   
   # Unwrap elements of the ctrl list 
   substeps <- ctrl[["substeps"]]
@@ -57,15 +34,18 @@ camodel_compiled_engine <- function(alpha_index,
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
   
+  
+  
+  
+  
   # Read file
   cmaxfile <- system.file("compiled_engine.cpp", package = "chouca")
   cmaxlines <- readLines(cmaxfile) 
   
   if ( ctrl[["verbose_compilation"]] ) { 
-  # 
     cat("Compilation options:\n")
     gsubf <- function(a, b, lines) { 
-      cat(sprintf("Setting %s to %s\n", a, b))
+      cat(sprintf("Setting %s to '%s'\n", a, b))
       lines <- gsub(a, b, lines)
     }
   } else { 
@@ -80,9 +60,10 @@ camodel_compiled_engine <- function(alpha_index,
   cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
   cmaxlines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), cmaxlines)
-  cmaxlines <- gsubf("__ALPHA_NROW__", format(nrow(alpha_index)), cmaxlines)
-  cmaxlines <- gsubf("__PMAT_NROW__", format(nrow(pmat_index)), cmaxlines)
-  cmaxlines <- gsubf("__QMAT_NROW__", format(nrow(qmat_index)), cmaxlines)
+  cmaxlines <- gsubf("__ALPHA_NROW__", format(nrow(alpha)), cmaxlines)
+  cmaxlines <- gsubf("__PMAT_NROW__",  format(nrow(pmat)), cmaxlines)
+  cmaxlines <- gsubf("__QMAT_NROW__",  format(nrow(qmat)), cmaxlines)
+  cmaxlines <- gsubf("__PQMAT_NROW__",  format(nrow(pqmat)), cmaxlines)
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
   
@@ -138,14 +119,9 @@ camodel_compiled_engine <- function(alpha_index,
                       verbose = ctrl[["verbose_compilation"]], 
                       cleanupCacheDir = FALSE)
   }
+  
   runf <- get(fname)
-  runf(alpha_index, alpha_vals, 
-       pmat_index, 
-       pmat_vals, 
-       qmat_index, 
-       qmat_vals, 
-       all_qs, 
-       ctrl)
+  runf(all_qs, ctrl)
 }
 
 
