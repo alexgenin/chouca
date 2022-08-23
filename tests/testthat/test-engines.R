@@ -45,16 +45,14 @@ models[[2]] <- list(model, imat)
 # because the compiled model does not honor the R random number generator, it will 
 # diverge when substeps <1, because the transition rules are interpreted as 
 # probabilities.
-model <- camodel(
-  transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
-  transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
-  transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
-  parms = list(prob = 1), 
-  wrap = FALSE, 
-  neighbors = 8
-)
+model <- ca_library("rock-paper-scissor")
 imat <- generate_initmat(model, rep(1/3, 3), nr, nc)
 models[[3]] <- list(model, imat)
+
+# Add Kéfi's model 
+model <- ca_library("aridvege")
+imat <- generate_initmat(model, c(.5, .5, 0), nr, nc)
+models[[4]] <- list(model, imat)
 
 # If we do not do extended tests, just do the forestgap model and the non-zero XPSQ/XQSQ
 # model

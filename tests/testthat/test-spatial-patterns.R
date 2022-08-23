@@ -35,10 +35,10 @@ test_that("autocorrelation in spatial patterns make sense", {
     
     # Same model, but with negative autocorrelation
     mod_neg_autocor <- camodel(transition(from = "a", to = "b", ~ 0.01), 
-                              transition(from = "b", to = "a", ~ 0.01 * q["b"]), 
-                              all_states = c("a", "b"), 
-                              neighbors = 8, 
-                              wrap = TRUE)
+                               transition(from = "b", to = "a", ~ 0.01 * q["b"]), 
+                               all_states = c("a", "b"), 
+                               neighbors = 8, 
+                               wrap = TRUE)
     
     run <- run_camodel(mod_neg_autocor, im, 1000, control = ctrl)
     # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])
@@ -56,8 +56,11 @@ test_that("autocorrelation in spatial patterns make sense", {
     # Same model, but with no autocorrelation
     if ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) { 
       mod_neg_autocor <- camodel(transition(from = "a", to = "b", ~ 0.01), 
-                                transition(from = "b", to = "a", ~ 0.01), 
-                                all_states = c("a", "b"))
+                                 transition(from = "b", to = "a", ~ 0.01), 
+                                 all_states = c("a", "b"), 
+                                 neighbors = 8, 
+                                 wrap = TRUE)
+      
       all_autocors <- replicate(99, { 
         run <- run_camodel(mod_neg_autocor, im, 1000, control = ctrl)
         # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])
