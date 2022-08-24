@@ -417,6 +417,7 @@ load_control_list <- function(l) {
   check_length1_integer(control_list[["save_covers_every"]], "save_covers_every", 0)
   check_length1_integer(control_list[["save_snapshots_every"]], "save_snapshots_every", 0)
   check_length1_integer(control_list[["console_output_every"]], "console_output_every", 0)
+  check_length1_integer(control_list[["custom_output_every"]], "custom_output_every", 0)
   check_length1_integer(control_list[["cores"]], "cores", 1)
   
   if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 

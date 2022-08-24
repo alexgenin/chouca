@@ -1,0 +1,65 @@
+# 
+# Test some runtime options 
+# 
+
+test_that("Test console output", { 
+  
+  model <- ca_library("coralreef")
+  im <- generate_initmat(model, rep(1/3, 3), 21, 55)
+  
+  ctrl <- list(console_output_every = 1, engine = "cpp")
+  string <- capture.output({ 
+    run_camodel(model, im, 6, ctrl)
+  })
+    
+  expect_true({ 
+    grepl("t = 2 ( 33 %) ", string[3], fixed = TRUE)
+  })
+  
+})
+
+
+test_that("Parameter errors are handled", { 
+  
+  model <- ca_library("coralreef")
+  im <- generate_initmat(model, rep(1/3, 3), 21, 55)
+  
+  ctrl <- list(console_output_every = 0, engine = "cpp")
+  
+  expect_error(local({ 
+    ctrl[["engine"]] <- "fdsqfdsq" 
+    run_camodel(model, im, 6, ctrl)
+  }))
+  
+  expect_error(local({ 
+    ctrl[["engine"]] <- "compiled" 
+    ctrl[["olevel"]] <- "dsqfdsq" 
+    run_camodel(model, im, 6, ctrl)
+  }))
+  
+  expect_error(local({ 
+    ctrl[["engine"]] <- "compiled" 
+    ctrl[["unroll_loops"]] <- "dsqfdsq" 
+    run_camodel(model, im, 6, ctrl)
+  }))
+  
+  expect_error(local({ 
+    ctrl[["engine"]] <- "compiled" 
+    ctrl[["precompute_probas"]] <- "dsqfdsq" 
+    run_camodel(model, im, 6, ctrl)
+  }))
+  
+  expect_error(local({ 
+    ctrl[["custom_output_every"]] <- 1
+    run_camodel(model, im, 6, ctrl)
+  }))
+  
+  expect_error(local({ 
+    ctrl[["console_output_every"]] <- NA
+    run_camodel(model, im, 6, ctrl)
+  }))
+  
+  
+  
+  
+})
