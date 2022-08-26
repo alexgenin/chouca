@@ -99,13 +99,18 @@ camodel_r_engine <- function(ctrl) {
             trates[k+1] <- trates[k+1] + sum(
               (pqmat[sub, "from"] == this_cell_state) * 
                 pqmat[sub, "coef"] * 
-                (qs[ 1 + pqmat[sub, "state"] ] * ps[ 1+pqmat[sub, "state"] ] / n)^pqmat[sub, "expo"]
+                ( qs[ 1 + pqmat[sub, "state"] ] / this_total_nb * 
+                    ps[ 1 + pqmat[sub, "state"] ] / n )^pqmat[sub, "expo"]
             )
           }
           
-          # This works because the number of states always matches
-          trates[ 1+alpha[ , "to"] ] <- trates[ 1+alpha[ , "to"] ] + 
-            (alpha[ , "from"] == this_cell_state) * alpha[ , "a0"] 
+          # This vectorization works because the number of states always matches
+          for ( k in unique(alpha[ ,"to"]) ) { 
+            sub <- which(alpha[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum( 
+              (alpha[sub, "from"] == this_cell_state) * alpha[sub, "a0"] 
+            )
+          }
           
           # Compute rates of transitions (probabilities) to other states
           ctrates <- cumsum(trates)

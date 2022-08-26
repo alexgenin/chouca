@@ -1,8 +1,7 @@
 
-// TODO: uncomment
-// #ifndef ARMA_NO_DEBUG
-// #define ARMA_NO_DEBUG
-// #endif 
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>

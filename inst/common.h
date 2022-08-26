@@ -141,6 +141,13 @@ inline uword number_of_neighbors(const arma::uword i,
   // wrapping, making this function return a constant, defined on the line below:
   uword nnb = use_8_nb ? 8 : 4; 
   
+  // If we use a fixed number of neighbors, then return early. In this case, cells on 
+  // the edges will have a lower chance of switching, but this may be an approximation 
+  // we are willing to make. 
+  if ( fixed_nb ) { 
+    return( nnb ); 
+  }
+  
   // If we do not wrap and we use 8 neighbors, then we just need to substract from the 
   // total (maximum) counts. 
   if ( ! wrap && ! use_8_nb ) { 

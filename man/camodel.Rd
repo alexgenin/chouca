@@ -13,7 +13,8 @@ camodel(
   all_states = NULL,
   check_model = TRUE,
   verbose = FALSE,
-  epsilon = sqrt(.Machine[["double.eps"]])
+  epsilon = sqrt(.Machine[["double.eps"]]),
+  fixed_neighborhood = FALSE
 )
 
 transition(from, to, prob)

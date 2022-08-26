@@ -129,7 +129,8 @@ camodel <- function(...,
                     all_states = NULL, 
                     check_model = TRUE, 
                     verbose = FALSE, 
-                    epsilon = sqrt(.Machine[["double.eps"]])) { 
+                    epsilon = sqrt(.Machine[["double.eps"]]), 
+                    fixed_neighborhood = FALSE) { 
   
   if ( ( ! identical(parms, list()) ) && 
         ( ! is.list(parms) || is.null(names(parms)) || any(names(parms) == "") ) ) { 
@@ -173,6 +174,11 @@ camodel <- function(...,
   # In the worst case scenario, we need 25 points, so that the number of neighbors is 
   # always divisible by 2, 3, 4 or 8. (25 because zero included)
   xpoints <- 1 + ifelse(wrap, neighbors, ifelse(neighbors == 8, 120, 24))
+  
+  # If we want a fixed neighborhood, regardless of whether if wrap or not, then 
+  # overwrite xpoints with the fixed value. 
+  xpoints <- ifelse(fixed_neighborhood, 1+neighbors, xpoints)
+  
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
                                epsilon, neighbors, check_model)
   
@@ -214,7 +220,8 @@ camodel <- function(...,
                 wrap = wrap, 
                 neighbors = neighbors, 
                 epsilon = epsilon, 
-                xpoints = xpoints)
+                xpoints = xpoints, 
+                fixed_neighborhood = fixed_neighborhood)
   
   class(caobj) <- c("ca_model", "list")
   return(caobj)

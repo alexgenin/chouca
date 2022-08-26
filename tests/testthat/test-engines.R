@@ -51,13 +51,13 @@ models[[3]] <- list(model, imat)
 
 # Add Kéfi's model 
 model <- ca_library("aridvege")
-imat <- generate_initmat(model, c(.5, .5, 0), nr, nc)
+imat <- generate_initmat(model, rep(1/3, 3), nr, nc)
 models[[4]] <- list(model, imat)
 
-# If we do not do extended tests, just do the forestgap model and the non-zero XPSQ/XQSQ
-# model
+# If we do not do extended tests, just do the aridvege model because it contains all 
+# types of coefficients. 
 if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) { 
-  models <- models[1]
+  models <- models[4]
 }
 
 plyr::llply(models, function(modinfo) { 
@@ -68,12 +68,12 @@ plyr::llply(models, function(modinfo) {
   control <- list(substeps = 1, 
                   console_output_every = 0, 
                   save_covers_every = 1, 
-                  save_snapshots_every = 1000, 
+                  save_snapshots_every = 0, 
                   engine = "cpp")
   
   # Check that we reproduce well the variance and mean of time series between the two 
   # engines. Somehow setti the seed does not 
-  engines_ts <- replicate(99, { 
+  engines_ts <- replicate(19, { 
     modcompiled <- run_camodel(mod, initmat, 20, control = { 
       control[["engine"]] <- "compiled" ; control
     })

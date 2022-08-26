@@ -24,7 +24,7 @@ NREPS       <- 3
 CXXF <- "-O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
 # ENGINES <- c("compiled") 
-ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor")
+ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor", "aridvege")
 # ALL_MODELS <- c("musselbed")
 
 time_mod <- function(mod, init, control, niter) { 
@@ -34,7 +34,7 @@ time_mod <- function(mod, init, control, niter) {
   list(error = inherits(a, "try-error"), timings = timings)
 }
 
-mkbench <- function(sizes, nrep, cxxf, commit, tmax = "auto") { 
+mkbench <- function(sizes, nrep, cxxf, commit, cores = 1, tmax = "auto") { 
   
   # Checkout correct commit in PKGDIR
   system(sprintf("cd '%s' && git stash save && git checkout %s", PKGDIR, commit))

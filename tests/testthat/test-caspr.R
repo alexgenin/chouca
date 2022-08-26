@@ -84,7 +84,7 @@ if ( dir.exists("./caspr_output") ) {
   # l <- init_landscape(c("+","0", "-"),  c(0.6, 0.2, 0.2), width = 100) 
   initmat <- generate_initmat(aridvege_mod, c(VEGE = 0.6, EMPTY = 0.2, DEGR = 0.2), 
                               nr = 100, nc = 100)
-  ctrl <- list(substeps = 10, engine = "compiled", console_output_every = 0)
+  ctrl <- list(substeps = 10, engine = "cpp", console_output_every = 0)
   run <- run_camodel(aridvege_mod, initmat, 200, control = ctrl)
   aridvege_chouca <- as.data.frame(run[["output"]][["covers"]])
   names(aridvege_chouca) <- c("time", "-", "0", "+")

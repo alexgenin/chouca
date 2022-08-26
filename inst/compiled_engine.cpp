@@ -37,6 +37,7 @@ constexpr arma::uword nc = __NC__;
 constexpr uchar ns = __NS__; 
 constexpr bool wrap = __WRAP__; 
 constexpr bool use_8_nb = __USE_8_NB__; 
+constexpr bool fixed_nb = __USE_8_NB__; 
 constexpr uword xpoints = __XPOINTS__; 
 constexpr arma::uword substeps = __SUBSTEPS__; 
 constexpr double ncells = nr * nc; 
@@ -45,7 +46,6 @@ constexpr uword pmat_nrow = __PMAT_NROW__;
 constexpr uword qmat_nrow = __QMAT_NROW__; 
 constexpr uword pqmat_nrow = __PQMAT_NROW__; 
 constexpr uword all_qs_nrow = __ALL_QS_NROW__; 
-
 constexpr uword cores = __CORES__; 
 
 // Whether we want to precompute probabilities or not 
@@ -319,10 +319,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           randnums[i][j] = randunif(); 
         }
       }
-#pragma omp parallel for num_threads(cores) default(shared) private(ptrans) 
+#pragma omp parallel for num_threads(cores) schedule(static) default(shared) private(ptrans) 
 #endif
       for ( uword i=0; i<nr; i++ ) { 
-       // TODO: when parallel, we can walk the matrix with an offset: this guarantees 
+       // TODO: when parallel, we could walk the matrix with an offset: this guarantees 
        // that we will not update two neighboring cells, and thus that there will not 
        // be race conditions when updating.   
         for ( uword j=0; j<nc; j++ ) { 
@@ -423,22 +423,29 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           } 
           
           if ( new_cell_state != cstate ) { 
+#if USE_OMP
+#pragma omp critical (line_adjustment) hint(omp_sync_hint_uncontended)
+            {
+#endif
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
             // TODO: walk the matrix so that no neighbors are updated
             // Only one thread can call this function at any time. It is not thread safe
             // because if two neighboring cells are updated, we need to block,
-            // (I think), but that shouldn't happen very often. This tanks the 
+            // but that shouldn't happen very often. This tanks the 
             // performance unfortunately when probabilities are precomputed, because 
-            // each for loop iteration has trivial work to do, so the lock is hit very 
-            // often.
-#pragma omp critical (line_adjustment) hint(omp_sync_hint_uncontended)
+            // each for loop iteration has trivial work to do, and in model with lots 
+            // of cell switches, the lock is hit very often.
 #ifdef PRECOMPUTE_TRANS_PROBAS
             adjust_nb_plines(new_pline, i, j, cstate, new_cell_state); 
 #else 
             adjust_local_density(new_qs, i, j, cstate, new_cell_state); 
 #endif
+#if USE_OMP
+            }
+#endif
+            
           } 
         } 
       }

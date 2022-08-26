@@ -17,8 +17,58 @@
 #'   or von-Neumann neghborhood, or 8 for a Moore neighborhood). If unset, the model 
 #'   default neighborhood will be used. 
 #' 
-#' @param wrap Whether the 2D grid should wrap around at the edges. 
+#' @param wrap Whether the 2D grid should wrap around at the edges. Default it to wrap 
+#'   around the edges of the landscape.
 #' 
+#' @details 
+#' 
+#'   This function gives access to different stochastic cellular automata models. You 
+#'     can provide a named list of parameters, or set the number of neighbor or wrapping
+#'     options, but default are chosen if left unspecified. This function provides 
+#'     the following models (the string represents the name of the model, as passed 
+#'     using the 'model' argument): 
+#'   
+#'   \enumerate{ 
+#'     \item \code{"forestgap"} Kubo's forest gap model (1996), which describes how 
+#'       gaps form in a forest and expand through disturbances.
+#'     
+#'     \item \code{"musselbed"} A model of mussel beds, in which disturbance by waves 
+#'       occurs at the edge of mussel patches (Guichard et al. 2003) 
+#'      
+#'     \item \code{"aridvege"} A model of arid vegetation, in which facilitation between
+#'       neighboring plants occur, along with grazing. The original model is to be 
+#'       found in Kéfi et al. (2007), with extensions in Schneider et al. (2016)
+#'     
+#'     \item \code{"coralreef"} A model of coral reef with local feedbacks of corals and 
+#'       macroalgae (Génin, in prep)
+#'     
+#'     \item \code{"gameoflife"} The famous Game of Life by Conway, a deterministic 
+#'       model. 
+#'     
+#'     \item \code{"rockpaperscissor"} A rock-paper-scissor model with three states, in 
+#'       which a cell changes state depending on its neighbors according the game rules 
+#'       (e.g. "rock beats scissors"). This deterministic model produces nice spirals. 
+#'   } 
+#' 
+#' @references 
+#' 
+#'  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics with Gap
+#'  Expansion: Total Gap Area and Gap Size Distribution.” Journal of Theoretical Biology 
+#'  180 (3): 229–46.
+#' 
+#'  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
+#'  disturbance dynamics: signatures of oceanographic forcing from local interactions. The
+#'  American Naturalist, 161, 889–904. doi: 10.1086/375300
+#' 
+#'  Kéfi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
+#'  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. “Spatial Vegetation 
+#'  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems.” 
+#'  Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
+#'  
+#'  Schneider, Florian D., and Sonia Kefi. 2016. “Spatially Heterogeneous Pressure Raises
+#'  Risk of Catastrophic Shifts.” Theoretical Ecology 9 (2): 207-17. 
+#'  doi: 10.1007/s12080-015-0289-1.
+#'  
 #' @examples 
 #' 
 #' # Import a model, create an initial landscape and run it for ten iterations
@@ -74,9 +124,6 @@ ca_library <- function(model,
 # 
 # See also Génin et al. 2018 for model definition 
 # 
-# Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
-# disturbance dynamics: signatures of oceanographic forcing from local interactions. The
-# American Naturalist, 161, 889–904. doi: 10.1086/375300
 # 
   if ( model == "musselbed" || model == "mussel-bed" || model == "mussel bed") { 
     if ( is.null(parms) ) { 
@@ -103,14 +150,6 @@ ca_library <- function(model,
 # Kéfi's Arid vegetation model (2007), extended by Schneider (2016) 
 # 
 # 
-# Kéfi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
-# Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. “Spatial Vegetation 
-# Patterns and Imminent Desertification in Mediterranean Arid Ecosystems.” 
-# Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
-# 
-# Schneider, Florian D., and Sonia Kefi. 2016. “Spatially Heterogeneous Pressure Raises
-# Risk of Catastrophic Shifts.” Theoretical Ecology 9 (2): 207-17. 
-# doi: 10.1007/s12080-015-0289-1.
 # 
 # Notation follows what is in Schneider et al. (2016)
   if ( model == "aridvege" || model == "arid vege" || model == "arid-vege" ) { 
@@ -234,7 +273,8 @@ ca_library <- function(model,
   
   
   if ( is.null(mod) ) { 
-    all_models <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor")
+    all_models <- c("forestgap", "musselbed", "aridvege", "coralreef", 
+                    "gameoflife", "rockpaperscissor")
     stop(paste0(model, " is an unknown model. Available models:", 
                 paste(" - ", all_models, collapse = "\n")))
   }

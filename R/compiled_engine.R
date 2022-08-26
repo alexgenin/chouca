@@ -30,6 +30,7 @@ camodel_compiled_engine_wrap <- function(ctrl,
   substeps <- ctrl[["substeps"]]
   wrap     <- ctrl[["wrap"]]
   use_8_nb <- ctrl[["neighbors"]] == 8
+  fixed_neighborhood <- ctrl[["fixed_neighborhood"]]
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
@@ -66,6 +67,11 @@ camodel_compiled_engine_wrap <- function(ctrl,
   cmaxlines <- gsubf("__PQMAT_NROW__",  format(nrow(pqmat)), cmaxlines)
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
+  
+  # Decide whether we fixed the number of neighbors or not 
+  cmaxlines <- gsubf("__FIXED_NEIGHBOR_NUMBER__", 
+                     ifelse(fixed_neighborhood, "true", "false"), 
+                     cmaxlines)
   
   # Set code lines that control the number of cores 
   cores <- ctrl[["cores"]]
@@ -206,7 +212,8 @@ benchmark_compiled_model <- function(mod, init,
   })
   
   # Make average 
-  timings <- plyr::ddply(timings, ~ olevel + unroll_loops, function(df) { 
+  timings <- plyr::ddply(timings, ~ olevel + unroll_loops + precompute_probas, 
+                         function(df) { 
     data.frame(iter_per_s = mean(df[ ,"iter_per_s"]))
   })
   

@@ -227,9 +227,6 @@ run_camodel <- function(mod, initmat, niter,
     snapshots <- list()
     
     snapshot_callback <- function(t, m) { 
-#       dev.hold() # plot it
-#       image(m)
-#       dev.flush()
       d <- dim(m)
       m <- factor(states[m+1], levels = states)
       dim(m) <- d
@@ -272,8 +269,11 @@ run_camodel <- function(mod, initmat, niter,
   if ( custom_callback_active ) { 
     custom_output <- list() 
     custom_callback <- function(t, mat) { 
-      custom_output <<- append(custom_output, 
-                               list(control[["custom_output_fun"]](t, mat)))
+      # Transform back to factor from internal representation 
+      fmat <- states[mat+1]
+      dim(fmat) <- dim(mat)
+      this_output <- list(control[["custom_output_fun"]](t, fmat))
+      custom_output <<- append(custom_output, this_output)
     }
   }
   
@@ -344,6 +344,7 @@ run_camodel <- function(mod, initmat, niter,
                        custom_callback_active = custom_callback_active, 
                        custom_callback_every  = control[["custom_output_every"]], 
                        custom_callback        = custom_callback, 
+                       fixed_neighborhood = mod[["fixed_neighborhood"]], 
                        olevel = control[["olevel"]], 
                        precompute_probas = control[["precompute_probas"]], 
                        unroll_loops = control[["unroll_loops"]], 
@@ -398,6 +399,7 @@ load_control_list <- function(l) {
     custom_output_fun = NULL, 
     engine = "cpp", 
     # Compiled engine options
+    fixed_neighborhood = FALSE, 
     olevel = "default", 
     unroll_loops = FALSE, 
     precompute_probas = "auto", 
@@ -426,6 +428,10 @@ load_control_list <- function(l) {
   
   if ( ! control_list[["olevel"]] %in% c("O0", "O1", "O2", "O3", "Ofast", "default") ) { 
     stop("'olevel' option must be one of 'default', 'O0', 'O1', 'O2', 'O3' or 'Ofast'")
+  }
+  
+  if ( ! is.logical(control_list[["unroll_loops"]]) ) { 
+    stop("'fixed_neighborhood' option must be TRUE or FALSE")
   }
   
   if ( ! is.logical(control_list[["unroll_loops"]]) ) { 
