@@ -1,12 +1,13 @@
 // 
-// 
+// This is the source code for the 'compiled' chouca engine. Its fields will be replaced and 
+// compiled to run a PCA model. 
 // 
 // 
 
 
-// #ifndef ARMA_NO_DEBUG
-// #define ARMA_NO_DEBUG
-// #endif 
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
 
 #define USE_OMP __USE_OMP__
 
@@ -32,21 +33,21 @@ using namespace arma;
 typedef unsigned char uchar; 
 
 // These strings will be replaced by their values 
-constexpr arma::uword nr = __NR__; 
-constexpr arma::uword nc = __NC__; 
-constexpr uchar ns = __NS__; 
-constexpr bool wrap = __WRAP__; 
-constexpr bool use_8_nb = __USE_8_NB__; 
-constexpr bool fixed_nb = __USE_8_NB__; 
-constexpr uword xpoints = __XPOINTS__; 
+constexpr arma::uword nr     = __NR__; 
+constexpr arma::uword nc     = __NC__; 
+constexpr uchar ns           = __NS__; 
+constexpr bool wrap          = __WRAP__; 
+constexpr bool use_8_nb      = __USE_8_NB__; 
+constexpr bool fixed_nb      = __FIXED_NEIGHBOR_NUMBER__; 
+constexpr uword xpoints      = __XPOINTS__; 
 constexpr arma::uword substeps = __SUBSTEPS__; 
-constexpr double ncells = nr * nc; 
-constexpr uword alpha_nrow = __ALPHA_NROW__; 
-constexpr uword pmat_nrow = __PMAT_NROW__; 
-constexpr uword qmat_nrow = __QMAT_NROW__; 
-constexpr uword pqmat_nrow = __PQMAT_NROW__; 
-constexpr uword all_qs_nrow = __ALL_QS_NROW__; 
-constexpr uword cores = __CORES__; 
+constexpr double ncells      = nr * nc; 
+constexpr uword beta_0_nrow  = __BETA_0_NROW__; 
+constexpr uword beta_p_nrow  = __BETA_P_NROW__; 
+constexpr uword beta_q_nrow  = __BETA_Q_NROW__; 
+constexpr uword beta_pq_nrow = __BETA_PQ_NROW__; 
+constexpr uword all_qs_nrow  = __ALL_QS_NROW__; 
+constexpr uword cores        = __CORES__; 
 
 // Whether we want to precompute probabilities or not 
 // TODO: convert to value def for clarity
@@ -61,14 +62,14 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 // Compute transition probabilities between all possible qs states 
 inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns], 
                                                const uchar all_qs[all_qs_nrow][ns+1], 
-                                               const arma::Mat<ushort>& alpha_index, 
-                                               const arma::Col<double>& alpha_vals, 
-                                               const arma::Mat<ushort>& pmat_index, 
-                                               const arma::Mat<double>& pmat_vals, 
-                                               const arma::Mat<ushort>& qmat_index, 
-                                               const arma::Col<double>& qmat_vals, 
-                                               const arma::Mat<ushort>& pqmat_index, 
-                                               const arma::Mat<double>& pqmat_vals, 
+                                               const arma::Mat<ushort>& beta_0_index, 
+                                               const arma::Col<double>& beta_0_vals, 
+                                               const arma::Mat<ushort>& beta_p_index, 
+                                               const arma::Mat<double>& beta_p_vals, 
+                                               const arma::Mat<ushort>& beta_q_index, 
+                                               const arma::Col<double>& beta_q_vals, 
+                                               const arma::Mat<ushort>& beta_pq_index, 
+                                               const arma::Mat<double>& beta_pq_vals, 
                                                const arma::uword ps[ns]) { 
   
   // Note tprob_interval here. In all combinations of neighbors, only some of them 
@@ -91,61 +92,53 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
         tprobs[l][from][to] = 0; 
         
         // Scan the table of alphas 
-        for ( uword k=0; k<alpha_nrow; k++ ) { 
+        for ( uword k=0; k<beta_0_nrow; k++ ) { 
           tprobs[l][from][to] += 
-            ( alpha_index(k, _from) == from ) * 
-            ( alpha_index(k, _to) == to) * 
-            alpha_vals(k); 
+            ( beta_0_index(k, _from) == from ) * 
+            ( beta_0_index(k, _to) == to) * 
+            beta_0_vals(k); 
         }
         
-//         Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << from << " to: " 
-//           << to << "alpha tp: " << tprobs[l][from][to]; 
-          
         // Scan the table of pmat to reconstruct probabilities -> where is ps?
-        for ( uword k=0; k<pmat_nrow; k++ ) { 
-          double p =ps[pmat_index(k, _state)] / ncells; 
+        for ( uword k=0; k<beta_p_nrow; k++ ) { 
+          double p = ps[beta_p_index(k, _state)] / ncells; 
           
           tprobs[l][from][to] += 
-            ( pmat_index(k, _from) == from ) * 
-            ( pmat_index(k, _to) == to) * 
-            pmat_vals(k, _coef) * pow(p, pmat_vals(k, _expo));
+            ( beta_p_index(k, _from) == from ) * 
+            ( beta_p_index(k, _to) == to) * 
+            beta_p_vals(k, _coef) * pow(p, beta_p_vals(k, _expo));
         }
-//         Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << from << " to: " 
-//           << to << "p tp: " << tprobs[l][from][to]; 
         
-        // Scan the table of qmat to reconstruct probabilities 
-        for ( uword k=0; k<qmat_nrow; k++ ) { 
+        // Scan the table of beta_q to reconstruct probabilities 
+        for ( uword k=0; k<beta_q_nrow; k++ ) { 
           
           // Lookup which point in the qs function we need to use for the 
           // current neighbor situation.
-          uword qthis = all_qs[l][qmat_index(k, _state)] * qpointn_factorf;
+          uword qthis = all_qs[l][beta_q_index(k, _state)] * qpointn_factorf;
           
           tprobs[l][from][to] += 
-            ( qmat_index(k, _from) == from ) * 
-            ( qmat_index(k, _to) == to) * 
+            ( beta_q_index(k, _from) == from ) * 
+            ( beta_q_index(k, _to) == to) * 
             // Given the observed local abundance of this state, which line in 
-            // qmat should be retained ? 
-            ( qmat_index(k, _qs) == qthis ) * 
-            qmat_vals(k); 
+            // beta_q should be retained ? 
+            ( beta_q_index(k, _qs) == qthis ) * 
+            beta_q_vals(k); 
         }
         
-//         Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << from << " to: " 
-//           << to << "q tp: " << tprobs[l][from][to]; 
-        
-        // Scan the table of pqmat to reconstruct probabilities 
-        for ( uword k=0; k<pqmat_nrow; k++ ) { 
+        // Scan the table of beta_pq to reconstruct probabilities 
+        for ( uword k=0; k<beta_pq_nrow; k++ ) { 
           
           // Lookup which point in the qs function we need to use for the 
           // current neighbor situation.
           // all_qs[ ][ns] holds the total number of neighbors
-          double q = (double) all_qs[l][pqmat_index(k, _state)] / all_qs[l][ns];
-          double p = (double) ps[pqmat_index(k, _state)] / ncells; 
+          double q = (double) all_qs[l][beta_pq_index(k, _state)] / all_qs[l][ns];
+          double p = (double) ps[beta_pq_index(k, _state)] / ncells; 
           
           tprobs[l][from][to] += 
-            ( pqmat_index(k, _from) == from ) * 
-            ( pqmat_index(k, _to) == to) * 
-            pqmat_vals(k, _coef) * 
-            pow(q * p, pqmat_vals(k, _expo));
+            ( beta_pq_index(k, _from) == from ) * 
+            ( beta_pq_index(k, _to) == to) * 
+            beta_pq_vals(k, _coef) * 
+            pow(q * p, beta_pq_vals(k, _expo));
         }
       }
       
@@ -168,33 +161,33 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   const Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
   const uword niter      = ctrl["niter"]; // TODO: think about overflow in those values
   
-  const uword console_callback_every = ctrl["console_callback_every"]; 
+  const uword console_callback_every = ctrl["console_output_every"]; 
   const bool console_callback_active = console_callback_every > 0; 
   Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  const uword cover_callback_every = ctrl["cover_callback_every"]; 
+  const uword cover_callback_every = ctrl["save_covers_every"]; 
   const bool cover_callback_active = cover_callback_every > 0; 
   Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  const uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  const uword snapshot_callback_every = ctrl["save_snapshots_every"]; 
   const bool snapshot_callback_active = snapshot_callback_every > 0; 
   Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
   
-  const uword custom_callback_every = ctrl["custom_callback_every"]; 
+  const uword custom_callback_every = ctrl["custom_output_every"]; 
   const bool custom_callback_active = custom_callback_every > 0; 
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
   // Extract things from list 
-  const arma::Mat<ushort> alpha_index = ctrl["alpha_index"];
-  const arma::Col<double> alpha_vals  = ctrl["alpha_vals"];
-  const arma::Mat<ushort> pmat_index  = ctrl["pmat_index"];
-  const arma::Mat<double> pmat_vals   = ctrl["pmat_vals"];
-  const arma::Mat<ushort> qmat_index  = ctrl["qmat_index"];
-  const arma::Col<double> qmat_vals   = ctrl["qmat_vals"];
-  const arma::Mat<ushort> pqmat_index  = ctrl["pqmat_index"];
-  const arma::Mat<double> pqmat_vals   = ctrl["pqmat_vals"];
+  const arma::Mat<ushort> beta_0_index  = ctrl["beta_0_index"];
+  const arma::Col<double> beta_0_vals   = ctrl["beta_0_vals"];
+  const arma::Mat<ushort> beta_p_index  = ctrl["beta_p_index"];
+  const arma::Mat<double> beta_p_vals   = ctrl["beta_p_vals"];
+  const arma::Mat<ushort> beta_q_index  = ctrl["beta_q_index"];
+  const arma::Col<double> beta_q_vals   = ctrl["beta_q_vals"];
+  const arma::Mat<ushort> beta_pq_index = ctrl["beta_pq_index"];
+  const arma::Mat<double> beta_pq_vals  = ctrl["beta_pq_vals"];
   
-  // Initialize some things as c arrays
+  // Copy some things as c arrays. Convert
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
   // the size of the C stack beyond what is acceptable.
   auto old_mat = new uchar[nr][nc];
@@ -202,9 +195,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
       old_mat[i][j] = (uchar) init(i, j);
-      new_mat[i][j] = (uchar) init(i, j);
     }
   }
+  memcpy(new_mat, old_mat, sizeof(uchar)*nr*nc); 
   
 #ifdef PRECOMPUTE_TRANS_PROBAS
   // Convert all_qs to char array 
@@ -244,7 +237,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // Create tables that hold local densities 
   auto old_qs = new uchar[nr][nc][ns]; 
   auto new_qs = new uchar[nr][nc][ns]; 
-  get_local_densities(old_qs, old_mat); 
+  init_local_densities(old_qs, old_mat); 
   memcpy(new_qs, old_qs, sizeof(uchar)*nr*nc*ns); 
 #endif
   
@@ -260,10 +253,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   //   -> we could feed it 64/8 = 8 chars taken from randi(). 
   randunif(); 
   
-  // This matrix holds all random numbers 
 #if USE_OMP
+  // This matrix holds all random numbers when we use openmp. 
   auto randnums = new double[nr][nc]; 
 #endif
+  
   // Allocate some things we will reuse later
   double ptrans[ns]; 
   
@@ -291,23 +285,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #ifdef PRECOMPUTE_TRANS_PROBAS
     precompute_transition_probabilites(tprobs, 
                                        all_qs, 
-                                       alpha_index, 
-                                       alpha_vals, 
-                                       pmat_index, 
-                                       pmat_vals, 
-                                       qmat_index, 
-                                       qmat_vals, 
-                                       pqmat_index, 
-                                       pqmat_vals, 
+                                       beta_0_index, 
+                                       beta_0_vals, 
+                                       beta_p_index, 
+                                       beta_p_vals, 
+                                       beta_q_index, 
+                                       beta_q_vals, 
+                                       beta_pq_index, 
+                                       beta_pq_vals, 
                                        old_ps); 
-    // for ( uword l=0; l<all_qs_nrow; l++ ) { 
-    //   for ( ushort j=0; j<ns; j++ ) {
-    //     for ( ushort k=0; k<ns; k++ ) {
-    //       Rcpp::Rcout << "l: " << l << " j: " << j << " k: " << k << " " << 
-    //         tprobs[l][j][k] << " \n"; 
-    //     }
-    //   }
-    // }
 #endif 
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
@@ -344,53 +330,53 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             ptrans[to] = 0; 
             
             // Scan the table of alphas 
-            for ( uword k=0; k<alpha_nrow; k++ ) { 
+            for ( uword k=0; k<beta_0_nrow; k++ ) { 
               ptrans[to] += 
-                ( alpha_index(k, _from) == cstate ) * 
-                ( alpha_index(k, _to) == to) * 
-                alpha_vals(k); 
+                ( beta_0_index(k, _from) == cstate ) * 
+                ( beta_0_index(k, _to) == to) * 
+                beta_0_vals(k); 
             }
             
             // Scan the table of pmat to reconstruct probabilities -> where is ps?
-            for ( uword k=0; k<pmat_nrow; k++ ) { 
+            for ( uword k=0; k<beta_p_nrow; k++ ) { 
               ptrans[to] += 
-                ( pmat_index(k, _from) == cstate ) * 
-                ( pmat_index(k, _to) == to) * 
-                pmat_vals(k, _coef) * pow( old_ps[pmat_index(k, _state)] / ncells, 
-                                            pmat_vals(k, _expo) );
+                ( beta_p_index(k, _from) == cstate ) * 
+                ( beta_p_index(k, _to) == to) * 
+                beta_p_vals(k, _coef) * pow(old_ps[beta_p_index(k, _state)] / ncells, 
+                                            beta_p_vals(k, _expo) );
             }
             
             // Scan the table of qmat to reconstruct probabilities 
-            for ( uword k=0; k<qmat_nrow; k++ ) { 
+            for ( uword k=0; k<beta_q_nrow; k++ ) { 
               
               // Lookup which point in the qs function we need to use for the 
               // current neighbor situation.
-              uword qthis = old_qs[i][j][qmat_index(k, _state)] * qpointn_factorf;
+              uword qthis = old_qs[i][j][beta_q_index(k, _state)] * qpointn_factorf;
               
               ptrans[to] += 
-                ( qmat_index(k, _from) == cstate ) * 
-                ( qmat_index(k, _to) == to) * 
+                ( beta_q_index(k, _from) == cstate ) * 
+                ( beta_q_index(k, _to) == to) * 
                 // Given the observed local abundance of this state, which line in 
                 // qmat should be retained ? 
-                ( qmat_index(k, _qs) == qthis ) * 
-                qmat_vals(k); 
+                ( beta_q_index(k, _qs) == qthis ) * 
+                beta_q_vals(k); 
             }
             
             // Scan the table of pqmat to reconstruct probabilities 
-            for ( uword k=0; k<pqmat_nrow; k++ ) { 
+            for ( uword k=0; k<beta_pq_nrow; k++ ) { 
               
               // Lookup which point in the qs function we need to use for the 
               // current neighbor situation.
               // all_qs[ ][ns] holds the total number of neighbors
-              double pq = (double) old_qs[i][j][pqmat_index(k, _state)] / 
+              double pq = (double) old_qs[i][j][beta_pq_index(k, _state)] / 
                             (double) qs_total;
-              pq *= (double) old_ps[pqmat_index(k, _state)] / ncells; 
+              pq *= (double) old_ps[beta_pq_index(k, _state)] / ncells; 
               
               ptrans[to] += 
-                ( pqmat_index(k, _from) == cstate ) * 
-                ( pqmat_index(k, _to) == to) * 
-                pqmat_vals(k, _coef) * 
-                pow(pq, pqmat_vals(k, _expo));
+                ( beta_pq_index(k, _from) == cstate ) * 
+                ( beta_pq_index(k, _to) == to) * 
+                beta_pq_vals(k, _coef) * 
+                pow(pq, beta_pq_vals(k, _expo));
             }
             
           }
@@ -424,19 +410,17 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           
           if ( new_cell_state != cstate ) { 
 #if USE_OMP
+            // Only one thread can call this block at any time. It is not thread safe as 
+            // shared matrices are used. This tanks the performance unfortunately when
+            // probabilities are precomputed, because each for loop iteration has trivial
+            // work to do, and in model with lots of cell switches, the lock is hit 
+            // very often.
 #pragma omp critical (line_adjustment) hint(omp_sync_hint_uncontended)
             {
 #endif
             new_ps[new_cell_state]++; 
             new_ps[cstate]--; 
             new_mat[i][j] = new_cell_state; 
-            // TODO: walk the matrix so that no neighbors are updated
-            // Only one thread can call this function at any time. It is not thread safe
-            // because if two neighboring cells are updated, we need to block,
-            // but that shouldn't happen very often. This tanks the 
-            // performance unfortunately when probabilities are precomputed, because 
-            // each for loop iteration has trivial work to do, and in model with lots 
-            // of cell switches, the lock is hit very often.
 #ifdef PRECOMPUTE_TRANS_PROBAS
             adjust_nb_plines(new_pline, i, j, cstate, new_cell_state); 
 #else 

@@ -263,7 +263,7 @@ run_camodel <- function(mod, initmat, niter,
     }
   }
   
-  # TODO: add custom callback 
+  # Custom callback 
   custom_callback <- function(t, mat) { } 
   custom_callback_active <- is_positive(control[["custom_output_every"]])
   if ( custom_callback_active ) { 
@@ -289,67 +289,47 @@ run_camodel <- function(mod, initmat, niter,
     as.integer(factor(as.character(x), levels = states)) - 1 
   }
   
-  alpha <- mod[["alpha"]]
-  pmat  <- mod[["pmat"]]
-  qmat  <- mod[["qmat"]]
-  pqmat  <- mod[["pqmat"]]
+  # Prepare data for internal representation
+  beta_0  <- mod[["beta_0"]]
+  beta_p  <- mod[["beta_p"]]
+  beta_q  <- mod[["beta_q"]]
+  beta_pq <- mod[["beta_pq"]]
   
   for ( c in c("from", "to") ) { 
-    pmat[ ,c]  <- fix(pmat[ ,c])
-    qmat[ ,c]  <- fix(qmat[ ,c])
-    pqmat[ ,c]  <- fix(pqmat[ ,c])
-    alpha[ ,c] <- fix(alpha[ ,c])
+    beta_p[ ,c]  <- fix(beta_p[ ,c])
+    beta_q[ ,c]  <- fix(beta_q[ ,c])
+    beta_pq[ ,c] <- fix(beta_pq[ ,c])
+    beta_0[ ,c]  <- fix(beta_0[ ,c])
   }
-  pmat[ ,"state"] <- fix(pmat[ ,"state"])
-  qmat[ ,"state"] <- fix(qmat[ ,"state"])
-  pqmat[ ,"state"] <- fix(pqmat[ ,"state"])
+  beta_p[ ,"state"] <- fix(beta_p[ ,"state"])
+  beta_q[ ,"state"] <- fix(beta_q[ ,"state"])
+  beta_pq[ ,"state"] <- fix(beta_pq[ ,"state"])
   
-  alpha <- as.matrix(alpha)
-  pmat <- as.matrix(pmat)
-  qmat <- as.matrix(qmat)
-  pqmat <- as.matrix(pqmat)
-  
-  # Subset matrices for speed 
-  pmat <- pmat[ abs(pmat[ ,"coef"]) > mod[["epsilon"]], , drop = FALSE]
-  qmat <- qmat[ abs(qmat[ ,"ys"])   > mod[["epsilon"]], , drop = FALSE]
-  pqmat <- pqmat[ abs(pqmat[ ,"coef"]) > mod[["epsilon"]], , drop = FALSE]
+  beta_0 <- as.matrix(beta_0)
+  beta_p <- as.matrix(beta_p)
+  beta_q <- as.matrix(beta_q)
+  beta_pq <- as.matrix(beta_pq)
   
   # Take into account substeps 
-  qmat[ ,"ys"]    <- qmat[ ,"ys"] / control[["substeps"]]
-  pmat[ ,"coef"]  <- pmat[ ,"coef"] / control[["substeps"]]
-  pqmat[ ,"coef"] <- pqmat[ ,"coef"] / control[["substeps"]]
-  alpha[ ,"a0"]   <- alpha[ ,"a0"] / control[["substeps"]]
+  beta_q[ ,"ys"]    <- beta_q[ ,"ys"]    / control[["substeps"]]
+  beta_p[ ,"coef"]  <- beta_p[ ,"coef"]  / control[["substeps"]]
+  beta_pq[ ,"coef"] <- beta_pq[ ,"coef"] / control[["substeps"]]
+  beta_0[ ,"ys"]   <- beta_0[ ,"ys"]     / control[["substeps"]]
   
-  # TODO: this is ugly
-  control_list <- list(substeps = control[["substeps"]], 
-                       wrap     = mod[["wrap"]], 
-                       init     = initmat, 
-                       niter    = niter, 
-                       nstates  = ns, 
-                       neighbors = mod[["neighbors"]], 
-                       xpoints  = mod[["xpoints"]], 
-                       pmat = pmat, 
-                       qmat = qmat, 
-                       pqmat = pqmat, 
-                       alpha = alpha, 
-                       console_callback_active  = console_callback_active, 
-                       console_callback_every   = control[["console_output_every"]], 
-                       console_callback         = console_callback, 
-                       cover_callback_active    = cover_callback_active, 
-                       cover_callback_every     = control[["save_covers_every"]], 
-                       cover_callback           = cover_callback, 
-                       snapshot_callback_active = snapshot_callback_active, 
-                       snapshot_callback_every  = control[["save_snapshots_every"]], 
-                       snapshot_callback        = snapshot_callback, 
-                       custom_callback_active = custom_callback_active, 
-                       custom_callback_every  = control[["custom_output_every"]], 
-                       custom_callback        = custom_callback, 
-                       fixed_neighborhood = mod[["fixed_neighborhood"]], 
-                       olevel = control[["olevel"]], 
-                       precompute_probas = control[["precompute_probas"]], 
-                       unroll_loops = control[["unroll_loops"]], 
-                       cores = control[["cores"]], 
-                       verbose_compilation = control[["verbose_compilation"]])
+  # Adjust the control list to add some components
+  control_list <- c(control, 
+                    mod[c("wrap", "neighbors", "xpoints", "fixed_neighborhood")], 
+                    list(init     = initmat, 
+                         niter    = niter, 
+                         nstates  = ns, 
+                         beta_p = beta_p, 
+                         beta_q = beta_q, 
+                         beta_pq = beta_pq, 
+                         beta_0 = beta_0, 
+                         console_callback       = console_callback, 
+                         cover_callback         = cover_callback, 
+                         snapshot_callback      = snapshot_callback, 
+                         custom_callback        = custom_callback))
   
   engine <- control[["engine"]][1]
   if ( tolower(engine) == "r" ) { 

@@ -9,7 +9,7 @@ test_that("Custom callbacks work", {
   niters <- 64
   
   
-  mod <- ca_library("aridvege", neighbors = 8, wrap = TRUE)
+  mod <- ca_library("rockpaperscissor", wrap = TRUE)
   initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
   
   ccb <- function(t, mat) { 
@@ -46,8 +46,7 @@ test_that("Custom callbacks work", {
     bmat <- matrix(mat == "r", nrow = nrow(mat), ncol = ncol(mat))
     data.frame(t = t, 
                cover = mean(mat == "r"), 
-               sd  = sd(mat == "r"), 
-               moran = spatialwarnings::raw_moran(bmat))
+               sd  = sd(mat == "r"))
   }
   
   ctrl <- list(engine = "cpp", 

@@ -25,9 +25,7 @@ test_that("pq coefficients work", {
   expect_true(mat_final[1, 2] == "b")
   
   ctrl <- list(console_output_every = 0, save_snapshots_every = 1, engine = "r")
-  a <- #suppressWarnings({ 
-    run_camodel(mod, initmm, 1, control = ctrl)
- # })
+  a <- run_camodel(mod, initmm, 1, control = ctrl)
   mat_final <- a[["output"]][["snapshots"]][[2]]
   expect_true(mat_final[1, 2] == "b")
   

@@ -183,40 +183,20 @@ camodel <- function(...,
                                epsilon, neighbors, check_model)
   
   # Pack transitions into matrices
-  qmat <- plyr::ldply(transitions_parsed, function(tr) { 
-    data.frame(from = tr[["from"]], 
-               to = tr[["to"]], 
-               tr[["beta_q"]])
-  })
-  
-  pmat <- plyr::ldply(transitions_parsed, function(tr) { 
-    data.frame(from = tr[["from"]], 
-               to = tr[["to"]], 
-               tr[["beta_p"]])
-  })
-  
-  
-  pqmat <- plyr::ldply(transitions_parsed, function(tr) { 
-    data.frame(from = tr[["from"]], 
-               to = tr[["to"]], 
-               tr[["beta_pq"]])
-  })
-  
-  alpha <- plyr::ldply(transitions_parsed, function(tr) { 
-    data.frame(from = tr[["from"]], 
-               to = tr[["to"]], 
-               a0 = tr[["alpha0"]])
-  })
+  beta_q  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_q")
+  beta_p  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_p")
+  beta_pq <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_pq")
+  beta_0  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_0")
   
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
                 states = factor(states, levels = states), # convert explicitely to factor
                 transitions_defs = list(...), 
                 parms            = parms, 
-                alpha = alpha, 
-                pmat = pmat, 
-                qmat = qmat, 
-                pqmat = pqmat, 
+                beta_0 = beta_0, 
+                beta_p = beta_p, 
+                beta_q = beta_q, 
+                beta_pq = beta_pq, 
                 wrap = wrap, 
                 neighbors = neighbors, 
                 epsilon = epsilon, 
@@ -276,7 +256,10 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   names(zero) <- state_names
   
   # Constant probability component (when all the p and q are zero)
+  
+  # We accumulate warnings, and print them later if any arose. 
   warn <- character()
+  
   prob_with <- function(p, q) { 
     p <- as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
     
@@ -290,11 +273,14 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
                  "  ", tr[["from"]], " -> ", tr[["to"]])
       warn <<- c(warn, m)
     }
+    
     p
   }
   
-  # Get intercept for this transition
-  alpha0 <- prob_with(p = zero, q = zero)
+  # Get intercept for this transition. Note that beta_0 always has one line, but 
+  # we use a df anyway because we are going to pack multiple values into a df later 
+  # (using plyr::ldply).
+  beta_0 <- data.frame(ys = prob_with(p = zero, q = zero))
   
   # Get coefficient/exponent table for q. We evaluate q at 'xpoints' points for vectors 
   # of q with zeros everywhere except one state. 
@@ -366,6 +352,10 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     
     p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
       
+      # alpha component (always length one, as there is only one intercept for a 
+      # transition).
+      beta <- beta_0[ ,"ys"]
+      
       # q component
       qslong <- data.frame(state = state_names, 
                            # this gets the qs point corresponding to this proportion 
@@ -385,7 +375,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       pqslong <- plyr::join(beta_pq, pqslong, type = "left", by = "state")
       pqssum <- with(pqslong, sum(coef * pqs ^ expo) )
       
-      alpha0 + qssum + pssum + pqssum
+      beta + qssum + pssum + pqssum
     })
     
     if ( ! all( abs(p_refs - p_preds) < epsilon ) ) { 
@@ -396,13 +386,30 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     }
   }
   
+  
+  # Subset matrices where coefficients are zero 
+  notzero <- function(X) abs(X) > epsilon
+  beta_0  <- beta_0[notzero(beta_0[ ,"ys"]),    , drop = FALSE]
+  beta_p  <- beta_p[notzero(beta_p[ ,"coef"]),    , drop = FALSE]
+  beta_q  <- beta_q[notzero(beta_q[ ,"ys"]),      , drop = FALSE]
+  beta_pq <- beta_pq[notzero(beta_pq[ ,"coef"]), , drop = FALSE]
+  
   list(from = tr[["from"]], 
        to   = tr[["to"]], 
-       alpha0 = alpha0, 
+       beta_0 = beta_0, 
        beta_q = beta_q, 
        beta_p = beta_p, 
        beta_pq = beta_pq, 
        prob = pexpr)
+}
+
+# Helper function to pack transitions into model-level tables
+pack_table_fromto <- function(tr, table) { 
+  if ( nrow(tr[[table]]) == 0 ) { 
+    data.frame(from = integer(0), to = integer(0), tr[[table]])
+  } else { 
+    data.frame(from = tr[["from"]], to = tr[["to"]], tr[[table]])
+  }
 }
 
 # Update a ca_model with new arguments 
@@ -439,6 +446,8 @@ update.ca_model <- function(object,
   do.call(camodel, newcall)
 }
 
+# Fit a poly with increasing degrees (up to 25), stopping when the error becomes very 
+# low (below 1e-10)
 fitpoly <- function(x, y, epsilon) { 
   
   force(x)
@@ -481,36 +490,4 @@ fitpoly <- function(x, y, epsilon) {
   }
   
   return(np)
-}
-
-#'@export
-print.ca_model <- function(x, ...) { 
-  
-  force(x) # force the evaluation of x before printing
-  cat0 <- function(...) cat(paste0(...), "\n")
-  
-  cat0("Stochastic Cellular Automaton")
-  cat0("")
-  cat0("States: ", paste(x[["states"]], collapse = " "))
-  cat0("")
-  
-  for ( tr in x[["transitions"]] ) { 
-    cat0("Transition: ", tr[["from"]], " -> ", tr[["to"]])
-    cat0(paste0("  ", as.character(tr[["prob"]]) ))
-  }
-  
-  cat0("")
-  cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
-  cat0("Wrap: ", x[["wrap"]])
-  
-  return(invisible(x))
-}
-
-#'@export
-print.camodel_transition <- function(x, ...) { 
-  cat(sprintf("Transition from %s to %s\n", x[["from"]], x[["to"]]))
-  prob <- paste0(as.character(x[["prob"]]), collapse = " ")
-  cat(sprintf("  %s\n", prob))
-  
-  invisible(x)
 }

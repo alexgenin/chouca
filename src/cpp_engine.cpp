@@ -237,33 +237,33 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
   
-  const uword console_callback_every = ctrl["console_callback_every"]; 
+  const uword console_callback_every = ctrl["console_output_every"]; 
   const bool console_callback_active = console_callback_every > 0; 
   Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  const uword cover_callback_every = ctrl["cover_callback_every"]; 
+  const uword cover_callback_every = ctrl["save_covers_every"]; 
   const bool cover_callback_active = cover_callback_every > 0; 
   Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  const uword snapshot_callback_every = ctrl["snapshot_callback_every"]; 
+  const uword snapshot_callback_every = ctrl["save_snapshots_every"]; 
   const bool snapshot_callback_active = snapshot_callback_every > 0; 
   Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
   
-  const uword custom_callback_every = ctrl["custom_callback_every"]; 
+  const uword custom_callback_every = ctrl["custom_output_every"]; 
   const bool custom_callback_active = custom_callback_every > 0; 
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
   // Extract things from list 
-  const arma::Mat<ushort> alpha_index = ctrl["alpha_index"];
-  const arma::Col<double> alpha_vals  = ctrl["alpha_vals"];
-  const arma::Mat<ushort> pmat_index  = ctrl["pmat_index"];
-  const arma::Mat<double> pmat_vals   = ctrl["pmat_vals"];
-  const arma::Mat<ushort> qmat_index  = ctrl["qmat_index"];
-  const arma::Col<double> qmat_vals   = ctrl["qmat_vals"];
-  const arma::Mat<ushort> pqmat_index  = ctrl["pqmat_index"];
-  const arma::Mat<double> pqmat_vals   = ctrl["pqmat_vals"];
+  const arma::Mat<ushort> beta_0_index  = ctrl["beta_0_index"];
+  const arma::Col<double> beta_0_vals   = ctrl["beta_0_vals"];
+  const arma::Mat<ushort> beta_p_index  = ctrl["beta_p_index"];
+  const arma::Mat<double> beta_p_vals   = ctrl["beta_p_vals"];
+  const arma::Mat<ushort> beta_q_index  = ctrl["beta_q_index"];
+  const arma::Col<double> beta_q_vals   = ctrl["beta_q_vals"];
+  const arma::Mat<ushort> beta_pq_index = ctrl["beta_pq_index"];
+  const arma::Mat<double> beta_pq_vals  = ctrl["beta_pq_vals"];
   
-//   Rcpp::Rcout << pqmat_index << "\n"; 
+//   Rcpp::Rcout << beta_pq_index << "\n"; 
 //   Rcpp::Rcout << pqmat_vals << "\n"; 
   
   const uword nr = init.n_rows; 
@@ -340,85 +340,56 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             // Init probability
             ptrans(to) = 0; 
             
-            // Scan the table of alphas 
-            for ( uword k=0; k<alpha_index.n_rows; k++ ) { 
+            // Scan the table of beta0 
+            for ( uword k=0; k<beta_0_index.n_rows; k++ ) { 
               ptrans(to) += 
-                ( alpha_index(k, _from) == cstate ) * 
-                ( alpha_index(k, _to) == to) * 
-                alpha_vals(k); 
+                ( beta_0_index(k, _from) == cstate ) * 
+                ( beta_0_index(k, _to) == to) * 
+                beta_0_vals(k); 
             }
-            
-//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate << " to: " 
-//               << to << "alpha tp: " << ptrans(to) << "\n";
             
             // Scan the table of pmat to reconstruct probabilities -> where is ps?
-            for ( uword k=0; k<pmat_index.n_rows; k++ ) { 
+            for ( uword k=0; k<beta_p_index.n_rows; k++ ) { 
               
-              double p = ps(pmat_index(k, _state)) / (double) n; 
+              double p = ps(beta_p_index(k, _state)) / (double) n; 
               
               ptrans(to) += 
-                ( pmat_index(k, _from) == cstate ) * 
-                ( pmat_index(k, _to) == to ) * 
-                pmat_vals(k, _coef) * 
-                pow(p, pmat_vals(k, _expo) );
+                ( beta_p_index(k, _from) == cstate ) * 
+                ( beta_p_index(k, _to) == to ) * 
+                beta_p_vals(k, _coef) * 
+                pow(p, beta_p_vals(k, _expo) );
             }
             
-//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate << " to: " 
-//               << to << "p tp: " << ptrans(to) << "\n";
-            
             // Scan the table of qmat to reconstruct probabilities 
-            for ( uword k=0; k<qmat_index.n_rows; k++ ) { 
+            for ( uword k=0; k<beta_q_index.n_rows; k++ ) { 
               
               // Lookup which point in the qs function we need to use for the 
               // current neighbor situation.
-              uword qthis = qs(i, qmat_index(k, _state)) * qpointn_factorf;
+              uword qthis = qs(i, beta_q_index(k, _state)) * qpointn_factorf;
               
               ptrans(to) += 
-                ( qmat_index(k, _from) == cstate ) * 
-                ( qmat_index(k, _to) == to) * 
+                ( beta_q_index(k, _from) == cstate ) * 
+                ( beta_q_index(k, _to) == to) * 
                 // Given the observed local abundance of this state, which line in 
                 // qmat should be retained ? 
-                ( qmat_index(k, _qs) == qthis ) * 
-                qmat_vals(k); 
+                ( beta_q_index(k, _qs) == qthis ) * 
+                beta_q_vals(k); 
             }
-            
-//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate << " to: " 
-//               << to << "q tp: " << ptrans(to) << "\n";
             
             // Scan the table of pmat to reconstruct probabilities -> where is ps?
-            for ( uword k=0; k<pqmat_index.n_rows; k++ ) { 
+            for ( uword k=0; k<beta_pq_index.n_rows; k++ ) { 
               
+              double pq = (double) qs(i, beta_pq_index(k, _state)) / (double) qs_total; 
+              pq *= (double) ps(beta_pq_index(k, _state)) / (double) n; 
               
-              double pq = (double) qs(i, pqmat_index(k, _state)) / (double) qs_total; 
-              pq *= (double) ps(pqmat_index(k, _state)) / (double) n; 
-              // Rcpp::Rcout << "i: " << i << " j: " << j << 
-              //   " p: " << ps(pqmat_index(k, _state)) / (double) n << 
-              //   " q: " << qs(i, pqmat_index(k, _state)) / (double) qs_total << 
-              //   " pq: " << pq << 
-              //   " k: " << k << "pqmat(k, coef): " << pqmat_vals(k, _coef) << 
-              //   " product: " << pqmat_vals(k, _coef) * pow(pq, pqmat_vals(k, _expo) ) << 
-              //   "\n";
-                
               ptrans(to) += 
-                ( pqmat_index(k, _from) == cstate ) * 
-                ( pqmat_index(k, _to) == to) * 
-                pqmat_vals(k, _coef) * 
-                pow(pq, pqmat_vals(k, _expo) );
+                ( beta_pq_index(k, _from) == cstate ) * 
+                ( beta_pq_index(k, _to) == to) * 
+                beta_pq_vals(k, _coef) * 
+                pow(pq, beta_pq_vals(k, _expo) );
               
             }
-            
-//             Rcpp::Rcout << "i: " << i << " j: " << j << " from: " << cstate  << " to: " 
-//               << to << "pq tp: " << ptrans(to) << "\n";
           }
-          
-//           Rcpp::Rcout << 
-//             "i: " << i << " j: " << j << "from: " << cstate << " " << 
-//             "ptrans: " << ptrans << "\n"; 
-          
-//           if ( cstate == 1 ) { 
-//             Rcpp::Rcout << "t: " << iter << " i: " << i << " j: " << j << 
-//               " from: " << cstate << " toveg: " << ptrans(2) << "\n";
-//           }
           
           // Check if we actually transition. We scan all states and switch to the 
           // one with the highest probability. 

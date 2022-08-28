@@ -14,6 +14,9 @@ You probably already know Conway's game of life -- a probabilistic cellular auto
 is identical, except that cell transitions do not always occur when a rule is satisfied, 
 but with a given probability.
 
+**`chouca`** is still in development, and interfaces are still unstable. If you use it 
+for your own work, expect breaking changes.
+
 ## What this package implements 
 
 This package is an *engine* for probabilistic cellular automata (PCA), although it can 
@@ -63,12 +66,19 @@ edges):
   )
 ```
 
+Many models are supported by `chouca`: any neighborhood rule can be used, and rules 
+depending on the global cover of a state can be included as long as it can be 
+expressed as a polynomial of that state. If you don't if your model is supported or not, 
+you can always write it: `chouca` will warn you if it cannot use your transition rules
+accurately. 
+
 ## Motivation and objectives
 
 Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
 organisms in the landscape, and investigate how local interactions between organisms may 
-affect the dynamic of a system as a whole. However, implementing them is often done using 
-ad-hoc R code, which is slow and error-prone. `chouca` aims at providing a high-level 
+affect the dynamic of a system as a whole. However, implementing those models is often 
+done using ad-hoc R code, which is slow, error-prone, and does not encourage exploring 
+different variation around a single model. `chouca` aims at providing a high-level 
 interface to such type of models, in order to reduce errors, and allow spending more time 
 on model design, than debugging ugly code. 
 
@@ -83,7 +93,8 @@ performance typically by one or two orders of magnitude.
 ## Benchmarks
 
 Here are a few graphs that should help you judge what performance to expect from 
-`chouca`.
+`chouca`. These curves represent the average performance across a few models taken from 
+the literature: 
 
 ![benchmark_results](./benchmarks_last_commit.png)
 

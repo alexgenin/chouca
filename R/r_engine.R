@@ -13,10 +13,10 @@ camodel_r_engine <- function(ctrl) {
   ns       <- ctrl[["nstates"]]
   xpoints <- ctrl[["xpoints"]] 
   
-  alpha <- ctrl[["alpha"]]
-  pmat <- ctrl[["pmat"]]
-  qmat <- ctrl[["qmat"]]
-  pqmat <- ctrl[["pqmat"]]
+  beta_0 <- ctrl[["beta_0"]]
+  beta_p <- ctrl[["beta_p"]]
+  beta_q <- ctrl[["beta_q"]]
+  beta_pq <- ctrl[["beta_pq"]]
   
   # Initialize some elements
   # NOTE: we work in integer representation minus one internally, because it makes 
@@ -36,26 +36,26 @@ camodel_r_engine <- function(ctrl) {
   while ( t <= niter ) { 
     
     # Make callback to progress display 
-    if ( ctrl[["console_callback_every"]] > 0 && 
-         t %% ctrl[["console_callback_every"]] == 0 ) { 
+    if ( ctrl[["console_output_every"]] > 0 && 
+         t %% ctrl[["console_output_every"]] == 0 ) { 
       ctrl[["console_callback"]](t, ps, n)
     }
     
     # Make callback to store global densities 
-    if ( ctrl[["cover_callback_every"]] > 0 && 
-         t %% ctrl[["cover_callback_every"]] == 0 ) { 
+    if ( ctrl[["save_covers_every"]] > 0 && 
+         t %% ctrl[["save_covers_every"]] == 0 ) { 
       ctrl[["cover_callback"]](t, ps, n)
     }
     
     # Make callback to store snapshots 
-    if ( ctrl[["snapshot_callback_every"]] > 0 && 
-         t %% ctrl[["snapshot_callback_every"]] == 0 ) { 
+    if ( ctrl[["save_snapshots_every"]] > 0 && 
+         t %% ctrl[["save_snapshots_every"]] == 0 ) { 
       ctrl[["snapshot_callback"]](t, omat)
     }
     
     # Make custom callback
-    if ( ctrl[["custom_callback_every"]] > 0 && 
-         t %% ctrl[["custom_callback_every"]] == 0 ) { 
+    if ( ctrl[["custom_output_every"]] > 0 && 
+         t %% ctrl[["custom_output_every"]] == 0 ) { 
       ctrl[["custom_callback"]](t, omat)
     }
     
@@ -77,38 +77,37 @@ camodel_r_engine <- function(ctrl) {
           # Compute probability of transition to other states
           trates <- rep(0, ns)
           
-          for ( k in unique(pmat[ ,"to"]) ) { 
-            sub <- which(pmat[ ,"to"] == k)
-            trates[k+1] <- trates[k+1] + sum(
-              (pmat[sub, "from"] == this_cell_state) * 
-                pmat[sub, "coef"] * (ps[ 1+pmat[sub, "state"] ] / n)^pmat[sub, "expo"]
-            )
-          }
-          
-          for ( k in unique(qmat[ ,"to"]) ) { 
-            sub <- which(qmat[ ,"to"] == k)
+          for ( k in unique(beta_0[ ,"to"]) ) { 
+            sub <- which(beta_0[ ,"to"] == k)
             trates[k+1] <- trates[k+1] + sum( 
-              (qmat[sub, "from"] == this_cell_state) * 
-                ( qmat[sub, "qs"] == qpointn[ 1+qmat[sub, "state"] ] ) * 
-                qmat[sub, "ys"]
+              (beta_0[sub, "from"] == this_cell_state) * beta_0[sub, "ys"] 
             )
           }
           
-          for ( k in unique(pqmat[ ,"to"]) ) { 
-            sub <- which(pqmat[ ,"to"] == k)
+          for ( k in unique(beta_p[ ,"to"]) ) { 
+            sub <- which(beta_p[ ,"to"] == k)
             trates[k+1] <- trates[k+1] + sum(
-              (pqmat[sub, "from"] == this_cell_state) * 
-                pqmat[sub, "coef"] * 
-                ( qs[ 1 + pqmat[sub, "state"] ] / this_total_nb * 
-                    ps[ 1 + pqmat[sub, "state"] ] / n )^pqmat[sub, "expo"]
+              (beta_p[sub, "from"] == this_cell_state) * 
+                beta_p[sub, "coef"] * (ps[ 1+beta_p[sub, "state"] ] / n)^beta_p[sub, "expo"]
             )
           }
           
-          # This vectorization works because the number of states always matches
-          for ( k in unique(alpha[ ,"to"]) ) { 
-            sub <- which(alpha[ ,"to"] == k)
+          for ( k in unique(beta_q[ ,"to"]) ) { 
+            sub <- which(beta_q[ ,"to"] == k)
             trates[k+1] <- trates[k+1] + sum( 
-              (alpha[sub, "from"] == this_cell_state) * alpha[sub, "a0"] 
+              (beta_q[sub, "from"] == this_cell_state) * 
+                ( beta_q[sub, "qs"] == qpointn[ 1+beta_q[sub, "state"] ] ) * 
+                beta_q[sub, "ys"]
+            )
+          }
+          
+          for ( k in unique(beta_pq[ ,"to"]) ) { 
+            sub <- which(beta_pq[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum(
+              (beta_pq[sub, "from"] == this_cell_state) * 
+                beta_pq[sub, "coef"] * 
+                ( qs[ 1 + beta_pq[sub, "state"] ] / this_total_nb * 
+                    ps[ 1 + beta_pq[sub, "state"] ] / n )^beta_pq[sub, "expo"]
             )
           }
           

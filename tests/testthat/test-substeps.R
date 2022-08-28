@@ -7,7 +7,7 @@ test_that("The number of substeps is correctly implemented", {
   p <- list(r = 0.4, d = 0.9, delta = 0.01)   # set parameters
   mod <- update(ca_library("musselbed"), parms = p, 
                 ctrl = list(console_output_every = 0))
-  init <- generate_initmat(mod, c(0.5, 0.4, 0.1), 32)
+  init <- generate_initmat(mod, c(0.5, 0.4, 0.1), 64)
   
   ctrl <- list(substeps = 10, console_output_every = 0)
   out1 <- run_camodel(mod, init, 100, ctrl)

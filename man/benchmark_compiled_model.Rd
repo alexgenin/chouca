@@ -7,10 +7,10 @@
 benchmark_compiled_model(
   mod,
   init,
-  niter = 100,
-  olevel = c("O2", "O3", "Ofast"),
-  unroll_loops = c(TRUE, FALSE),
   control = list(),
+  niter = 100,
+  olevel = c("default", "Ofast"),
+  unroll_loops = c(TRUE, FALSE),
   precompute_probas = c(TRUE, FALSE),
   nrepeats = 1
 )
@@ -20,15 +20,15 @@ benchmark_compiled_model(
 
 \item{init}{An initial matrix, as produced by \code{\link{generate_initmat}}}
 
+\item{control}{Other options to use for the simulations. See the full list of options 
+documented in \code{\link{run_camodel}}.}
+
 \item{niter}{The number of iterations to use for the benchmark}
 
 \item{olevel}{The optimizations levels to try (one or several of 'O0', 'O1', 'O2', 'O3', 
 'Ofast' or 'default').}
 
 \item{unroll_loops}{The loop unrolling options to try (one or both of TRUE and FALSE)}
-
-\item{control}{Other options to use for the simulations. See the full list of options 
-documented in \code{\link{run_camodel}}.}
 
 \item{precompute_probas}{The different values to be taken for precompute_probas (TRUE, 
 FALSE, or the vector c(TRUE, FALSE)).}

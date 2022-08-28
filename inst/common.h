@@ -40,17 +40,11 @@ inline uword intpow(uchar a,
   return p; 
 }
 
-inline void get_local_densities(uchar qs[nr][nc][ns], 
+inline void init_local_densities(uchar qs[nr][nc][ns], 
                                 const uchar m[nr][nc]) { 
   
   // Set all counts to zero
-  for ( uword i=0; i<nr; i++ ) { 
-    for ( uword j=0; j<nc; j++ ) { 
-      for ( uchar k=0; k<ns; k++ ) { 
-        qs[i][j][k] = 0; 
-      }
-    }
-  }
+  memset(qs, 0, sizeof(uchar)*nr*nc*ns); 
   
   for ( uword i=0; i<nr; i++ ) { 
     for ( uword j=0; j<nc; j++ ) { 
