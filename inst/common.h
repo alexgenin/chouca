@@ -137,7 +137,7 @@ inline uword number_of_neighbors(const arma::uword i,
   
   // If we use a fixed number of neighbors, then return early. In this case, cells on 
   // the edges will have a lower chance of switching, but this may be an approximation 
-  // we are willing to make. 
+  // we are willing to make for better performance. 
   if ( fixed_nb ) { 
     return( nnb ); 
   }
