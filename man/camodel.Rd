@@ -45,6 +45,11 @@ definition.}
 \item{epsilon}{A small value under which coefficient values are considered to be 
 equal to zero}
 
+\item{fixed_neighborhood}{When not using wrapping around the edges, the number of 
+neighbors per cell is variable, which can slow down the simulation. Set this 
+option to \code{TRUE} to consider that the number of neighbors is always four or 
+eight, regardless of the position of the cell in the landscape.}
+
 \item{from}{The state from which the transition is defined}
 
 \item{to}{The state to which the transition is defined}

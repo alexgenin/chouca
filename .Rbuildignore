@@ -12,5 +12,7 @@
 ^.*callgrind\.out.*$
 ^src/.*\.o$
 ^tools/.*$ 
-^\.kateproject\.notes$"
+^\.kateproject.notes$"
 ^\.covrignore$
+^benchmarks_last_commit.png$
+^tools$

@@ -1,12 +1,85 @@
+# 
+# 
+# These functions are functions factory for custom callbacks
+# 
+# 
 
+#' @title Plot simulation landscapes 
+#' 
+#' @description This function creates a function to plot the model landscapes during 
+#'   a \code{chouca} simulation, as it is being run. 
+#' 
+#' @param mod The model being run 
+#' 
+#' @param col a set of colors (character vector) of the same length as the number of 
+#'   states in the model. 
+#' 
+#' @param fps_cap The maximum number of frame per seconds at which to plot the results 
+#' 
+#' @param transpose Setting this to \code{TRUE} will transpose the landscape matrix 
+#'   before passing it to  \code{\link[graphics]{image}}
+#' 
+#' @param ... other arguments are passed to \code{\link[graphics]{image}}
+#' 
+#' @details
+#' 
+#'   This function creates another function that is suitable for use with \code{chouca}. 
+#'   It allows plotting the landscape as it is being simulated, using the base function
+#'   \code{\link[graphics]{image}}. You can set the colors using the argument \code{col}, 
+#'   or tranpose the landscape before plotting using \code{transpose}. 
+#'   
+#'   \code{\link[graphics]{image}} is quite slow at displaying matrices, especially if 
+#'   it is reasonably large, but if it is still to fast for your test, you can cap the 
+#'   number of landscape displayed per seconds by setting the argument \code{fps_cap}. 
+#'   
+#'   It is important to note that this function will probably massively slow down a 
+#'   simulation, so this function is mostly here for exploratory analyses, or just to 
+#'   have a good look of what is happening in a model. 
+#'   
+#' @examples 
+#' 
+#' \dontrun{ 
+#' 
+#' # Display the psychedelic spirals of the rock-paper-scissor model as the model is 
+#' # being run 
+#' mod <- ca_library("rock-paper-scissor")
+#' colors <- c("#fb8500", "#023047", "#8ecae6")
+#' ctrl <- list(custom_output_every = 1, 
+#'              custom_output_fun = landscape_plotter(mod, col = colors))
+#' init <- generate_initmat(mod, rep(1, 3)/3, 100, 178)
+#' run_camodel(mod, init, niter = 128, control = ctrl)
+#' 
+#' # Arid vegetation model 
+#' mod <- ca_library("aridvege")
+#' init <- generate_initmat(mod, rep(1, 3)/3, 100, 178)
+#' colors <- c("gray80", "white", "darkgreen")
+#' ctrl <- list(custom_output_every = 1, 
+#'              custom_output_fun = landscape_plotter(mod, col = colors, xaxt = "n", 
+#'                                                    yaxt = "n"))
+#' run_camodel(mod, init, niter = 128, control = ctrl)
+#' 
+#' # Game of life 
+#' mod <- ca_library("gameoflife") 
+#' init <- generate_initmat(mod, c(0.5, 0.5), 100, 178) 
+#' colors <- c("white", "black") 
+#' ctrl <- list(custom_output_every = 1, 
+#'              custom_output_fun = landscape_plotter(mod, col = colors, 
+#'                                                    xaxt = "n", 
+#'                                                    yaxt = "n"))
+#' run_camodel(mod, init, niter = 128, control = ctrl)
+#' 
+#' } 
+#' 
 #'@export
-show_landscape <- function(mod, col = NULL, fps_cap = 24, transpose = TRUE, ...) { 
+landscape_plotter <- function(mod, col = NULL, fps_cap = 24, transpose = TRUE, ...) { 
   
   # Check that palette makes sense 
   if ( length(col) != mod[["nstates"]] ) { 
     stop(paste0("The number of colors in col does not correspond to the ", 
                 "number of states in the model."))
   }
+  
+  last_call_time <- Sys.time()
   
   function(t, m) { 
     
@@ -19,8 +92,10 @@ show_landscape <- function(mod, col = NULL, fps_cap = 24, transpose = TRUE, ...)
     }
     
     # Hold plot update, and flush it when exiting the function and everything is drawn
-    dev.hold() 
-    on.exit({ dev.flush() })
+    grDevices::dev.hold() 
+    on.exit({ 
+      grDevices::dev.flush() 
+    })
     
     if ( transpose ) { 
       m <- t(m)
