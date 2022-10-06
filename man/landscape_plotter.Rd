@@ -21,6 +21,8 @@ states in the model.}
 
 \item{fps_cap}{The maximum number of frame per seconds at which to plot the results}
 
+\item{burn_in}{A number of iterations to skip before plotting}
+
 \item{transpose}{Setting this to \code{TRUE} will transpose the landscape matrix 
 before passing it to  \code{\link[graphics]{image}}}
 

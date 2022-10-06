@@ -122,8 +122,6 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       beta <- ifelse(nrow(beta_0) == 0, 0, beta_0[ ,"coef"])
       
       # q component. 
-      # TODO: this is kinda slow (~10% exec time), especially for simple model where it 
-      # is the bottleneck
       qslong <- data.frame(state_1 = state_names, 
                            # this gets the qs point corresponding to this proportion 
                            # of neighbors. 
@@ -137,18 +135,29 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       # pp component
       beta_pp[ ,"ps1"] <- ps[i, beta_pp[ ,"state_1"]]
       beta_pp[ ,"ps2"] <- ps[i, beta_pp[ ,"state_2"]]
-      ppssum <- with(beta_pp, sum(coef * (ps1 ^ expo_1) * (ps2 ^ expo_2) ) )
+      ppssum <- sum( 
+        beta_pp[ ,"coef"] * 
+          beta_pp[ ,"ps1"] ^ beta_pp[ ,"expo_1"] * 
+          beta_pp[ ,"ps2"] ^ beta_pp[ ,"expo_2"] 
+      )
       
       # pq component
       beta_pq[ ,"ps"] <- ps[i, beta_pq[ ,"state_1"]]
       beta_pq[ ,"qs"] <- all_qss[i, beta_pq[ ,"state_2"]]
-      pqssum <- with(beta_pq, sum(coef * (ps ^ expo_1) * ((qs/neighbors) ^ expo_2) ) )
+      pqssum <- sum( 
+        beta_pq[ ,"coef"] * 
+          beta_pq[ ,"ps"] ^ beta_pq[ ,"expo_1"] * 
+          (beta_pq[ ,"qs"] / neighbors) ^ beta_pq[ ,"expo_2"] 
+      )
       
       # qq component 
       beta_qq[ ,"qs1"] <- all_qss[i, beta_qq[ ,"state_1"]] 
       beta_qq[ ,"qs2"] <- all_qss[i, beta_qq[ ,"state_2"]] 
-      
-      qqssum <- with(beta_qq, sum(coef * ( (qs1/neighbors) ^ expo_1) * ( (qs2/neighbors) ^ expo_2) ) )
+      qqssum <- sum( 
+        beta_qq[ ,"coef"] * 
+          (beta_qq[ ,"qs1"] / neighbors) ^ beta_qq[ ,"expo_1"] * 
+          (beta_qq[ ,"qs2"] / neighbors) ^ beta_qq[ ,"expo_2"] 
+      )
       
       beta + qssum + ppssum + pqssum + qqssum
     })
@@ -164,7 +173,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
         paste0("  max error: ", format(max_error, digits = 3)), 
         paste0("  max rel error: ", format(max_rel_error, digits = 3)),
         "Problematic probability expression: ", 
-        paste(capture.output(print(tr)), collapse = "\n"), 
+        paste(utils::capture.output(print(tr)), collapse = "\n"), 
         sep = "\n"
       )
       warning(msg)
@@ -268,13 +277,13 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     # If all ys are zero, then all coefficients are zero, then no need to optimize 
     # anything, we just return the coefficients
     if ( ! all( abs(ys) < .Machine$double.eps ) ) { 
-      optimans <- optim(coefs, ssq, 
-                        method = "BFGS", 
-                        control = list(maxit = 1000L, 
-                                       trace = FALSE, 
-                                       parscale = rep(1e-5, length(coefs)), 
-                                       fnscale  = rep(1e-16, length(coefs)), 
-                                       abstol = epsilon/2))
+      optimans <- stats::optim(coefs, ssq, 
+                               method = "BFGS", 
+                               control = list(maxit = 1000L, 
+                                              trace = FALSE, 
+                                              parscale = rep(1e-5, length(coefs)), 
+                                              fnscale  = rep(1e-16, length(coefs)), 
+                                              abstol = epsilon/2))
       
       coefs[] <- optimans[["par"]]
     }
@@ -386,13 +395,13 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     # anything, we just return the vector of zero coefficients. If that's not the case, 
     # then we do the search.
     if ( ! all( abs(ys) < .Machine$double.eps ) ) { 
-      optimans <- optim(coefs, ssq, 
-                        method = "BFGS", 
-                        control = list(maxit = 1000L, 
-                                       trace = FALSE, 
-                                       parscale = rep(1e-5, length(coefs)), 
-                                       fnscale  = rep(1e-16, length(coefs)), 
-                                       abstol = epsilon/2))
+      optimans <- stats::optim(coefs, ssq, 
+                               method = "BFGS", 
+                               control = list(maxit = 1000L, 
+                                              trace = FALSE, 
+                                              parscale = rep(1e-5, length(coefs)), 
+                                              fnscale  = rep(1e-16, length(coefs)), 
+                                              abstol = epsilon/2))
       
       coefs[] <- optimans[["par"]]
     }

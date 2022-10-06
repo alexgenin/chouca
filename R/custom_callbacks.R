@@ -16,6 +16,8 @@
 #' 
 #' @param fps_cap The maximum number of frame per seconds at which to plot the results 
 #' 
+#' @param burn_in A number of iterations to skip before plotting
+#' 
 #' @param transpose Setting this to \code{TRUE} will transpose the landscape matrix 
 #'   before passing it to  \code{\link[graphics]{image}}
 #' 
@@ -80,12 +82,12 @@ landscape_plotter <- function(mod,
   
   # col is nothing, set default
   if ( is.null(col) ) { 
-    col <- hcl.colors(mod[["nstates"]], "viridis")
+    col <- grDevices::hcl.colors(mod[["nstates"]], "viridis")
   }
   
   # col is a palette
   if ( is.character(col) && length(col) == 1 ) { 
-    col <- hcl.colors(mod[["nstates"]], col)
+    col <- grDevices::hcl.colors(mod[["nstates"]], col)
   }
   
   # Check that palette makes sense 
@@ -95,7 +97,7 @@ landscape_plotter <- function(mod,
   }
   
   # We open a new graphic
-  dev.new()
+  grDevices::dev.new()
   
   last_call_time <- Sys.time()
   
@@ -143,7 +145,7 @@ trace_plotter <- function(mod, initmat,
   
   # col is nothing, set default
   if ( is.null(col) ) { 
-    col <- hcl.colors(mod[["nstates"]], "viridis")
+    col <- grDevices::hcl.colors(mod[["nstates"]], "viridis")
   }
   
   ex_res <- fun(initmat)
@@ -180,13 +182,13 @@ trace_plotter <- function(mod, initmat,
       on.exit({ 
         grDevices::dev.flush() 
       })
-      matplot(backlog_sorted[ ,1], 
-              backlog_sorted[ ,-1], 
-              col = col, 
-              type = "l", 
-              xlab = "time", 
-              ylab = "trace", 
-              ...)
+      graphics::matplot(backlog_sorted[ ,1], 
+                        backlog_sorted[ ,-1], 
+                        col = col, 
+                        type = "l", 
+                        xlab = "time", 
+                        ylab = "trace", 
+                        ...)
     }
     
     # Rollback to one if we go above the max number of lines. We need to store it in 
