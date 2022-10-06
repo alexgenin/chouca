@@ -13,8 +13,8 @@ test_that("Example models produce correct results", {
   gol <- ca_library("gameoflife")
   imat <- matrix(0, nrow = 6, ncol = 6)
   glider <- matrix(c(0, 0, 1, 
-                    1, 0, 1, 
-                    0, 1, 1), byrow = TRUE, ncol = 3)
+                     1, 0, 1, 
+                     0, 1, 1), byrow = TRUE, ncol = 3)
   imat[1:3, 1:3] <- glider
   fmat <- factor(ifelse(imat > 0, "LIVE", "DEAD"), levels = c("DEAD", "LIVE"))
   dim(fmat) <- dim(imat)

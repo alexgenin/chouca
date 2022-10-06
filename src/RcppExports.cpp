@@ -65,12 +65,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// quick_pred_cpp
+arma::vec quick_pred_cpp(const arma::vec coefs, const arma::mat ps, const arma::mat qs, const arma::mat vals);
+RcppExport SEXP _chouca_quick_pred_cpp(SEXP coefsSEXP, SEXP psSEXP, SEXP qsSEXP, SEXP valsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::vec >::type coefs(coefsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type ps(psSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type qs(qsSEXP);
+    Rcpp::traits::input_parameter< const arma::mat >::type vals(valsSEXP);
+    rcpp_result_gen = Rcpp::wrap(quick_pred_cpp(coefs, ps, qs, vals));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_chouca_local_dens", (DL_FUNC) &_chouca_local_dens, 6},
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 1},
     {"_chouca_generate_all_qs", (DL_FUNC) &_chouca_generate_all_qs, 3},
+    {"_chouca_quick_pred_cpp", (DL_FUNC) &_chouca_quick_pred_cpp, 4},
     {NULL, NULL, 0}
 };
 

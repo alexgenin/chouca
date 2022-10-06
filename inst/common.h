@@ -31,12 +31,23 @@ static inline double randunif() {
 }
 
 
-inline uword intpow(uchar a, 
-                    uchar b) { 
+inline uword intpow(const uchar a, 
+                    const uchar b) { 
   uword p = 1; 
   for ( uchar k=0; k<b; k++ ) { 
     p *= a; 
   }
+  return p; 
+}
+
+// Fast power when b is integer >= 0
+inline double fintpow(const double a, 
+                      const uchar  b) { 
+  double p = 1; 
+  for ( uchar k=0; k<b; k++ ) { 
+    p *= a; 
+  }
+  
   return p; 
 }
 
@@ -433,6 +444,80 @@ inline void adjust_nb_plines(uword pline[nr][nc],
   }
   
 }
+
+// Compute probability components 
+static inline double compute_proba(const uchar qs[ns], 
+                                   const uword ps[ns], 
+                                   const arma::uword & qpointn, 
+                                   const arma::uword & total_nb, 
+                                   const arma::uword & from, 
+                                   const arma::uword & to) { 
+  
+  double total = 0.0; 
+  
+  // constant component
+  for ( uword k=0; k<beta_0_nrow; k++ ) { 
+    total += 
+      ( beta_0_index(k, _from) == from ) * 
+      ( beta_0_index(k, _to) == to) * 
+      beta_0_vals(k); 
+  }
+  
+  // f(q) component
+  for ( uword k=0; k<beta_q_nrow; k++ ) { 
+    
+    // Lookup which point in the qs function we need to use for the 
+    // current neighbor situation.
+    uword qthis = qs[beta_q_index(k, _state_1)] * qpointn;
+    
+    total += 
+      ( beta_q_index(k, _from) == from ) * 
+      ( beta_q_index(k, _to) == to) * 
+      // Given the observed local abundance of this state, which line in 
+      // beta_q should be retained ? 
+      ( beta_q_index(k, _qs) == qthis ) * 
+      beta_q_vals(k); 
+  }
+  
+  // pp
+  for ( uword k=0; k<beta_pp_nrow; k++ ) { 
+    double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
+    double p2 = ps[beta_pp_index(k, _state_2)] / ncells; 
+    
+    total += 
+      ( beta_pp_index(k, _from) == from ) * 
+      ( beta_pp_index(k, _to) == to) * 
+      beta_pp_vals(k, _coef) * fintpow(p1, beta_pp_vals(k, _expo_1)) * 
+        fintpow(p2, beta_pp_vals(k, _expo_2));
+  }
+  
+  // qq
+  for ( uword k=0; k<beta_qq_nrow; k++ ) { 
+    double q1 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
+    double q2 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
+    
+    total += 
+      ( beta_qq_index(k, _from) == from ) * 
+      ( beta_qq_index(k, _to) == to) * 
+      beta_qq_vals(k, _coef) * fintpow(q1, beta_qq_vals(k, _expo_1)) * 
+        fintpow(q2, beta_qq_vals(k, _expo_2));
+  }
+  
+  // pq
+  for ( uword k=0; k<beta_pq_nrow; k++ ) { 
+    double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
+    double q1 = (double) qs[beta_pq_index(k, _state_1)] / total_nb;
+    
+    total += 
+      ( beta_pq_index(k, _from) == from ) * 
+      ( beta_pq_index(k, _to) == to) * 
+      beta_pq_vals(k, _coef) * fintpow(p1, beta_pq_vals(k, _expo_1)) * 
+        fintpow(q1, beta_pq_vals(k, _expo_2));
+  }
+  
+  return total; 
+}
+
 
 void console_callback_wrap(const arma::uword iter, 
                            const arma::uword ps[ns], 

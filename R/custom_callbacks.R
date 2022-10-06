@@ -71,7 +71,22 @@
 #' } 
 #' 
 #'@export
-landscape_plotter <- function(mod, col = NULL, fps_cap = 24, transpose = TRUE, ...) { 
+landscape_plotter <- function(mod, 
+                              col = NULL, 
+                              fps_cap = 24, 
+                              burn_in = 0, 
+                              transpose = TRUE, 
+                              ...) { 
+  
+  # col is nothing, set default
+  if ( is.null(col) ) { 
+    col <- hcl.colors(mod[["nstates"]], "viridis")
+  }
+  
+  # col is a palette
+  if ( is.character(col) && length(col) == 1 ) { 
+    col <- hcl.colors(mod[["nstates"]], col)
+  }
   
   # Check that palette makes sense 
   if ( length(col) != mod[["nstates"]] ) { 
@@ -79,10 +94,18 @@ landscape_plotter <- function(mod, col = NULL, fps_cap = 24, transpose = TRUE, .
                 "number of states in the model."))
   }
   
+  # We open a new graphic
+  dev.new()
+  
   last_call_time <- Sys.time()
   
-  function(t, m) { 
+  function(t, mat) { 
     
+    # If we are before the burn_in iterations, return without doing anything
+    if ( t < burn_in ) { 
+      return( NULL ) 
+    }
+
     this_call_time <- Sys.time()
     dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
     
@@ -98,13 +121,81 @@ landscape_plotter <- function(mod, col = NULL, fps_cap = 24, transpose = TRUE, .
     })
     
     if ( transpose ) { 
-      m <- t(m)
+      mat <- t(mat)
     }
     
-    # m is a factor, so limits should be 1:nstates
-    image.camodel_initmat(m, col = col, zlim = c(1, mod[["nstates"]]), ...)
+    # mat is a factor, so limits should be 1:nstates
+    image.camodel_initmat(mat, col = col, zlim = c(1, mod[["nstates"]]), ...)
     last_call_time <<- Sys.time()
     return(TRUE)
+  }
+  
+}
+
+trace_plotter <- function(mod, initmat, 
+                          fun = function(m) { 
+                            sapply(mod[["states"]], function(s) mean(m == s))
+                          }, 
+                          col = NULL, 
+                          max_samples = 256, 
+                          burn_in = 0, 
+                          ...) { 
+  
+  # col is nothing, set default
+  if ( is.null(col) ) { 
+    col <- hcl.colors(mod[["nstates"]], "viridis")
+  }
+  
+  ex_res <- fun(initmat)
+  if ( length(ex_res) == 0 || ! is.atomic(ex_res) || ! is.numeric(ex_res) ) { 
+    stop("The 'tracer_fun' function must return a vector of numeric values.") 
+  }
+  
+  backlog <- matrix(NA_real_, ncol = length(ex_res) + 1, nrow = max_samples)
+  backlog_line <- 1
+  states <- mod[["states"]]
+  
+  function(t, mat) { 
+    
+    # backlog persists across runs, so we need to zero it out when re-running a 
+    # simulation with the same control list
+    if ( t == 0 ) { 
+      backlog[] <<- NA_real_
+    }
+    
+    # If we are before the burn_in iterations, return without doing anything
+    if ( t < burn_in ) { 
+      return( NULL ) 
+    }
+    
+    # Compute covers and store them in backlog 
+    backlog[backlog_line, ] <<- c(t, fun(mat))
+    
+    # Use only non-NA values and sort them by time
+    backlog_sorted <- backlog[ ! is.na(backlog[ ,1]), , drop = FALSE]
+    backlog_sorted <- backlog_sorted[order(backlog_sorted[ ,1]), , drop = FALSE]
+    
+    if ( nrow(backlog_sorted) > 1 ) { 
+      grDevices::dev.hold() 
+      on.exit({ 
+        grDevices::dev.flush() 
+      })
+      matplot(backlog_sorted[ ,1], 
+              backlog_sorted[ ,-1], 
+              col = col, 
+              type = "l", 
+              xlab = "time", 
+              ylab = "trace", 
+              ...)
+    }
+    
+    # Rollback to one if we go above the max number of lines. We need to store it in 
+    # the enclosing environment so it is persistent across calls. 
+    backlog_line <<- backlog_line + 1
+    if ( backlog_line > max_samples ) { 
+      backlog_line <<- 1 
+    }
+    
   }
   
 }

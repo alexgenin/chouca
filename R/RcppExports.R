@@ -17,3 +17,7 @@ generate_all_qs <- function(nb, ns, filter) {
     .Call(`_chouca_generate_all_qs`, nb, ns, filter)
 }
 
+quick_pred_cpp <- function(coefs, ps, qs, vals) {
+    .Call(`_chouca_quick_pred_cpp`, coefs, ps, qs, vals)
+}
+

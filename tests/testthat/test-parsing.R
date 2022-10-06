@@ -27,7 +27,7 @@ expect_error({
 mod <- ca_library("forestgap")
 mod2 <- update(mod, parms = list(d = 0, delta = 0.5, alpha = 0.01))
 expect_true({ 
-  any(mod[["beta_p"]] != mod2[["beta_p"]])
+  any(mod[["beta_pp"]] != mod2[["beta_pp"]])
 })
 
 

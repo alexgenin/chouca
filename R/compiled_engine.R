@@ -5,27 +5,22 @@
 camodel_compiled_engine_wrap <- function(ctrl, 
                                          console_callback, cover_callback, snapshot_callback) { 
   
+  # Split betas into floats/integers matrices for c++ code, and augment the control 
+  # list with them. 
+  for ( tab in c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq") ) { 
+    tabix <- ctrl[[tab]] 
+    tabix <- tabix[ ,intersect(colnames(tabix), c("from", "to", "state_1", "state_2",
+                                                  "qs")), 
+                   drop = FALSE]
+    ctrl[[paste0(tab, "_index")]] <- intmat(tabix)
+    
+    tabfl <- ctrl[[tab]] 
+    tabfl <- tabfl[ ,intersect(colnames(tabfl), c("coef", "expo_1", "expo_2")), 
+                   drop = FALSE]
+    ctrl[[paste0(tab, "_vals")]] <- tabfl
+  }
   
-  # Split coefficient tables
-  beta_0 <- ctrl[["beta_0"]]
-  beta_p <- ctrl[["beta_p"]]
-  beta_q <- ctrl[["beta_q"]]
-  beta_pq <- ctrl[["beta_pq"]]
-  
-  # Add them to internal control list
-  ctrl <- c(ctrl, 
-    list(beta_0_index  = intmat(beta_0[ ,c("from", "to"), drop = FALSE]), 
-         beta_0_vals   = as.numeric(beta_0[ ,"ys"]), # vector
-         beta_p_index  = intmat(beta_p[ ,c("from", "to", "state"), drop = FALSE]), 
-         beta_p_vals   = beta_p[ ,c("coef", "expo"), drop = FALSE], 
-         beta_q_index  = intmat(beta_q[ ,c("from", "to", "state", "qs"), drop = FALSE]), 
-         beta_q_vals   = beta_q[ ,"ys"],
-         beta_pq_index = intmat(beta_pq[ ,c("from", "to", "state"), drop = FALSE]), 
-         beta_pq_vals  = beta_pq[ ,c("coef", "expo"), drop = FALSE])
-    )
-  
-  
-  # Unwrap elements of the ctrl list 
+  # Unwrap elements of the ctrl list that we need here 
   substeps <- ctrl[["substeps"]]
   wrap     <- ctrl[["wrap"]]
   use_8_nb <- ctrl[["neighbors"]] == 8
@@ -60,10 +55,11 @@ camodel_compiled_engine_wrap <- function(ctrl,
   cmaxlines <- gsubf("__USE_8_NB__", ifelse(use_8_nb, "true", "false"), cmaxlines)
   cmaxlines <- gsubf("__SUBSTEPS__", format(substeps), cmaxlines)
   cmaxlines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), cmaxlines)
-  cmaxlines <- gsubf("__BETA_0_NROW__", format(nrow(beta_0)), cmaxlines)
-  cmaxlines <- gsubf("__BETA_P_NROW__",  format(nrow(beta_p)), cmaxlines)
-  cmaxlines <- gsubf("__BETA_Q_NROW__",  format(nrow(beta_q)), cmaxlines)
-  cmaxlines <- gsubf("__BETA_PQ_NROW__",  format(nrow(beta_pq)), cmaxlines)
+  cmaxlines <- gsubf("__BETA_0_NROW__",  format(nrow(ctrl[["beta_0"]])),  cmaxlines)
+  cmaxlines <- gsubf("__BETA_Q_NROW__",  format(nrow(ctrl[["beta_q"]])), cmaxlines)
+  cmaxlines <- gsubf("__BETA_PP_NROW__", format(nrow(ctrl[["beta_pp"]])), cmaxlines)
+  cmaxlines <- gsubf("__BETA_QQ_NROW__", format(nrow(ctrl[["beta_qq"]])), cmaxlines)
+  cmaxlines <- gsubf("__BETA_PQ_NROW__", format(nrow(ctrl[["beta_pq"]])), cmaxlines)
   cmaxlines <- gsubf("__COMMON_HEADER__", 
                      system.file("common.h", package = "chouca"), cmaxlines)
   

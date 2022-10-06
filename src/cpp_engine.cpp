@@ -7,13 +7,16 @@
 #include <RcppArmadillo.h>
 // using namespace Rcpp;
 
-// Define some column names
+
+// Define some column names for clarity
 #define _from 0
 #define _to 1
-#define _state 2
-#define _qs 3
-#define _coef 0
-#define _expo 1
+#define _state_1 2
+#define _state_2 3
+#define _qs 3 // only in beta_q, so no overlap with _state_2 above
+#define _expo_1 0
+#define _expo_2 1
+#define _coef 2
 
 using namespace arma;
 
@@ -254,21 +257,23 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
   // Extract things from list 
-  const arma::Mat<ushort> beta_0_index  = ctrl["beta_0_index"];
-  const arma::Col<double> beta_0_vals   = ctrl["beta_0_vals"];
-  const arma::Mat<ushort> beta_p_index  = ctrl["beta_p_index"];
-  const arma::Mat<double> beta_p_vals   = ctrl["beta_p_vals"];
-  const arma::Mat<ushort> beta_q_index  = ctrl["beta_q_index"];
-  const arma::Col<double> beta_q_vals   = ctrl["beta_q_vals"];
-  const arma::Mat<ushort> beta_pq_index = ctrl["beta_pq_index"];
-  const arma::Mat<double> beta_pq_vals  = ctrl["beta_pq_vals"];
-  
+  arma::Mat<ushort> beta_0_index  = ctrl["beta_0_index"];
+  arma::Mat<double> beta_0_vals   = ctrl["beta_0_vals"];
+  arma::Mat<ushort> beta_q_index  = ctrl["beta_q_index"];
+  arma::Mat<double> beta_q_vals   = ctrl["beta_q_vals"];
+  arma::Mat<ushort> beta_pp_index = ctrl["beta_pp_index"];
+  arma::Mat<double> beta_pp_vals  = ctrl["beta_pp_vals"];
+  arma::Mat<ushort> beta_pq_index = ctrl["beta_pq_index"];
+  arma::Mat<double> beta_pq_vals  = ctrl["beta_pq_vals"];
+  arma::Mat<ushort> beta_qq_index = ctrl["beta_qq_index"];
+  arma::Mat<double> beta_qq_vals  = ctrl["beta_qq_vals"];
+
 //   Rcpp::Rcout << beta_pq_index << "\n"; 
 //   Rcpp::Rcout << pqmat_vals << "\n"; 
   
   const uword nr = init.n_rows; 
   const uword nc = init.n_cols; 
-  const double n = (double) nr * (double) nc;
+  const double ncells = (double) nr * (double) nc;
   
   // Initialize some things 
   Mat<ushort> omat = init; 
@@ -299,11 +304,11 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
     
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
-      console_callback(iter, ps, n); 
+      console_callback(iter, ps, ncells); 
     }
     
     if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-      cover_callback(iter, ps, n); 
+      cover_callback(iter, ps, ncells); 
     }
     
     if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
@@ -325,14 +330,14 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
         for ( uword i=0; i<nr; i++ ) { 
           
           // Normalized local densities to proportions
-          uword qs_total = accu(qs.row(i)); 
+          uword total_nb = accu(qs.row(i)); 
           
           // Factor to convert the number of neighbors into the point at which the 
           // dependency on q is sampled.
-          uword qpointn_factorf = (xpoints - 1) / qs_total; 
+          uword qpointn = (xpoints - 1) / total_nb; 
           
           // Get current state 
-          ushort cstate = omat(i, j); 
+          ushort from = omat(i, j); 
           
           // Compute probability transitions 
           for ( ushort to=0; to<ns; to++ ) { 
@@ -340,55 +345,66 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             // Init probability
             ptrans(to) = 0; 
             
-            // Scan the table of beta0 
+            // constant component
             for ( uword k=0; k<beta_0_index.n_rows; k++ ) { 
               ptrans(to) += 
-                ( beta_0_index(k, _from) == cstate ) * 
+                ( beta_0_index(k, _from) == from ) * 
                 ( beta_0_index(k, _to) == to) * 
                 beta_0_vals(k); 
             }
             
-            // Scan the table of pmat to reconstruct probabilities -> where is ps?
-            for ( uword k=0; k<beta_p_index.n_rows; k++ ) { 
-              
-              double p = ps(beta_p_index(k, _state)) / (double) n; 
-              
-              ptrans(to) += 
-                ( beta_p_index(k, _from) == cstate ) * 
-                ( beta_p_index(k, _to) == to ) * 
-                beta_p_vals(k, _coef) * 
-                pow(p, beta_p_vals(k, _expo) );
-            }
-            
-            // Scan the table of qmat to reconstruct probabilities 
+            // f(q) component
             for ( uword k=0; k<beta_q_index.n_rows; k++ ) { 
               
               // Lookup which point in the qs function we need to use for the 
               // current neighbor situation.
-              uword qthis = qs(i, beta_q_index(k, _state)) * qpointn_factorf;
+              uword qthis = qs(i, beta_q_index(k, _state_1)) * qpointn;
               
               ptrans(to) += 
-                ( beta_q_index(k, _from) == cstate ) * 
+                ( beta_q_index(k, _from) == from ) * 
                 ( beta_q_index(k, _to) == to) * 
                 // Given the observed local abundance of this state, which line in 
-                // qmat should be retained ? 
+                // beta_q should be retained ? 
                 ( beta_q_index(k, _qs) == qthis ) * 
                 beta_q_vals(k); 
             }
             
-            // Scan the table of pmat to reconstruct probabilities -> where is ps?
-            for ( uword k=0; k<beta_pq_index.n_rows; k++ ) { 
-              
-              double pq = (double) qs(i, beta_pq_index(k, _state)) / (double) qs_total; 
-              pq *= (double) ps(beta_pq_index(k, _state)) / (double) n; 
+            // pp
+            for ( uword k=0; k<beta_pp_index.n_rows; k++ ) { 
+              double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
+              double p2 = ps[beta_pp_index(k, _state_2)] / ncells; 
               
               ptrans(to) += 
-                ( beta_pq_index(k, _from) == cstate ) * 
-                ( beta_pq_index(k, _to) == to) * 
-                beta_pq_vals(k, _coef) * 
-                pow(pq, beta_pq_vals(k, _expo) );
-              
+                ( beta_pp_index(k, _from) == from ) * 
+                ( beta_pp_index(k, _to) == to) * 
+                beta_pp_vals(k, _coef) * pow(p1, beta_pp_vals(k, _expo_1)) * 
+                  pow(p2, beta_pp_vals(k, _expo_2));
             }
+            
+            // qq
+            for ( uword k=0; k<beta_qq_index.n_rows; k++ ) { 
+              double q1 = (double) qs(i, beta_qq_index(k, _state_1)) / total_nb;
+              double q2 = (double) qs(i, beta_qq_index(k, _state_1)) / total_nb;
+              
+              ptrans(to) += 
+                ( beta_qq_index(k, _from) == from ) * 
+                ( beta_qq_index(k, _to) == to) * 
+                beta_qq_vals(k, _coef) * pow(q1, beta_qq_vals(k, _expo_1)) * 
+                  pow(q2, beta_qq_vals(k, _expo_2));
+            }
+            
+            // pq
+            for ( uword k=0; k<beta_pq_index.n_rows; k++ ) { 
+              double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
+              double q1 = (double) qs(i, beta_pq_index(k, _state_1)) / total_nb;
+              
+              ptrans(to) += 
+                ( beta_pq_index(k, _from) == from ) * 
+                ( beta_pq_index(k, _to) == to) * 
+                beta_pq_vals(k, _coef) * pow(p1, beta_pq_vals(k, _expo_1)) * 
+                  pow(q1, beta_pq_vals(k, _expo_2));
+            }
+            
           }
           
           // Check if we actually transition. We scan all states and switch to the 
@@ -406,13 +422,13 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             ptrans(k) += ptrans(k-1);
           }
           
-          ushort new_cell_state = cstate; 
+          ushort new_cell_state = from; 
           double rn = Rf_runif(0, 1); 
           for ( signed short k=(ns-1); k>=0; k-- ) { 
             new_cell_state = rn < ptrans(k) ? k : new_cell_state; 
           } 
           
-          if ( new_cell_state != cstate ) {
+          if ( new_cell_state != from ) {
             ushort old_cell_state = nmat(i, j);
             delta_ps(new_cell_state)++; 
             delta_ps(old_cell_state)--;

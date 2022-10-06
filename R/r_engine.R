@@ -14,9 +14,10 @@ camodel_r_engine <- function(ctrl) {
   xpoints <- ctrl[["xpoints"]] 
   
   beta_0 <- ctrl[["beta_0"]]
-  beta_p <- ctrl[["beta_p"]]
   beta_q <- ctrl[["beta_q"]]
+  beta_pp <- ctrl[["beta_pp"]]
   beta_pq <- ctrl[["beta_pq"]]
+  beta_qq <- ctrl[["beta_qq"]]
   
   # Initialize some elements
   # NOTE: we work in integer representation minus one internally, because it makes 
@@ -71,8 +72,8 @@ camodel_r_engine <- function(ctrl) {
           
           # qpointn corresponds to the line in the lookup table at which we pick up the 
           # value for the local probability
-          this_total_nb <- sum(qs)
-          qpointn <- as.integer(qs / this_total_nb * (xpoints-1))
+          nbs <- sum(qs)
+          qpointn <- as.integer(qs / nbs * (xpoints-1))
 #           qs <- qs / sum(qs)
           # Compute probability of transition to other states
           trates <- rep(0, ns)
@@ -80,15 +81,7 @@ camodel_r_engine <- function(ctrl) {
           for ( k in unique(beta_0[ ,"to"]) ) { 
             sub <- which(beta_0[ ,"to"] == k)
             trates[k+1] <- trates[k+1] + sum( 
-              (beta_0[sub, "from"] == this_cell_state) * beta_0[sub, "ys"] 
-            )
-          }
-          
-          for ( k in unique(beta_p[ ,"to"]) ) { 
-            sub <- which(beta_p[ ,"to"] == k)
-            trates[k+1] <- trates[k+1] + sum(
-              (beta_p[sub, "from"] == this_cell_state) * 
-                beta_p[sub, "coef"] * (ps[ 1+beta_p[sub, "state"] ] / n)^beta_p[sub, "expo"]
+              (beta_0[sub, "from"] == this_cell_state) * beta_0[sub, "coef"] 
             )
           }
           
@@ -96,8 +89,18 @@ camodel_r_engine <- function(ctrl) {
             sub <- which(beta_q[ ,"to"] == k)
             trates[k+1] <- trates[k+1] + sum( 
               (beta_q[sub, "from"] == this_cell_state) * 
-                ( beta_q[sub, "qs"] == qpointn[ 1+beta_q[sub, "state"] ] ) * 
-                beta_q[sub, "ys"]
+                ( beta_q[sub, "qs"] == qpointn[ 1+beta_q[sub, "state_1"] ] ) * 
+                beta_q[sub, "coef"]
+            )
+          }
+          
+          for ( k in unique(beta_pp[ ,"to"]) ) { 
+            sub <- which(beta_pp[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum(
+              (beta_pp[sub, "from"] == this_cell_state) * 
+                beta_pp[sub, "coef"] * 
+                ( ps[ 1 + beta_pp[sub, "state_1"] ] / n )^beta_pp[sub, "expo_1"] *
+                ( ps[ 1 + beta_pp[sub, "state_2"] ] / n ) ^ beta_pp[sub, "expo_2"]
             )
           }
           
@@ -106,8 +109,19 @@ camodel_r_engine <- function(ctrl) {
             trates[k+1] <- trates[k+1] + sum(
               (beta_pq[sub, "from"] == this_cell_state) * 
                 beta_pq[sub, "coef"] * 
-                ( qs[ 1 + beta_pq[sub, "state"] ] / this_total_nb * 
-                    ps[ 1 + beta_pq[sub, "state"] ] / n )^beta_pq[sub, "expo"]
+                ( ps[ 1 + beta_pq[sub, "state_1"] ] / n ) ^ beta_pq[sub, "expo_1"] *
+                ( qs[ 1 + beta_pq[sub, "state_2"] ] / nbs ) ^ beta_pq[sub, "expo_2"]
+            )
+          }
+          
+          
+          for ( k in unique(beta_qq[ ,"to"]) ) { 
+            sub <- which(beta_qq[ ,"to"] == k)
+            trates[k+1] <- trates[k+1] + sum(
+              (beta_qq[sub, "from"] == this_cell_state) * 
+                beta_qq[sub, "coef"] * 
+                ( qs[ 1 + beta_qq[sub, "state_1"] ] / nbs ) ^ beta_qq[sub, "expo_1"] *
+                ( qs[ 1 + beta_qq[sub, "state_2"] ] / nbs ) ^ beta_qq[sub, "expo_2"]
             )
           }
           

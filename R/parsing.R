@@ -172,6 +172,16 @@ camodel <- function(...,
     }
   }
   
+  # Make sure transitions are unique
+  trcodes <- plyr::laply(transitions, function(tr) { 
+    paste(tr[["from"]], tr[["to"]], sep = " -> ")
+  })
+  if ( any(duplicated(trcodes)) ) { 
+    msg <- paste("Duplicated transition(s) in model definition:\n", 
+                 paste("  ", trcodes[duplicated(trcodes)], collapse = "\n"))
+    stop(msg)
+  }
+  
   msg(sprintf("Using %s cell states\n", nstates))
   msg(sprintf("Using %s transitions\n", length(transitions)))
   
@@ -184,28 +194,37 @@ camodel <- function(...,
   # overwrite xpoints with the fixed value. 
   xpoints <- ifelse(fixed_neighborhood, 1+neighbors, xpoints)
   
+  
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
                                epsilon, neighbors, check_model)
   
   # Pack transitions into matrices
   beta_q  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_q")
-  beta_p  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_p")
+  beta_pp <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_pp")
   beta_pq <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_pq")
+  beta_qq <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_qq")
   beta_0  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_0")
+  
+  # Extract mean/max errors
+  max_error <- plyr::laply(transitions_parsed, function(o) o[["max_error"]])
+  max_rel_error <- plyr::laply(transitions_parsed, function(o) o[["max_rel_error"]])
   
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
                 states = factor(states, levels = states), # convert explicitely to factor
                 transitions_defs = list(...), 
-                parms            = parms, 
+                parms = parms, 
                 beta_0 = beta_0, 
-                beta_p = beta_p, 
                 beta_q = beta_q, 
+                beta_pp = beta_pp, 
                 beta_pq = beta_pq, 
+                beta_qq = beta_qq, 
                 wrap = wrap, 
                 neighbors = neighbors, 
                 epsilon = epsilon, 
                 xpoints = xpoints, 
+                max_error = max_error, 
+                max_rel_error = max_rel_error, 
                 fixed_neighborhood = fixed_neighborhood)
   
   class(caobj) <- c("ca_model", "list")
@@ -241,175 +260,9 @@ transition <- function(from, to, prob) {
   return(o)
 }
 
-parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors, 
-                             check_model) { 
-  
-  if ( ! inherits(tr, "camodel_transition") ) { 
-    m <- paste("The transition definition has not been defined using transition().", 
-               "Please do using transition(from = ..., to = ..., prob = ~ ...)")
-    stop(m)
-  }
-  ns <- length(state_names)
-  
-  # Make sure the environment for the formula is set to the empty environment. Otherwise
-  # it trips the hash computing of the model, which is used to determine whether we have 
-  # to recompile or not when using the 'compiled' engine.
-  environment(tr[["prob"]]) <- emptyenv()
-  
-  pexpr <- as.expression( as.list(tr[["prob"]])[[2]] )
-  zero <- rep(0, ns)
-  names(zero) <- state_names
-  
-  # Constant probability component (when all the p and q are zero)
-  
-  # We accumulate warnings, and print them later if any arose. 
-  warn <- character()
-  
-  prob_with <- function(p, q) { 
-    p <- as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
-    
-    if ( is.na(p) ) { 
-      m <- "NA/NaNs in model probabilities, please check your model definition."
-      stop(m)
-    }
-    
-    if ( p < 0 ) { 
-      m <- paste0("Transition probabilities may go below zero. Problematic transition:\n", 
-                 "  ", tr[["from"]], " -> ", tr[["to"]])
-      warn <<- c(warn, m)
-    }
-    
-    p
-  }
-  
-  # Get intercept for this transition. Note that beta_0 always has one line, but 
-  # we use a df anyway because we are going to pack multiple values into a df later 
-  # (using plyr::ldply).
-  beta_0 <- data.frame(ys = prob_with(p = zero, q = zero))
-  
-  # Get coefficient/exponent table for q. We evaluate q at 'xpoints' points for vectors 
-  # of q with zeros everywhere except one state. 
-  beta_q <- plyr::ldply(state_names, function(s) { 
-    q <- zero
-    xs <- seq(0, 1, length.out = xpoints) 
-    nqs <- seq_along(xs) - 1
-    ys <- sapply(xs, function(x) { 
-      q[s] <- x
-      prob_with(p = zero, q = q) - prob_with(p = zero, q = zero)
-    })
-    
-    data.frame(state = s, qs = nqs, ys = ys)
-  })
-  
-  beta_p <- plyr::ldply(state_names, function(s) { 
-    p <- zero
-    xs <- seq(0, 1, length.out = 25) 
-    ys <- sapply(xs, function(x) { 
-      p[s] <- x
-      prob_with(p = p, q = zero) - prob_with(p = zero, q = zero)
-    })
-    
-    # Fit polynomial to this 
-    poly <- fitpoly(xs, ys, epsilon)
-    data.frame(state = s, coef = poly, expo = seq_along(poly))
-  })
-  
-  beta_pq <- plyr::ldply(state_names, function(s) { 
-    p <- zero
-    q <- zero
-    xs <- seq(0, 1, length.out = 25) 
-    ys <- sapply(xs, function(x) { 
-      p[s] <- x
-      q[s] <- x
-      prob_with(p = p, q = q) - prob_with(p = p, q = zero) - 
-        prob_with(p = zero, q = q) + prob_with(p = zero, q = zero)
-    })
-    
-    # Fit polynomial to this 
-    # NOTE: here we fit proportional to x^2, because the coefficients are proportional 
-    # to the product pq and not just p or q
-    poly <- fitpoly(xs^2, ys, epsilon)
-    data.frame(state = s, coef = poly, expo = seq_along(poly))
-  })
-  
-  
-  # Print all the warnings accumulated so far
-  if ( length(warn) > 0 ) { 
-    # Some of them may be repeated
-    warn <- unique(warn) 
-    lapply(warn, warning, call. = FALSE)
-  }
-  
-  
-  
-  # Check if we reconstruct the probabilities correctly 
-  if ( check_model ) { 
-    all_qss <- generate_all_qs(neighbors, ns, filter = TRUE)[ ,1:ns]
-    all_qss <- all_qss[apply(all_qss, 1, sum) == neighbors, ]
-    colnames(all_qss) <- state_names
-    ps <- matrix(stats::runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
-    ps <- t(apply(ps, 1, function(X) X / sum(X)))
-    colnames(ps) <- state_names
-    
-    p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
-      prob_with(q = all_qss[i, ]/neighbors, p = ps[i, ])
-    })
-    
-    p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) { 
-      
-      # alpha component (always length one, as there is only one intercept for a 
-      # transition).
-      beta <- beta_0[ ,"ys"]
-      
-      # q component
-      qslong <- data.frame(state = state_names, 
-                           # this gets the qs point corresponding to this proportion 
-                           # of neighbors. 
-                           qs = all_qss[i, ] / neighbors * (xpoints - 1))
-      qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong))
-      qssum <- sum(qslong[ ,"ys"])
-      
-      # p component
-      pslong <- data.frame(state = state_names, ps = ps[i, ])
-      pslong <- plyr::join(beta_p, pslong, type = "left", by = "state")
-      pssum <- with(pslong, sum(coef * ps ^ expo) )
-      
-      # pq component
-      pqslong <- data.frame(state = state_names, 
-                            pqs = all_qss[i, ]/neighbors * ps[i, ])
-      pqslong <- plyr::join(beta_pq, pqslong, type = "left", by = "state")
-      pqssum <- with(pqslong, sum(coef * pqs ^ expo) )
-      
-      beta + qssum + pssum + pqssum
-    })
-    
-    if ( ! all( abs(p_refs - p_preds) < epsilon ) ) { 
-      msg <- paste0("Residual error in computed probabilities... make sure your model is supported by chouca\n", 
-                  "  mean error: ", format(mean(abs(p_refs - p_preds)), digits = 3), "\n", 
-                    "  max error: ", format(max(abs(p_refs - p_preds))), digits = 3)
-      stop(msg)
-    }
-  }
-  
-  
-  # Subset matrices where coefficients are zero 
-  notzero <- function(X) abs(X) > epsilon
-  beta_0  <- beta_0[notzero(beta_0[ ,"ys"]),    , drop = FALSE]
-  beta_p  <- beta_p[notzero(beta_p[ ,"coef"]),    , drop = FALSE]
-  beta_q  <- beta_q[notzero(beta_q[ ,"ys"]),      , drop = FALSE]
-  beta_pq <- beta_pq[notzero(beta_pq[ ,"coef"]), , drop = FALSE]
-  
-  list(from = tr[["from"]], 
-       to   = tr[["to"]], 
-       beta_0 = beta_0, 
-       beta_q = beta_q, 
-       beta_p = beta_p, 
-       beta_pq = beta_pq, 
-       prob = pexpr)
-}
-
 # Helper function to pack transitions into model-level tables
 pack_table_fromto <- function(tr, table) { 
+  
   if ( nrow(tr[[table]]) == 0 ) { 
     data.frame(from = integer(0), to = integer(0), tr[[table]])
   } else { 
@@ -449,50 +302,4 @@ update.ca_model <- function(object,
                epsilon = object[["epsilon"]])
   
   do.call(camodel, newcall)
-}
-
-# Fit a poly with increasing degrees (up to 25), stopping when the error becomes very 
-# low (below 1e-10)
-fitpoly <- function(x, y, epsilon) { 
-  
-  force(x)
-  force(y)
-  
-  # If all zero, return zero
-  if ( all(abs(y) < epsilon) ) { 
-    return( 0 ) 
-  }
-  
-  # We fit a polynomial
-  polyc <- function(x, betas) { 
-    sapply(x, function(i) { 
-      sum(betas * i ^ seq_along(betas))
-    })
-  }
-
-  ss <- function(betas) { 
-    1e6 * sum( (y - polyc(x, betas))^2 ) 
-  }
-  
-  degree <- 0
-  error <- 1
-  while ( error > 1e-10 && degree <= 25 ) { 
-    degree <- degree + 1
-    theta0 <- rep(0, degree)
-    nlmp <- stats::optim(theta0, ss, method = "BFGS", 
-                         control = list(trace = FALSE, 
-                                        maxit = 1000, 
-                                        abstol = .Machine$double.eps))
-    error <- nlmp$value
-  }
-  
-  np <- nlmp[["par"]]
-  # Plot prediction
-  ypred <- polyc(x, np)
-  
-  if ( error > 1e-10 ) { 
-    stop("Could not approximate the given function with a polynomial - your model definition may be too complex for chouca")
-  }
-  
-  return(np)
 }

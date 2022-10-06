@@ -290,42 +290,31 @@ run_camodel <- function(mod, initmat, niter,
   }
   
   # Prepare data for internal representation
-  beta_0  <- mod[["beta_0"]]
-  beta_p  <- mod[["beta_p"]]
-  beta_q  <- mod[["beta_q"]]
-  beta_pq <- mod[["beta_pq"]]
-  
-  for ( c in c("from", "to") ) { 
-    beta_p[ ,c]  <- fix(beta_p[ ,c])
-    beta_q[ ,c]  <- fix(beta_q[ ,c])
-    beta_pq[ ,c] <- fix(beta_pq[ ,c])
-    beta_0[ ,c]  <- fix(beta_0[ ,c])
-  }
-  beta_p[ ,"state"] <- fix(beta_p[ ,"state"])
-  beta_q[ ,"state"] <- fix(beta_q[ ,"state"])
-  beta_pq[ ,"state"] <- fix(beta_pq[ ,"state"])
-  
-  beta_0 <- as.matrix(beta_0)
-  beta_p <- as.matrix(beta_p)
-  beta_q <- as.matrix(beta_q)
-  beta_pq <- as.matrix(beta_pq)
-  
-  # Take into account substeps 
-  beta_q[ ,"ys"]    <- beta_q[ ,"ys"]    / control[["substeps"]]
-  beta_p[ ,"coef"]  <- beta_p[ ,"coef"]  / control[["substeps"]]
-  beta_pq[ ,"coef"] <- beta_pq[ ,"coef"] / control[["substeps"]]
-  beta_0[ ,"ys"]   <- beta_0[ ,"ys"]     / control[["substeps"]]
+  betas <- mod[c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")]
+  betas <- lapply(betas, function(tab) { 
+    # Convert references to state to internal representation
+    tab[ ,"from"] <- fix(tab[ ,"from"])
+    tab[ ,"to"] <- fix(tab[ ,"to"])
+    if ( "state_1" %in% colnames(tab) ) { 
+      tab[ ,"state_1"] <- fix(tab[ ,"state_1"])
+    }
+    if ( "state_2" %in% colnames(tab) ) { 
+      tab[ ,"state_2"] <- fix(tab[ ,"state_2"])
+    }
+    if ( "coef" %in% colnames(tab) ) { 
+      tab[ ,"coef"] <- tab[ ,"coef"] / control[["substeps"]]
+    }
+    
+    as.matrix(tab)
+  })
   
   # Adjust the control list to add some components
   control_list <- c(control, 
                     mod[c("wrap", "neighbors", "xpoints", "fixed_neighborhood")], 
+                    betas, 
                     list(init     = initmat, 
                          niter    = niter, 
                          nstates  = ns, 
-                         beta_p = beta_p, 
-                         beta_q = beta_q, 
-                         beta_pq = beta_pq, 
-                         beta_0 = beta_0, 
                          console_callback       = console_callback, 
                          cover_callback         = cover_callback, 
                          snapshot_callback      = snapshot_callback, 

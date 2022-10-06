@@ -4,7 +4,14 @@
 \alias{landscape_plotter}
 \title{Plot simulation landscapes}
 \usage{
-landscape_plotter(mod, col = NULL, fps_cap = 24, transpose = TRUE, ...)
+landscape_plotter(
+  mod,
+  col = NULL,
+  fps_cap = 24,
+  burn_in = 0,
+  transpose = TRUE,
+  ...
+)
 }
 \arguments{
 \item{mod}{The model being run}
