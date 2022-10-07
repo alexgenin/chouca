@@ -67,6 +67,26 @@ expect_warning({
   generate_initmat(mod, c(0, 0.1), 2, 2)
 })
 
+# No names in parms list 
+expect_error({ 
+  mod <- ca_library("aridvege")
+  update(mod, parms = list(1 , 2))
+})
+
+# Missing states in all_states 
+expect_error({ 
+  mod <- camodel(transition(from = "a", to = "b", ~ 1), 
+                 all_states = c("0", "b"))
+})
+
+# Duplicate transition 
+expect_error({ 
+  mod <- camodel(transition(from = "a", to = "b", ~ 1), 
+                 transition(from = "a", to = "b", ~ 1), 
+                 wrap = TRUE, 
+                 neighbors = 4)
+})
+
 
 # Make a quick run, extract the first step and make sure it matches what we expect 
 im <- generate_initmat(mod, c(TREE = 0.2, EMPTY = 0.8), 100, 100)

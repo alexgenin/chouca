@@ -4,17 +4,20 @@
 
 test_that("Test console output", { 
   
-  model <- ca_library("coralreef")
-  im <- generate_initmat(model, rep(1/3, 3), 21, 55)
-  
-  ctrl <- list(console_output_every = 1, engine = "cpp")
-  string <- capture.output({ 
-    run_camodel(model, im, 6, ctrl)
-  })
+  for ( engine in c("r", "cpp", "compiled") ) { 
     
-  expect_true({ 
-    grepl("t = 2 ( 33 %) ", string[3], fixed = TRUE)
-  })
+    model <- ca_library("coralreef")
+    im <- generate_initmat(model, rep(1/3, 3), 21, 55)
+    
+    ctrl <- list(console_output_every = 1, engine = engine)
+    string <- capture.output({ 
+      run_camodel(model, im, 6, ctrl)
+    })
+      
+    expect_true({ 
+      grepl("t = 2 ( 33 %) ", string[3], fixed = TRUE)
+    })
+  }
   
 })
 

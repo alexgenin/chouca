@@ -29,6 +29,22 @@ test_that("pq coefficients work", {
   
 })
 
+test_that("qq coefficients work", { 
+  
+  # Debug model for pq
+  mod <- camodel(transition(from = "a", to = "b", ~ 4 * (q["b"] * q["a"])), 
+                wrap = TRUE, 
+                neighbors = 4)
+  initmm <- generate_initmat(mod, c(.25, .75), 2, 2)
+  initmm[] <- c("b", "b", "a", "a")
+  
+  for ( engine in c("r", "cpp", "compiled") ) { 
+    ctrl <- list(console_output_every = 0, save_snapshots_every = 1, engine = engine)
+    a <- run_camodel(mod, initmm, 1, control = ctrl)
+    mat_final <- a[["output"]][["snapshots"]][[2]]
+    expect_true(mat_final[1, 2] == "b")
+  }
+})
 
 test_that("fixed neighborhood works", { 
   

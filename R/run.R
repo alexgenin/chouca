@@ -384,6 +384,10 @@ load_control_list <- function(l) {
     }
   }
   
+  if ( any(duplicated(names(l))) ) { 
+    stop("Duplicated elements in control list")
+  }
+  
   check_length1_integer(control_list[["substeps"]], "substeps", 1)
   check_length1_integer(control_list[["save_covers_every"]], "save_covers_every", 0)
   check_length1_integer(control_list[["save_snapshots_every"]], "save_snapshots_every", 0)
