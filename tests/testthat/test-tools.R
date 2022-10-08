@@ -5,4 +5,4 @@
 mod <- ca_library("gameoflife")
 initmm <- generate_initmat(mod, c(0.5, 0.5), 10, 10)
 image(initmm)
-image(initmm, transpose = TRUE)
+image(initmm)

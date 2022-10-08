@@ -89,6 +89,7 @@ expect_error({
 
 
 # Make a quick run, extract the first step and make sure it matches what we expect 
+mod <- ca_library("forestgap")
 im <- generate_initmat(mod, c(TREE = 0.2, EMPTY = 0.8), 100, 100)
 props <- sapply(c("EMPTY", "TREE"), function(s) mean(im == s))
 expect_true( abs(props["TREE"] - 0.2) < 0.05 )

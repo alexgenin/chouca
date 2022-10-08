@@ -6,7 +6,7 @@ test_that("Test console output", {
   
   for ( engine in c("r", "cpp", "compiled") ) { 
     
-    model <- ca_library("coralreef")
+    model <- ca_library("aridvege")
     im <- generate_initmat(model, rep(1/3, 3), 21, 55)
     
     ctrl <- list(console_output_every = 1, engine = engine)
