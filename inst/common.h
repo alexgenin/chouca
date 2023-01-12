@@ -3,33 +3,33 @@
  * https://prng.di.unimi.it/xoshiro256plus.c 
  */ 
 static inline uint64_t rotl(const uint64_t x, int k) {
-	return (x << k) | (x >> (64 - k));
+  return (x << k) | (x >> (64 - k));
 }
 
-static uint64_t s[4];
+// Seeds 
+static uint64_t s[cores][4];
 
-static uint64_t nextr(void) {
-	const uint64_t result = s[0] + s[3];
-	const uint64_t t = s[1] << 17;
-
-	s[2] ^= s[0];
-	s[3] ^= s[1];
-	s[1] ^= s[2];
-	s[0] ^= s[3];
-
-	s[2] ^= t;
-
-	s[3] = rotl(s[3], 45);
-
-	return result;
+static uint64_t nextr(uchar core) {
+  const uint64_t result = s[core][0] + s[core][3];
+  const uint64_t t = s[core][1] << 17;
+  
+  s[core][2] ^= s[core][0];
+  s[core][3] ^= s[core][1];
+  s[core][1] ^= s[core][2];
+  s[core][0] ^= s[core][3];
+  
+  s[core][2] ^= t;
+  
+  s[core][3] = rotl(s[core][3], 45);
+  
+  return result;
 }
 
-static inline double randunif() { 
-  uint64_t x = nextr(); 
-  double xf = (x >> 11) * 0x1.0p-53; 
+static inline double randunif(uchar core) { 
+  uint64_t x = nextr(core); 
+  double xf = (x >> 11) * 0x1.0p-53; // use upper 53 bits only 
   return xf; 
 }
-
 
 inline uword intpow(const uchar a, 
                     const uchar b) { 
@@ -40,19 +40,26 @@ inline uword intpow(const uchar a,
   return p; 
 }
 
-// Fast power when b is integer >= 0
-inline double fintpow(const double a, 
-                      const uchar  b) { 
-  double p = 1; 
-  for ( uchar k=0; k<b; k++ ) { 
-    p *= a; 
+// Fast power when b is integer between zero and five (the maximum degree considered 
+// for models)
+static inline double fintpow(const double a, 
+                             const uchar  b) { 
+  switch ( b ) { 
+    case 0: return 1.0; 
+    case 1: return a; 
+    case 2: return a*a; 
+    case 3: return a*a*a; 
+    case 4: return a*a*a*a; 
+    case 5: return a*a*a*a*a; 
+    case 6: return a*a*a*a*a*a; 
+    case 7: return a*a*a*a*a*a*a; 
   }
   
-  return p; 
+  return 1.0; 
 }
 
 inline void init_local_densities(uchar qs[nr][nc][ns], 
-                                const uchar m[nr][nc]) { 
+                                 const uchar m[nr][nc]) { 
   
   // Set all counts to zero
   memset(qs, 0, sizeof(uchar)*nr*nc*ns); 
@@ -367,7 +374,7 @@ inline void adjust_nb_plines(uword pline[nr][nc],
                              const uchar from, 
                              const uchar to) { 
   
-  // NOTE: we used a signed integer here because the pline adjustment can be negative 
+  // NOTE: we use a signed integer here because the pline adjustment can be negative 
   sword adj = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from); 
   
   // If we wrap, then what would go max_nb by max_nb goes instead one by one, so 
@@ -504,9 +511,21 @@ static inline double compute_proba(const uchar qs[ns],
   }
   
   // pq
+  // Rcpp::Rcout << beta_pq_vals << "\n";
+  // Rcpp::Rcout << beta_pq_index << "\n";
   for ( uword k=0; k<beta_pq_nrow; k++ ) { 
     double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
     double q1 = (double) qs[beta_pq_index(k, _state_1)] / total_nb;
+    
+    // Rcpp::Rcout << "k: " << k << "\n"; 
+    // Rcpp::Rcout << "beta_pq_nrow: " << beta_pq_nrow << "\n"; 
+    // Rcpp::Rcout << "beta_pq_ix_ncol: " << beta_pq_index.n_cols << "\n"; 
+    // Rcpp::Rcout << "beta_pq_vals_ncol: " << beta_pq_vals.n_cols << "\n"; 
+    // Rcpp::Rcout << "_expo_1: " << _expo_1 << "\n"; 
+    // Rcpp::Rcout << "_expo_2: " << _expo_2 << "\n"; 
+    // Rcpp::Rcout << "_to: " << _to << "\n"; 
+    // Rcpp::Rcout << "_from: " << _from << "\n"; 
+    // Rcpp::Rcout << beta_pq_vals << "\n"; 
     
     total += 
       ( beta_pq_index(k, _from) == from ) * 

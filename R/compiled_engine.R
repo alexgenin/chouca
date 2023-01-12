@@ -14,6 +14,8 @@ camodel_compiled_engine_wrap <- function(ctrl,
                    drop = FALSE]
     ctrl[[paste0(tab, "_index")]] <- intmat(tabix)
     
+    #TODO: move expo_1 and expo_2 to tabindex and adjust power functions in compiled 
+    # code
     tabfl <- ctrl[[tab]] 
     tabfl <- tabfl[ ,intersect(colnames(tabfl), c("coef", "expo_1", "expo_2")), 
                    drop = FALSE]
@@ -28,7 +30,6 @@ camodel_compiled_engine_wrap <- function(ctrl,
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
-  
   
   
   
@@ -97,7 +98,7 @@ camodel_compiled_engine_wrap <- function(ctrl,
   # Make hash of file and replace function name 
   # We make the hash depend on the model too, just in case the user changes models, but
   # the rest is different. Unlikely, but who knows.
-  hash <- digest::digest(list(cmaxlines), algo = "md5")
+  hash <- digest::digest(list(cmaxlines, ctrl[["cores"]]), algo = "md5")
   cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   

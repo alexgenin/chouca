@@ -22,11 +22,11 @@ print.ca_model <- function(x, ...) {
   cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
   cat0("Wrap: ", x[["wrap"]])
   cat0("Max error: ", format(max(x[["max_error"]])), " (", 
-       ifelse(max(x[["max_error"]]) < sqrt(.Machine[["double.eps"]]), 
+       ifelse(max(x[["max_error"]]) < sqrt(x[["epsilon"]]), 
               "OK", "WARNING"), ")" )
   
   cat0("Max rel error: ", format(max(x[["max_rel_error"]])), " (", 
-       ifelse(max(x[["max_rel_error"]]) < sqrt(.Machine[["double.eps"]]), 
+       ifelse(max(x[["max_rel_error"]]) < sqrt(x[["epsilon"]]), 
               "OK", "WARNING"), ")" )
   
   return(invisible(x))

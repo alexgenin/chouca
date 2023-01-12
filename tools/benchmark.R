@@ -7,11 +7,13 @@ library(devtools)
 library(ggplot2)
 library(lubridate)
 
-GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
-TEST_COMMITS <- c("fea6ff41c3cda84e138012bc6a719327a8aba56f", 
-                  "06a7e291ada8d810de2be580282c5331dc983da2", 
+# GIT_ORIG <- "git@github.com:alexgenin/chouca.git"
+
+GIT_ORIG <- "https://github.com/alexgenin/chouca"
+TEST_COMMITS <- c("06a7e291ada8d810de2be580282c5331dc983da2", 
                   "c9cebaa15784cfc989f5dd5f1549d8efa09fd133", 
-                  "2994a802fda6d7b65052bbb9b911b61c223f9f11")
+                  "2994a802fda6d7b65052bbb9b911b61c223f9f11", 
+                  "0e82250bad699a03277b661cd9315bc5bf95ad2e")
 COMMIT_LAST <- tail(TEST_COMMITS, 1)
 
 # Download latest chouca package in directory, compile and load it 
@@ -212,14 +214,20 @@ bench_commits <- ldply(TEST_COMMITS, function(commit) {
              this_results, row.names = NULL)
 })
 
-ggplot(subset(bench_commits, finished), 
+bench_summs <- mutate(bench_commits, 
+                      enginetype = paste0(engine, 
+                                          ifelse(precompute_probas, "+memoise", "")))
+bench_summs <- subset(bench_summs, ! enginetype == "cpp+memoise")
+
+
+ggplot(subset(bench_summs, finished), 
        aes(x = size, y = mcells_per_s, 
            color = paste0(year(commit_datetime), "-", month(commit_datetime), 
                           "-", day(commit_datetime), " ", 
                           substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
-  geom_line(aes(group = paste(nrep, commit, model))) + 
-  facet_grid( engine ~ model, scales = "free_y") + 
+  geom_line(aes(group = paste(nrep, commit, enginetype))) + 
+  facet_grid( enginetype ~ model) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
@@ -227,14 +235,17 @@ ggplot(subset(bench_commits, finished),
        y = "Million cells evaluated per second")
 
 
-ggplot(subset(bench_commits, finished), 
-       aes(x = size, y = tmax / elapsed / 1e3, color = commit)) + 
+ggplot(subset(bench_summs, finished), 
+       aes(x = size, y = tmax / elapsed / 1e3, 
+           color = paste0(year(commit_datetime), "-", month(commit_datetime), 
+                          "-", day(commit_datetime), " ", 
+                          substr(commit, 1, 6), " ", commit_msg))) + 
   geom_point() + 
   geom_line(aes(group = paste(nrep, commit, engine, model))) + 
-  facet_grid( engine ~ model, scales = "free_y") + 
+  facet_grid(enginetype ~ model) + 
   scale_x_continuous(trans = "log", 
                      breaks = BENCH_SIZES) + 
-  scale_y_continuous(trans = "log10") + 
+#   scale_y_continuous(trans = "log10") + 
   scale_color_brewer(palette = "Set2", name = "commit") + 
   
   labs(x = "Matrix size", 

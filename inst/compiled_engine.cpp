@@ -5,9 +5,9 @@
 // 
 
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
 
 #define USE_OMP __USE_OMP__
 
@@ -25,6 +25,8 @@
 // performance in some cases (!)
 __OLEVEL__
 __OUNROLL__ 
+#include <chrono>
+#include <thread>
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
@@ -61,16 +63,16 @@ constexpr arma::uword max_nb = use_8_nb ? 8 : 4;
 
 // Declare the betas arrays as static here. Number of columns/rows is known at 
 // compile time. TODO: remove magic constants here. 
-static arma::Mat<ushort> beta_0_index(2,  beta_0_nrow); 
-static arma::Mat<double> beta_0_vals(1,   beta_0_nrow); 
-static arma::Mat<ushort> beta_q_index(4,  beta_q_nrow); 
-static arma::Mat<double> beta_q_vals(1,   beta_q_nrow);  
-static arma::Mat<ushort> beta_pp_index(4, beta_pp_nrow); 
-static arma::Mat<double> beta_pp_vals(3,  beta_pp_nrow); 
-static arma::Mat<ushort> beta_pq_index(4, beta_pq_nrow); 
-static arma::Mat<double> beta_pq_vals(3,  beta_pq_nrow); 
-static arma::Mat<ushort> beta_qq_index(4, beta_qq_nrow);
-static arma::Mat<double> beta_qq_vals(3,  beta_qq_nrow); 
+static arma::Mat<ushort> beta_0_index(  beta_0_nrow,  2); 
+static arma::Mat<double> beta_0_vals(   beta_0_nrow,  1); 
+static arma::Mat<ushort> beta_q_index(  beta_q_nrow,  4); 
+static arma::Mat<double> beta_q_vals(   beta_q_nrow,  1);  
+static arma::Mat<ushort> beta_pp_index( beta_pp_nrow, 4); 
+static arma::Mat<double> beta_pp_vals(  beta_pp_nrow, 3); 
+static arma::Mat<ushort> beta_pq_index( beta_pq_nrow, 4); 
+static arma::Mat<double> beta_pq_vals(  beta_pq_nrow, 3); 
+static arma::Mat<ushort> beta_qq_index( beta_qq_nrow, 4);
+static arma::Mat<double> beta_qq_vals(  beta_qq_nrow, 3); 
 
 // Include functions and type declarations
 #include "__COMMON_HEADER__"
@@ -140,16 +142,16 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
   // Extract things from list. These arrays are declared as static above
-  beta_0_index  = Rcpp::as<arma::Mat<ushort>>( ctrl["beta_0_index"] );
-  beta_0_vals   = Rcpp::as<arma::Mat<double>>( ctrl["beta_0_vals"] );
-  beta_q_index  = Rcpp::as<arma::Mat<ushort>>( ctrl["beta_q_index"] );
-  beta_q_vals   = Rcpp::as<arma::Mat<double>>( ctrl["beta_q_vals"] );
-  beta_pp_index = Rcpp::as<arma::Mat<ushort>>( ctrl["beta_pp_index"] );
-  beta_pp_vals  = Rcpp::as<arma::Mat<double>>( ctrl["beta_pp_vals"] );
-  beta_pq_index = Rcpp::as<arma::Mat<ushort>>( ctrl["beta_pq_index"] );
-  beta_pq_vals  = Rcpp::as<arma::Mat<double>>( ctrl["beta_pq_vals"] );
-  beta_qq_index = Rcpp::as<arma::Mat<ushort>>( ctrl["beta_qq_index"] );
-  beta_qq_vals  = Rcpp::as<arma::Mat<double>>( ctrl["beta_qq_vals"] );
+  beta_0_index  = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_0_index"] );
+  beta_0_vals   = Rcpp::as< arma::Mat<double> >( ctrl["beta_0_vals"] );
+  beta_q_index  = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_q_index"] );
+  beta_q_vals   = Rcpp::as< arma::Mat<double> >( ctrl["beta_q_vals"] );
+  beta_pp_index = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_pp_index"] );
+  beta_pp_vals  = Rcpp::as< arma::Mat<double> >( ctrl["beta_pp_vals"] );
+  beta_pq_index = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_pq_index"] );
+  beta_pq_vals  = Rcpp::as< arma::Mat<double> >( ctrl["beta_pq_vals"] );
+  beta_qq_index = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_qq_index"] );
+  beta_qq_vals  = Rcpp::as< arma::Mat<double> >( ctrl["beta_qq_vals"] );
   
   // Copy some things as c arrays. Convert
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
@@ -208,19 +210,18 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // Initialize random number generator 
   // Initialize rng state using armadillo random integer function
   for ( uword i=0; i<4; i++ ) { 
-    s[i] = randi<long>(); 
+    for ( uword thread=0; thread<cores; thread++ ) { 
+      s[thread][i] = randi<long>(); 
+    }
   }
   
   // The first number returned by the RNG is garbage, probably because randi returns 
   // something too short for s (i.e. not 64 bits long if I got it right).
   // TODO: find a way to feed 64 bits integers to xoshiro
   //   -> we could feed it 64/8 = 8 chars taken from randi(). 
-  randunif(); 
-  
-#if USE_OMP
-  // This matrix holds all random numbers when we use openmp. 
-  auto randnums = new double[nr][nc]; 
-#endif
+  for ( uword k=0; k<cores; k++ ) { 
+    randunif(k); 
+  }
   
   // Allocate some things we will reuse later
   double ptrans[ns]; 
@@ -229,6 +230,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   
   while ( iter <= niter ) { 
     
+    // Rcpp::Rcout << "iter: " << iter << "\n"; 
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
       console_callback_wrap(iter, old_ps, console_callback); 
@@ -246,105 +248,105 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       custom_callback_wrap(iter, old_mat, custom_callback); 
     }
     
+    for ( uword substep=0; substep < substeps; substep++ ) { 
+    
 #ifdef PRECOMPUTE_TRANS_PROBAS
-    precompute_transition_probabilites(tprobs, 
-                                       all_qs, 
-                                       old_ps); 
+      precompute_transition_probabilites(tprobs, all_qs, old_ps); 
+      // return; 
 #endif 
     
-    for ( uword substep=0; substep < substeps; substep++ ) { 
-      
 #if USE_OMP
-      // Fill array with random numbers
+      // This parallel block has an implicit barrier at the end, so each thread will
+      // process a line and wait for the others to finish before switching to the next
+      // line. This ensures that two threads will never write to the same cell in the 
+      // shared data structures. 
+// #pragma omp parallel num_threads(cores) 
+        // {
+// #pragma omp single
+      for ( uword c=0; c<(nr/cores); c++) { 
+#pragma omp parallel num_threads(cores) default(shared) private(ptrans) reduction(+:new_ps)
+        {
+          uword i = omp_get_thread_num() * (nr/cores) + c; 
+          // Make sure we never run the loop if the number of rows is beyond the number 
+          // of rows in the landscape
+          if ( i < nr ) { 
+#else
       for ( uword i=0; i<nr; i++ ) { 
-        for ( uword j=0; j<nc; j++ ) { 
-          randnums[i][j] = randunif(); 
-        }
-      }
-#pragma omp parallel for num_threads(cores) schedule(static) default(shared) private(ptrans) 
 #endif
-      for ( uword i=0; i<nr; i++ ) { 
-       // TODO: when parallel, we could walk the matrix with an offset: this guarantees 
-       // that we will not update two neighboring cells, and thus that there will not 
-       // be race conditions when updating.   
-        for ( uword j=0; j<nc; j++ ) { 
-          
-          uchar from = old_mat[i][j]; 
-          
+            for ( uword j=0; j<nc; j++ ) { 
+              
+              uchar from = old_mat[i][j]; 
+              
 #ifdef PRECOMPUTE_TRANS_PROBAS
 #else
-          // Normalized local densities to proportions
-          uword qs_total = number_of_neighbors(i, j); 
-          
-          // Factor to convert the number of neighbors into the point at which the 
-          // dependency on q is sampled.
-          uword qpointn_factorf = (xpoints - 1) / qs_total; 
-          
-          // Compute probability transitions 
-          for ( ushort to=0; to<ns; to++ ) { 
-            
-            // Init probability
-            ptrans[to] = compute_proba(old_qs[i][j],    // qs
-                                       old_ps,          // ps
-                                       qpointn_factorf, // where to find f(q)
-                                       qs_total,        // total of neighbors
-                                       from,            // from (current) state
-                                       to);             // to state
-            
-          }
-          
-          // Compute cumsum 
-          for ( uchar k=1; k<ns; k++ ) { 
-            ptrans[k] += ptrans[k-1];
-          }
-#endif
-          
-#if USE_OMP
-          double rn = randnums[i][j]; // get random number
-#else 
-          double rn = randunif(); 
-#endif
-          
-          // Check if we actually transition.  
-          // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
-          //               ^ p0 < rn < (p0+p1) => p1 wins
-          // Of course the sum of probabilities must be lower than one, otherwise we are 
-          // making an approximation since the random number is always below one. 
-          uchar new_cell_state = from; 
-          for ( signed char k=(ns-1); k>=0; k-- ) { 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-            uword line = old_pline[i][j]; 
-            new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state; 
-#else 
-            new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
-#endif
-          } 
-          
-          if ( new_cell_state != from ) { 
-#if USE_OMP
-            // Only one thread can call this block at any time. It is not thread safe as 
-            // shared matrices are used. This tanks the performance unfortunately when
-            // probabilities are precomputed, because each for loop iteration has trivial
-            // work to do, and in model with lots of cell switches, the lock is hit 
-            // very often.
-#pragma omp critical (line_adjustment) hint(omp_sync_hint_uncontended)
-            {
-#endif
-            new_ps[new_cell_state]++; 
-            new_ps[from]--; 
-            new_mat[i][j] = new_cell_state; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
-            adjust_nb_plines(new_pline, i, j, from, new_cell_state); 
-#else 
-            adjust_local_density(new_qs, i, j, from, new_cell_state); 
-#endif
-#if USE_OMP
+              // Normalized local densities to proportions
+              uword qs_total = number_of_neighbors(i, j); 
+              
+              // Factor to convert the number of neighbors into the point at which the 
+              // dependency on q is sampled.
+              uword qpointn_factorf = (xpoints - 1) / qs_total; 
+              
+              // Compute probability transitions 
+              for ( ushort to=0; to<ns; to++ ) { 
+                
+                // Init probability
+                ptrans[to] = compute_proba(old_qs[i][j],    // qs
+                                           old_ps,          // ps
+                                           qpointn_factorf, // where to find f(q)
+                                           qs_total,        // total of neighbors
+                                           from,            // from (current) state
+                                           to);             // to state
+                
+              }
+              
+              // Compute cumsum 
+              for ( uchar k=1; k<ns; k++ ) { 
+                ptrans[k] += ptrans[k-1];
             }
 #endif
-            
-          } 
-        } 
-      }
+          
+#if USE_OMP
+              double rn = randunif( omp_get_thread_num() ); 
+#else 
+              double rn = randunif(0); 
+#endif
+              
+              // Check if we actually transition.  
+              // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
+              //               ^ p0 < rn < (p0+p1) => p1 wins
+              // Of course the sum of probabilities must be lower than one, otherwise we are 
+              // making an approximation since the random number is always below one. 
+              uchar new_cell_state = from; 
+              for ( signed char k=(ns-1); k>=0; k-- ) { 
+#ifdef PRECOMPUTE_TRANS_PROBAS
+                uword line = old_pline[i][j]; 
+                new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state; 
+#else 
+                new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
+#endif
+              } 
+          
+              if ( new_cell_state != from ) { 
+                new_ps[new_cell_state]++; 
+                new_ps[from]--; 
+                new_mat[i][j] = new_cell_state; 
+#ifdef PRECOMPUTE_TRANS_PROBAS
+                adjust_nb_plines(new_pline, i, j, from, new_cell_state); 
+#else 
+                adjust_local_density(new_qs, i, j, from, new_cell_state); 
+#endif
+              } 
+            }
+        
+// #pragma omp critical 
+          // cout << "iter: " << iter << " t:" << omp_get_thread_num() << " c: " << c << " i: " << i << "\n"; 
+// #pragma omp barrier
+#if USE_OMP
+          } // closes if() check to make sure lines are within matrix
+        } // closes parallel block 
+        // } // closes outer parallel block
+#endif
+      } // for loop on i 
       
       // Copy old matrix to new, etc. 
       memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
@@ -362,9 +364,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // Free up heap-allocated arrays
   delete [] old_mat; 
   delete [] new_mat; 
-#if USE_OMP
-  delete [] randnums; 
-#endif
 #ifdef PRECOMPUTE_TRANS_PROBAS
   delete [] old_pline; 
   delete [] new_pline; 

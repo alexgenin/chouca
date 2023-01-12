@@ -248,7 +248,8 @@ run_camodel <- function(mod, initmat, niter,
       new_time <- proc.time()["elapsed"]
       iter_per_s <- (t - last_iter) / (new_time - last_time) 
       
-      cover_string <- paste(seq.int(length(ps)), format(ps/n, digits = 3, width = 4), 
+      cover_string <- paste(states[seq.int(length(ps))], 
+                            format(ps/n, digits = 3, width = 4), 
                             sep = ":", collapse = " ")
       
       perc  <- paste0(format(100 * (t / niter), digits = 1, width = 3), " %")
@@ -362,7 +363,7 @@ load_control_list <- function(l) {
   control_list <- list(
     substeps = 1, 
     save_covers_every = 1, 
-    save_snapshots_every = 0, 
+    save_snapshots_every = 2, 
     console_output_every = 10, 
     custom_output_every = 0, 
     custom_output_fun = NULL, 

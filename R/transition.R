@@ -4,14 +4,14 @@
 # 
 
 # Maximum degree for bivariate polynomial fitting
-DEGMAX <- 5
+DEGMAX <- 3
 
 parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors, 
                              check_model) { 
   
   if ( ! inherits(tr, "camodel_transition") ) { 
     m <- paste("The transition definition has not been defined using transition().", 
-               "Please do using transition(from = ..., to = ..., prob = ~ ...)")
+               "Please do so using transition(from = ..., to = ..., prob = ~ ...)")
     stop(m)
   }
   ns <- length(state_names)
@@ -19,8 +19,11 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   # Make sure the environment for the formula is set to the empty environment. Otherwise
   # it trips the hash computing of the model, which is used to determine whether we have 
   # to recompile or not when using the 'compiled' engine.
-  environment(tr[["prob"]]) <- emptyenv()
+  # TODO: handle that in compiled model, there is a legitimate use case for envirs of 
+  # expressions.
+  # environment(tr[["prob"]]) <- globalenv()
   
+  envir_expr <- environment(tr[["prob"]])
   pexpr <- as.expression( as.list(tr[["prob"]])[[2]] )
   zero <- rep(0, ns)
   names(zero) <- state_names
@@ -31,8 +34,9 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   warn <- character()
   
   prob_with <- function(p, q) { 
-    
-    prob <- as.numeric( eval(pexpr, envir = c(parms, list(p = p, q = q))) ) 
+    prob <- as.numeric( eval(pexpr, 
+                             envir = c(parms, list(p = p, q = q)), 
+                             enclos = envir_expr) ) 
     if ( is.na(prob) ) { 
       m <- "NA/NaNs in model probabilities, please check your model definition."
       stop(m)
@@ -77,7 +81,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   # We need to fit a sparse polynomial to get alpha * p_a^k * p_b^l
   beta_pp <- fitprod(function(p) { 
     prob_with(p = p, q = zero) - prob_with(p = zero, q = zero)
-  }, state_names, epsilon, tr, parms)
+  }, state_names, epsilon, tr, parms, nosingle = FALSE)
   
   beta_pq <- fitprod2(function(p, q) { 
     prob_with(p = p, q = q) - 
@@ -167,7 +171,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     max_rel_error <- max(ifelse((p_refs - p_preds) != 0, 
                                 abs((p_refs - p_preds)/p_refs), 0))
     
-    if ( max_error > epsilon ) { 
+    if ( max_error > sqrt(epsilon) ) { 
       msg <- paste(
         "Residual error in computed probabilities", 
         paste0("  max error: ", format(max_error, digits = 3)), 
@@ -197,16 +201,26 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
   
   ns <- length(state_names)
   
-  max_abs_error <- 1
-  deg <- 1
+  new_max_abs_error <- 1e10
+  old_max_abs_error <- Inf
+  deg <- 2
+  final_mat <- NULL 
   
-  while ( max_abs_error > epsilon & deg <= DEGMAX ) { 
+  # If new_max_abs_error is very very small, we can bail right away, we 
+  # most probaby found the polynomial
+  while ( new_max_abs_error > epsilon && 
+          new_max_abs_error < old_max_abs_error && 
+          deg <= DEGMAX ) { 
+    old_max_abs_error <- new_max_abs_error
     
     vals <- expand.grid(state_1 = seq.int(ns), 
                         state_2 = seq.int(ns), 
                         expo_1  = seq(0, deg), 
                         expo_2  = seq(0, deg))
     vals <- subset(vals, expo_1 > 0 & expo_2 > 0)
+    
+    # Clamp to low degree
+    # vals <- subset(vals, expo_1 + expo_2 <= deg)
     
     # Check the uniqueness of products
     prods <- sapply(seq.int(nrow(vals)), function(i) { 
@@ -215,7 +229,6 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
                         rep(paste0("q", state_2), expo_2)))), 
             collapse = "")
     }) 
-    
     vals <- vals[which(!duplicated(prods)), ]
     vals <- as.matrix(vals)
     
@@ -246,30 +259,37 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     vals <- vals[keep_lines, , drop = FALSE]
     
     if ( nrow(vals) == 0 ) { 
-      final_mat <- cbind(vals, coef = numeric(0))
+      best_final_mat <- cbind(vals, coef = numeric(0))
       break 
     }
     
-    nsamples <- nrow(vals) + 10
     ps <- do.call(expand.grid, lapply(seq.int(ns), function(state) { 
       if ( state %in% vals[ ,"state_1"] || state %in% vals[ ,"state_2"] ) { 
-        seq(0, 1, l = deg + 3)
+        sqrt(seq(0, 1, l = 3/2 * (4 + deg)))
       } else {
         0
       }
     }))
+    
   #   ps <- subset(ps, apply(ps, 1, sum) == 1)
-#     ps <- ps[sample.int(nrow(ps), size = nsamples), ]
     colnames(ps) <- state_names
     ps <- as.matrix(ps)
+    ps <- ps[sample.int(nrow(ps)), ]
     qs <- ps[sample.int(nrow(ps)), ]
+    
+    ntests <- round(nrow(ps)/3)
+    ps_test <- ps[1:ntests, ]
+    qs_test <- qs[1:ntests, ]
+    ps <- ps[-(1:ntests), ]
+    qs <- qs[-(1:ntests), ]
+    
     ys <- sapply(seq.int(nrow(ps)), function(i) { yfun(ps[i, ], qs[i, ]) })
     
     ssq <- function(coefs) { 
       yp <- quick_pred_cpp(coefs, ps, qs, vals)
   #     print(yp)
   #     print(coefs)
-      sum( abs(ys - yp)^2 )
+      sum(  abs(ys - yp)^2 ) 
     }
     coefs <- matrix(rep(0, nrow(vals)), ncol = 1)
     colnames(coefs) <- "coef"
@@ -277,26 +297,55 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     # If all ys are zero, then all coefficients are zero, then no need to optimize 
     # anything, we just return the coefficients
     if ( ! all( abs(ys) < .Machine$double.eps ) ) { 
-      optimans <- stats::optim(coefs, ssq, 
-                               method = "BFGS", 
-                               control = list(maxit = 1000L, 
-                                              trace = FALSE, 
-                                              parscale = rep(1e-5, length(coefs)), 
-                                              fnscale  = rep(1e-16, length(coefs)), 
-                                              abstol = epsilon/2))
+      cat(paste0("fitprod2 coefs: ", length(coefs), "\n"))
+      mframe <- do.call(cbind, plyr::llply(seq.int(nrow(vals)), function(i) { 
+        ps[ , vals[i,"state_1"]] ^ vals[i, "expo_1"] * 
+          qs[ , vals[i,"state_2"]] ^ vals[i, "expo_2"] 
+      }))
+      cat(paste0("fitprod2 ps: ", nrow(mframe), "\n"))
       
-      coefs[] <- optimans[["par"]]
+      coefs[] <- lm.fit(mframe, ys)$coefficients
+      
+#       print(tr)
+#       optimans <- stats::optim(coefs, ssq, 
+#                                method = "BFGS", 
+#                                control = list(maxit = 1000L, 
+#                                               trace = FALSE, 
+#                                               parscale = rep(1e-5, length(coefs)), 
+#                                               fnscale  = rep(1e-16, length(coefs)), 
+#                                               abstol = epsilon/10))
+#       
+#       coefs[] <- optimans[["par"]]
     }
     
     final_mat <- cbind(vals, coefs)
     
-    # Try to turn off coefficients and see if the max_abs_error changes
-    max_abs_error <- max(abs(ys - quick_pred_cpp(coefs, ps, qs, vals)))
+    ypred <- quick_pred_cpp(coefs, ps_test, qs_test, vals)
+    ys_test <- sapply(seq.int(nrow(ps_test)), function(i) { 
+      yfun(ps_test[i, ], qs_test[i, ]) 
+    })
+    
+    new_max_abs_error <- max(abs(ys_test - ypred))
+#   
+    # par(mfrow = c(1, 2))
+    # plot(ps[ ,2]*qs[ ,2], ys, xlim = c(0, 1), ylim = range(c(ys, ys_test)))
+    # points(ps[ ,2]*qs[ ,2], quick_pred_cpp(coefs, ps, qs, vals), col = "red")
+    # plot(ps_test[ ,2]*qs_test[ ,2], ys_test, 
+    #      xlim = c(0, 1), ylim = range(c(ys, ys_test)))
+    # points(ps_test[ ,2]*qs_test[ ,2], ypred, col = "red")
+#   #   plot(ps_test[ ,2]*qs_test[ ,2], ys_test - ypred, col = "red")
+    
+    print(deg)
+    print(new_max_abs_error)
+    
+    if ( new_max_abs_error < old_max_abs_error ) { 
+      best_final_mat <- final_mat
+    }
     
     deg <- deg + 1
   }
   
-  final_mat <- as.data.frame(final_mat)
+  final_mat <- as.data.frame(best_final_mat)
   for ( col in c("state_1", "state_2") ) { 
     final_mat[ ,col] <- state_names[final_mat[ ,col]]
   }
@@ -309,22 +358,31 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
   
   ns <- length(state_names)
   
-  max_abs_error <- 1
-  deg <- 1
+  new_max_abs_error <- 1e10
+  old_max_abs_error <- Inf
+  deg <- 2
+  final_mat <- NULL 
   
-  while ( max_abs_error > epsilon & deg <= DEGMAX ) { 
+  while ( new_max_abs_error > epsilon && 
+          new_max_abs_error < old_max_abs_error && 
+          deg <= DEGMAX ) { 
+    old_max_abs_error <- new_max_abs_error
     
     vals <- expand.grid(state_1 = seq.int(ns), 
                         state_2 = seq.int(ns), 
                         expo_1  = seq(0, deg), 
                         expo_2  = seq(0, deg))
+    
     if ( nosingle ) { 
       vals <- subset(vals, expo_1 > 0 & expo_2 > 0)
     } else { 
       vals <- subset(vals, expo_1 > 0 | expo_2 > 0)
     }
     
-    # Check the uniqueness of products using symbolic-ish math
+    # Clamp to low degree
+    # vals <- subset(vals, expo_1 + expo_2 <= deg)
+
+    # Check the uniqueness of products
     prods <- sapply(seq.int(nrow(vals)), function(i) { 
       paste(with(vals[i, ], 
                 sort(c(rep(paste0("p", state_1), expo_1), 
@@ -334,14 +392,15 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     vals <- vals[which(!duplicated(prods)), ]
     vals <- as.matrix(vals)
     
-    # Cleanup coefficients
+    # Compute function derivative for each line of vals, check if that changes the 
+    # probability. If it does not. we set those coefs to zero
     p0 <- rep(1/ns, ns)
     names(p0) <- state_names
     p1 <- p0
     y0 <- yfun(p0)
-    # Differentiate over p, over q, if one of them is zero, then the coef is zero.
+    
+    # Differentiate over p, over q, if both are zero, then the coef is zero.
     delta_yp <- plyr::laply(seq.int(nrow(vals)), function(i) { 
-      
       p1 <- p0
       p1[ vals[i, "state_1"] ] <- 1 - (0.01 + 1/ns )
       dpa <- yfun(p1) - y0
@@ -359,63 +418,96 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     keep_lines <- ifelse(vals[ ,"expo_2"] == 0, 
                          abs(delta_yp[ ,1]) > epsilon, 
                          abs(delta_yp[ ,1]) > epsilon & abs(delta_yp[ ,2]) > epsilon)
+    
 #     cat("Removed ", sum(!keep_lines), " coefs\n")
-    vals <- vals[keep_lines, ]
+    vals <- vals[keep_lines, , drop = FALSE]
     
     if ( nrow(vals) == 0 ) { 
-      final_mat <- cbind(vals, coef = numeric(0))
+      best_final_mat <- cbind(vals, coef = numeric(0))
       break 
     }
     
-    nsamples <- nrow(vals) + 10
     ps <- do.call(expand.grid, lapply(seq.int(ns), function(state) { 
       if ( state %in% vals[ ,"state_1"] || state %in% vals[ ,"state_2"] ) { 
-        seq(0, 1, l = deg + 3)
+        sqrt(seq(0, 1, l = 3/2*(4 + deg^2)))
       } else {
         0
       }
     }))
+    
   #   ps <- subset(ps, apply(ps, 1, sum) == 1)
-#     ps <- ps[sample.int(nrow(ps), size = nsamples), ]
     colnames(ps) <- state_names
     ps <- as.matrix(ps)
-    ys <- sapply(seq.int(nrow(ps)), function(i) { yfun(ps[i, ]) })
+    ps <- ps[sample.int(nrow(ps)), ]
+    
+    ntests <- round(nrow(ps)/3)
+    ps_test <- ps[1:ntests, ]
+    ps <- ps[-(1:ntests), ]
+    
+    # We use this instead of apply because we need to preserve column names for yfun
+    ys <- sapply(seq.int(nrow(ps)), function(i) yfun(ps[i, ]))
     
     ssq <- function(coefs) { 
       yp <- quick_pred_cpp(coefs, ps, ps, vals)
-  #     print(yp)
-  #     print(coefs)
-      sum( abs(ys - yp)^2 )
+      sum(  abs(ys - yp)^2 ) 
     }
-    
     coefs <- matrix(rep(0, nrow(vals)), ncol = 1)
     colnames(coefs) <- "coef"
     
     # If all ys are zero, then all coefficients are zero, then no need to optimize 
-    # anything, we just return the vector of zero coefficients. If that's not the case, 
-    # then we do the search.
+    # anything, we just return the coefficients
+    
     if ( ! all( abs(ys) < .Machine$double.eps ) ) { 
-      optimans <- stats::optim(coefs, ssq, 
-                               method = "BFGS", 
-                               control = list(maxit = 1000L, 
-                                              trace = FALSE, 
-                                              parscale = rep(1e-5, length(coefs)), 
-                                              fnscale  = rep(1e-16, length(coefs)), 
-                                              abstol = epsilon/2))
+#       cat(paste0("fitprod coefs: ", length(coefs), "\n"))
+      # Create model frame 
+      mframe <- do.call(cbind, plyr::llply(seq.int(nrow(vals)), function(i) { 
+        ps[ , vals[i,"state_1"]] ^ vals[i, "expo_1"] * 
+          ps[ , vals[i,"state_2"]] ^ vals[i, "expo_2"] 
+      }))
+      coefs[] <- lm.fit(mframe, ys)$coefficients
       
-      coefs[] <- optimans[["par"]]
+#     #   if ( length(coefs) > 20 ) browser()
+      # optimans <- stats::optim(coefs, ssq, 
+      #                          method = "BFGS", 
+      #                          control = list(maxit = 1000L, 
+      #                                         trace = TRUE, 
+      #                                         parscale = rep(1e-5, length(coefs)), 
+      #                                         fnscale  = rep(1e-16, length(coefs)), 
+      #                                         abstol = epsilon/10))
+      # 
+      # coefs[] <- optimans[["par"]]
+#       plot(coefs, coefs2)
     }
     
     final_mat <- cbind(vals, coefs)
     
     # Try to turn off coefficients and see if the max_abs_error changes
-    max_abs_error <- max(abs(ys - quick_pred_cpp(coefs, ps, ps, vals)))
+    ypred <- quick_pred_cpp(coefs, ps_test, ps_test, vals)
+    ys_test <- sapply(seq.int(nrow(ps_test)), function(i) yfun(ps_test[i, ]))
+    
+    new_max_abs_error <- max(abs(ys_test - ypred))
+#   
+    # par(mfrow = c(1, 2))
+    # plot(ps[ ,2] * ps[ ,2], ys, 
+    #      xlim = c(0, 1), ylim = range(c(ys, ys_test)))
+    # points(ps[ ,2]*ps[ ,2], quick_pred_cpp(coefs, ps, ps, vals), col = "red")
+    # plot(ps_test[ ,2]*ps_test[ ,2], ys_test, 
+    #      xlim = c(0, 1), ylim = range(c(ys, ys_test)))
+    # points(ps_test[ ,2]*ps_test[ ,2], ypred, col = "red")
+#   #   plot(ps_test[ ,2]*ps_test[ ,2], ys_test - ypred, col = "red")
+    
+#     print(deg)
+#     print(new_max_abs_error)
+#     if ( length(coefs) > 30 ) browser()
+    
+    if ( new_max_abs_error < old_max_abs_error ) { 
+      best_final_mat <- final_mat
+    }
+    
     deg <- deg + 1
   }
   
-  # TODO: reimplement removal of coefficients
-  
-  final_mat <- as.data.frame(final_mat)
+  final_mat <- as.data.frame(best_final_mat)
   for ( col in c("state_1", "state_2") ) { 
     final_mat[ ,col] <- state_names[final_mat[ ,col]]
   }
@@ -423,3 +515,124 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
   return(final_mat) 
 }
 
+# if ( FALSE ) { 
+# fitprod <- function(yfun, state_names, epsilon, tr, parms, 
+#                     nosingle = FALSE) { 
+#   
+#   ns <- length(state_names)
+#   
+#   max_abs_error <- 1
+#   deg <- 1
+#   
+#   while ( max_abs_error > epsilon & deg <= DEGMAX ) { 
+#     
+#     vals <- expand.grid(state_1 = seq.int(ns), 
+#                         state_2 = seq.int(ns), 
+#                         expo_1  = seq(0, deg), 
+#                         expo_2  = seq(0, deg))
+#     if ( nosingle ) { 
+#       vals <- subset(vals, expo_1 > 0 & expo_2 > 0)
+#     } else { 
+#       vals <- subset(vals, expo_1 > 0 | expo_2 > 0)
+#     }
+#     
+#     # Check the uniqueness of products using symbolic-ish math
+#     prods <- sapply(seq.int(nrow(vals)), function(i) { 
+#       paste(with(vals[i, ], 
+#                 sort(c(rep(paste0("p", state_1), expo_1), 
+#                        rep(paste0("p", state_2), expo_2)))), 
+#             collapse = "")
+#     }) 
+#     vals <- vals[which(!duplicated(prods)), ]
+#     vals <- as.matrix(vals)
+#     
+#     # Cleanup coefficients
+#     p0 <- rep(1/ns, ns)
+#     names(p0) <- state_names
+#     p1 <- p0
+#     y0 <- yfun(p0)
+#     # Differentiate over p, over q, if one of them is zero, then the coef is zero.
+#     delta_yp <- plyr::laply(seq.int(nrow(vals)), function(i) { 
+#       
+#       p1 <- p0
+#       p1[ vals[i, "state_1"] ] <- 1 - (0.01 + 1/ns )
+#       dpa <- yfun(p1) - y0
+#       
+#       p1 <- p0
+#       p1[ vals[i, "state_2"] ] <- 1 - (0.01 + 1/ns )
+#       dpb <- yfun(p1) - y0
+#       
+#       c(dpa, dpb)
+#     })
+#     
+#     # We keep lines which, if the two values are non-constant, have both derivatives 
+#     # that are non zero, or if one of the values has exponent zero, keep the first 
+#     # derivative above zero. 
+#     keep_lines <- ifelse(vals[ ,"expo_2"] == 0, 
+#                          abs(delta_yp[ ,1]) > epsilon, 
+#                          abs(delta_yp[ ,1]) > epsilon & abs(delta_yp[ ,2]) > epsilon)
+# #     cat("Removed ", sum(!keep_lines), " coefs\n")
+#     vals <- vals[keep_lines, ]
+#     
+#     if ( nrow(vals) == 0 ) { 
+#       final_mat <- cbind(vals, coef = numeric(0))
+#       break 
+#     }
+#     
+#     nsamples <- nrow(vals) + 10
+#     ps <- do.call(expand.grid, lapply(seq.int(ns), function(state) { 
+#       if ( state %in% vals[ ,"state_1"] || state %in% vals[ ,"state_2"] ) { 
+#         seq(0, 1, l = 10 + deg)
+#       } else {
+#         0
+#       }
+#     }))
+#   #   ps <- subset(ps, apply(ps, 1, sum) == 1)
+# #     ps <- ps[sample.int(nrow(ps), size = nsamples), ]
+#     colnames(ps) <- state_names
+#     ps <- as.matrix(ps)
+#     ys <- sapply(seq.int(nrow(ps)), function(i) { yfun(ps[i, ]) })
+#     
+#     ssq <- function(coefs) { 
+#       yp <- quick_pred_cpp(coefs, ps, ps, vals)
+#       sum( abs(ys - yp)^2 )
+#     }
+#     
+#     coefs <- matrix(rep(0, nrow(vals)), ncol = 1)
+#     colnames(coefs) <- "coef"
+#     
+#     # If all ys are zero, then all coefficients are zero, then no need to optimize 
+#     # anything, we just return the vector of zero coefficients. If that's not the case, 
+#     # then we do the search.
+#     if ( ! all( abs(ys) < .Machine$double.eps ) ) { 
+#       cat(paste0("coefs: ", length(coefs), " (fitprod) \n"))
+#       optimans <- stats::optim(coefs, ssq, 
+#                                method = "BFGS", 
+#                                control = list(maxit = 1000L, 
+#                                               trace = FALSE, 
+#                                               parscale = rep(1e-5, length(coefs)), 
+#                                               fnscale  = rep(1e-16, length(coefs)), 
+#                                               abstol = epsilon/2))
+#       
+#       coefs[] <- optimans[["par"]]
+#     }
+#     
+#     final_mat <- cbind(vals, coefs)
+#     
+#     # Try to turn off coefficients and see if the max_abs_error changes
+#     max_abs_error <- max(abs(ys - quick_pred_cpp(coefs, ps, ps, vals)))
+#     deg <- deg + 1
+#   }
+#   
+#   # TODO: reimplement removal of coefficients
+#   
+#   final_mat <- as.data.frame(final_mat)
+#   for ( col in c("state_1", "state_2") ) { 
+#     final_mat[ ,col] <- state_names[final_mat[ ,col]]
+#   }
+#   
+#   return(final_mat) 
+# }
+# 
+# }
+# 
