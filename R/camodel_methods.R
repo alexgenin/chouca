@@ -2,6 +2,8 @@
 # Standard methods for ca_model objects. 
 # 
 
+ERROR_ABS_MAX <- 0.001 # ERROR_REL_MAX defined in transition.R
+
 #'@export
 print.ca_model <- function(x, ...) { 
   
@@ -22,11 +24,11 @@ print.ca_model <- function(x, ...) {
   cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
   cat0("Wrap: ", x[["wrap"]])
   cat0("Max error: ", format(max(x[["max_error"]])), " (", 
-       ifelse(max(x[["max_error"]]) < sqrt(x[["epsilon"]]), 
+       ifelse(max(x[["max_error"]]) < ERROR_ABS_MAX, 
               "OK", "WARNING"), ")" )
   
   cat0("Max rel error: ", format(max(x[["max_rel_error"]])), " (", 
-       ifelse(max(x[["max_rel_error"]]) < sqrt(x[["epsilon"]]), 
+       ifelse(max(x[["max_rel_error"]]) < ERROR_REL_MAX, 
               "OK", "WARNING"), ")" )
   
   return(invisible(x))

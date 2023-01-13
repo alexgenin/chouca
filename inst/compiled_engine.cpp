@@ -16,24 +16,22 @@
 #define _to 1
 #define _state_1 2
 #define _state_2 3
+#define _expo_1 4
+#define _expo_2 5
 #define _qs 3 // only in beta_q, so no overlap with _state_2 above
-#define _expo_1 0
-#define _expo_2 1
-#define _coef 2
+#define _coef 0
 
 // We tell gcc to unroll loops, as we have many small loops. This can double 
 // performance in some cases (!)
 __OLEVEL__
 __OUNROLL__ 
-#include <chrono>
-#include <thread>
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
 using namespace arma;
 
-// Define an unsigned char as uchar for more legibility 
+// Define an unsigned char as uchar for better legibility 
 typedef unsigned char uchar; 
 
 // These strings will be replaced by their values 
@@ -55,24 +53,23 @@ constexpr uword all_qs_nrow  = __ALL_QS_NROW__;
 constexpr uword cores        = __CORES__; 
 
 // Whether we want to precompute probabilities or not 
-// TODO: convert to value def for clarity
-__PRECOMPUTE_TRANS_PROBAS_DEFINE__
+#define PRECOMPUTE_TRANS_PROBAS __PRECOMP_PROBA_VALUE__
 
 // The maximum number of neighbors
 constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
 
 // Declare the betas arrays as static here. Number of columns/rows is known at 
-// compile time. TODO: remove magic constants here. 
+// compile time. 
 static arma::Mat<ushort> beta_0_index(  beta_0_nrow,  2); 
 static arma::Mat<double> beta_0_vals(   beta_0_nrow,  1); 
 static arma::Mat<ushort> beta_q_index(  beta_q_nrow,  4); 
 static arma::Mat<double> beta_q_vals(   beta_q_nrow,  1);  
-static arma::Mat<ushort> beta_pp_index( beta_pp_nrow, 4); 
-static arma::Mat<double> beta_pp_vals(  beta_pp_nrow, 3); 
-static arma::Mat<ushort> beta_pq_index( beta_pq_nrow, 4); 
-static arma::Mat<double> beta_pq_vals(  beta_pq_nrow, 3); 
-static arma::Mat<ushort> beta_qq_index( beta_qq_nrow, 4);
-static arma::Mat<double> beta_qq_vals(  beta_qq_nrow, 3); 
+static arma::Mat<ushort> beta_pp_index( beta_pp_nrow, 6); 
+static arma::Mat<double> beta_pp_vals(  beta_pp_nrow, 1); 
+static arma::Mat<ushort> beta_pq_index( beta_pq_nrow, 6); 
+static arma::Mat<double> beta_pq_vals(  beta_pq_nrow, 1); 
+static arma::Mat<ushort> beta_qq_index( beta_qq_nrow, 6);
+static arma::Mat<double> beta_qq_vals(  beta_qq_nrow, 1); 
 
 // Include functions and type declarations
 #include "__COMMON_HEADER__"
@@ -165,7 +162,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   }
   memcpy(new_mat, old_mat, sizeof(uchar)*nr*nc); 
   
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
   // Convert all_qs to char array 
   auto all_qs = new uchar[all_qs_nrow][ns+1]; 
   for ( uword i=0; i<all_qs_nrow; i++ ) { 
@@ -190,7 +187,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   }
   memcpy(new_ps, old_ps, sizeof(uword)*ns); 
   
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
   // Matrix holding probability line in the precomputed table 
   auto old_pline = new uword[nr][nc]; 
   auto new_pline = new uword[nr][nc]; 
@@ -250,7 +247,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
     
     for ( uword substep=0; substep < substeps; substep++ ) { 
     
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
       precompute_transition_probabilites(tprobs, all_qs, old_ps); 
       // return; 
 #endif 
@@ -263,7 +260,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 // #pragma omp parallel num_threads(cores) 
         // {
 // #pragma omp single
-      for ( uword c=0; c<(nr/cores); c++) { 
+      for ( uword c=0; c<(nr/cores); c++ ) { 
 #pragma omp parallel num_threads(cores) default(shared) private(ptrans) reduction(+:new_ps)
         {
           uword i = omp_get_thread_num() * (nr/cores) + c; 
@@ -277,7 +274,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
               
               uchar from = old_mat[i][j]; 
               
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
 #else
               // Normalized local densities to proportions
               uword qs_total = number_of_neighbors(i, j); 
@@ -318,7 +315,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
               // making an approximation since the random number is always below one. 
               uchar new_cell_state = from; 
               for ( signed char k=(ns-1); k>=0; k-- ) { 
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
                 uword line = old_pline[i][j]; 
                 new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state; 
 #else 
@@ -330,7 +327,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
                 new_ps[new_cell_state]++; 
                 new_ps[from]--; 
                 new_mat[i][j] = new_cell_state; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
                 adjust_nb_plines(new_pline, i, j, from, new_cell_state); 
 #else 
                 adjust_local_density(new_qs, i, j, from, new_cell_state); 
@@ -351,7 +348,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       // Copy old matrix to new, etc. 
       memcpy(old_ps,  new_ps,  sizeof(uword)*ns); 
       memcpy(old_mat, new_mat, sizeof(uchar)*nr*nc); 
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
       memcpy(old_pline, new_pline, sizeof(uword)*nr*nc); 
 #else 
       memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
@@ -364,7 +361,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // Free up heap-allocated arrays
   delete [] old_mat; 
   delete [] new_mat; 
-#ifdef PRECOMPUTE_TRANS_PROBAS
+#if PRECOMPUTE_TRANS_PROBAS
   delete [] old_pline; 
   delete [] new_pline; 
 #else

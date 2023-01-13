@@ -485,7 +485,7 @@ static inline double compute_proba(const uchar qs[ns],
       ( beta_q_index(k, _qs) == qthis ) * 
       beta_q_vals(k); 
   }
-  
+
   // pp
   for ( uword k=0; k<beta_pp_nrow; k++ ) { 
     double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
@@ -494,20 +494,20 @@ static inline double compute_proba(const uchar qs[ns],
     total += 
       ( beta_pp_index(k, _from) == from ) * 
       ( beta_pp_index(k, _to) == to) * 
-      beta_pp_vals(k, _coef) * fintpow(p1, beta_pp_vals(k, _expo_1)) * 
-        fintpow(p2, beta_pp_vals(k, _expo_2));
+      beta_pp_vals(k, _coef) * fintpow(p1, beta_pp_index(k, _expo_1)) * 
+        fintpow(p2, beta_pp_index(k, _expo_2));
   }
   
   // qq
   for ( uword k=0; k<beta_qq_nrow; k++ ) { 
     double q1 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
-    double q2 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
+    double q2 = (double) qs[beta_qq_index(k, _state_2)] / total_nb; //TODO state_1 ????
     
     total += 
       ( beta_qq_index(k, _from) == from ) * 
       ( beta_qq_index(k, _to) == to) * 
-      beta_qq_vals(k, _coef) * fintpow(q1, beta_qq_vals(k, _expo_1)) * 
-        fintpow(q2, beta_qq_vals(k, _expo_2));
+      beta_qq_vals(k, _coef) * fintpow(q1, beta_qq_index(k, _expo_1)) * 
+        fintpow(q2, beta_qq_index(k, _expo_2));
   }
   
   // pq
@@ -515,7 +515,7 @@ static inline double compute_proba(const uchar qs[ns],
   // Rcpp::Rcout << beta_pq_index << "\n";
   for ( uword k=0; k<beta_pq_nrow; k++ ) { 
     double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
-    double q1 = (double) qs[beta_pq_index(k, _state_1)] / total_nb;
+    double q1 = (double) qs[beta_pq_index(k, _state_2)] / total_nb;
     
     // Rcpp::Rcout << "k: " << k << "\n"; 
     // Rcpp::Rcout << "beta_pq_nrow: " << beta_pq_nrow << "\n"; 
@@ -530,8 +530,9 @@ static inline double compute_proba(const uchar qs[ns],
     total += 
       ( beta_pq_index(k, _from) == from ) * 
       ( beta_pq_index(k, _to) == to) * 
-      beta_pq_vals(k, _coef) * fintpow(p1, beta_pq_vals(k, _expo_1)) * 
-        fintpow(q1, beta_pq_vals(k, _expo_2));
+      beta_pq_vals(k, _coef) * 
+        fintpow(p1, beta_pq_index(k, _expo_1)) * 
+        fintpow(q1, beta_pq_index(k, _expo_2));
   }
   
   return total; 

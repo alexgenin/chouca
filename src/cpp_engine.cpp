@@ -1,34 +1,30 @@
 
-#ifndef ARMA_NO_DEBUG
-#define ARMA_NO_DEBUG
-#endif 
+// #ifndef ARMA_NO_DEBUG
+// #define ARMA_NO_DEBUG
+// #endif 
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-// using namespace Rcpp;
-
 
 // Define some column names for clarity
 #define _from 0
 #define _to 1
 #define _state_1 2
 #define _state_2 3
+#define _expo_1 4
+#define _expo_2 5
 #define _qs 3 // only in beta_q, so no overlap with _state_2 above
-#define _expo_1 0
-#define _expo_2 1
-#define _coef 2
+#define _coef 0
 
-using namespace arma;
-
-inline void get_local_densities(arma::Col<uword>& qs, 
+inline void get_local_densities(arma::Col<arma::uword>& qs, 
                                 const arma::Mat<ushort>& m, 
                                 const arma::uword i, 
                                 const arma::uword j, 
                                 const bool wrap, 
                                 const bool use_8_nb) { 
   qs.fill(0); 
-  uword nc = m.n_cols; 
-  uword nr = m.n_rows; 
+  arma::uword nc = m.n_cols; 
+  arma::uword nr = m.n_rows; 
   
   // Get neighbors to the left 
   if ( wrap ) { 
@@ -111,7 +107,7 @@ arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m,
                                   const arma::uword j, 
                                   const bool wrap, 
                                   const bool use_8_nb) { 
-  arma::Col<uword> newq(nstates);
+  arma::Col<arma::uword> newq(nstates);
   newq.fill(0); 
   // m, i and j must be adjusted to take into account the way things are stored in R
   get_local_densities(newq, m, i-1, j-1, wrap, use_8_nb); 
@@ -119,18 +115,18 @@ arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m,
   return(newq);
 }
 
-inline void get_local_densities_column(arma::Mat<uword>& qs, 
+inline void get_local_densities_column(arma::Mat<arma::uword>& qs, 
                                        const arma::Mat<ushort>& m, 
                                        const arma::uword j, 
                                        const bool wrap, 
                                        const bool use_8_nb) { 
   
   qs.fill(0); 
-  uword nc = m.n_cols; 
-  uword nr = m.n_rows; 
+  arma::uword nc = m.n_cols; 
+  arma::uword nr = m.n_rows; 
   
   if ( wrap ) { 
-    for ( uword i=0; i<nr; i++ ) { 
+    for ( arma::uword i=0; i<nr; i++ ) { 
       // left column 
       ushort state_left = m( i, (nc + j - 1) % nc);
       qs(i, state_left)++; 
@@ -147,7 +143,7 @@ inline void get_local_densities_column(arma::Mat<uword>& qs,
     }
     
     if ( use_8_nb ) { 
-      for ( uword i=0; i<nr; i++ ) { 
+      for ( arma::uword i=0; i<nr; i++ ) { 
         ushort state_upleft = m( (nr + i - 1) % nr, (nc + j - 1) % nc); 
         qs(i, state_upleft)++; // upleft
         
@@ -163,7 +159,7 @@ inline void get_local_densities_column(arma::Mat<uword>& qs,
     }
   
   } else { 
-    for ( uword i=0; i<nr; i++ ) { 
+    for ( arma::uword i=0; i<nr; i++ ) { 
       if ( j > 0 ) { 
         ushort state_left = m(i, j-1); 
         qs(i, state_left)++; // left
@@ -214,7 +210,7 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m,
                                       const arma::uword j, 
                                       const bool wrap, 
                                       const bool use_8_nb) { 
-  arma::Mat<uword> newq(m.n_rows, nstates);
+  arma::Mat<arma::uword> newq(m.n_rows, nstates);
   newq.fill(0); 
   // m, i and j must be adjusted to take into account the way things are stored in R
   get_local_densities_column(newq, m, j-1, wrap, use_8_nb); 
@@ -229,10 +225,10 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m,
 void camodel_cpp_engine(const Rcpp::List ctrl) { 
   
   // Unpack control list
-  const uword substeps     = ctrl["substeps"]; 
+  const arma::uword substeps     = ctrl["substeps"]; 
   const bool  wrap         = ctrl["wrap"]; 
-  const Mat<ushort> init   = ctrl["init"];
-  const uword niter        = ctrl["niter"]; // TODO: think about overflow in those values
+  const arma::Mat<ushort> init   = ctrl["init"];
+  const arma::uword niter  = ctrl["niter"]; // TODO: think about overflow in those values
   const ushort ns          = ctrl["nstates"]; 
   const ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
   const bool use_8_nb      = nbs == 8 ? true : false; 
@@ -240,19 +236,19 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
   
-  const uword console_callback_every = ctrl["console_output_every"]; 
+  const arma::uword console_callback_every = ctrl["console_output_every"]; 
   const bool console_callback_active = console_callback_every > 0; 
   Rcpp::Function console_callback = ctrl["console_callback"]; 
   
-  const uword cover_callback_every = ctrl["save_covers_every"]; 
+  const arma::uword cover_callback_every = ctrl["save_covers_every"]; 
   const bool cover_callback_active = cover_callback_every > 0; 
   Rcpp::Function cover_callback = ctrl["cover_callback"]; 
   
-  const uword snapshot_callback_every = ctrl["save_snapshots_every"]; 
+  const arma::uword snapshot_callback_every = ctrl["save_snapshots_every"]; 
   const bool snapshot_callback_active = snapshot_callback_every > 0; 
   Rcpp::Function snapshot_callback = ctrl["snapshot_callback"]; 
   
-  const uword custom_callback_every = ctrl["custom_output_every"]; 
+  const arma::uword custom_callback_every = ctrl["custom_output_every"]; 
   const bool custom_callback_active = custom_callback_every > 0; 
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
@@ -268,36 +264,33 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   arma::Mat<ushort> beta_qq_index = ctrl["beta_qq_index"];
   arma::Mat<double> beta_qq_vals  = ctrl["beta_qq_vals"];
 
-//   Rcpp::Rcout << beta_pq_index << "\n"; 
-//   Rcpp::Rcout << pqmat_vals << "\n"; 
-  
-  const uword nr = init.n_rows; 
-  const uword nc = init.n_cols; 
+  const arma::uword nr = init.n_rows; 
+  const arma::uword nc = init.n_cols; 
   const double ncells = (double) nr * (double) nc;
   
   // Initialize some things 
-  Mat<ushort> omat = init; 
-  Mat<ushort> nmat = init; 
+  arma::Mat<ushort> omat = init; 
+  arma::Mat<ushort> nmat = init; 
   
   // Initialize vector with counts of cells in each state in the landscape (used to 
   // compute global densities)
-  Col<int> ps(ns); 
-  Col<int> delta_ps(ns); 
+  arma::Col<int> ps(ns); 
+  arma::Col<int> delta_ps(ns); 
   ps.fill(0); 
   delta_ps.fill(0); 
   
-  for ( uword j=0; j<nc; j++ ) { 
-    for ( uword i=0; i<nr; i++ ) { 
+  for ( arma::uword j=0; j<nc; j++ ) { 
+    for ( arma::uword i=0; i<nr; i++ ) { 
       ps(init(i, j))++; 
     }
   }
   
-  uword iter = 0; 
+  arma::uword iter = 0; 
   
   // Allocate some things we will reuse later 
-  Mat<uword> qs(nr, ns);
-  Col<double> qs_prop(ns);
-  Col<double> ptrans(ns); 
+  arma::Mat<arma::uword> qs(nr, ns);
+  arma::Col<double> qs_prop(ns);
+  arma::Col<double> ptrans(ns); 
   
   while ( iter <= niter ) { 
 //     Rcpp::Rcout << omat << "\n"; 
@@ -319,22 +312,22 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
       custom_callback(iter, omat); 
     }
     
-    for ( uword substep = 0; substep < substeps; substep++ ) { 
+    for ( arma::uword substep = 0; substep < substeps; substep++ ) { 
       
-      for ( uword j=0; j<nc; j++ ) { 
+      for ( arma::uword j=0; j<nc; j++ ) { 
         
         // Get local state counts for the column. Getting it for a column at once is 
         // slightly more cache-friendly.
         get_local_densities_column(qs, omat, j, wrap, use_8_nb); 
         
-        for ( uword i=0; i<nr; i++ ) { 
+        for ( arma::uword i=0; i<nr; i++ ) { 
           
           // Normalized local densities to proportions
-          uword total_nb = accu(qs.row(i)); 
+          arma::uword total_nb = accu(qs.row(i)); 
           
           // Factor to convert the number of neighbors into the point at which the 
           // dependency on q is sampled.
-          uword qpointn = (xpoints - 1) / total_nb; 
+          arma::uword qpointn = (xpoints - 1) / total_nb; 
           
           // Get current state 
           ushort from = omat(i, j); 
@@ -346,7 +339,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             ptrans(to) = 0; 
             
             // constant component
-            for ( uword k=0; k<beta_0_index.n_rows; k++ ) { 
+            for ( arma::uword k=0; k<beta_0_index.n_rows; k++ ) { 
               ptrans(to) += 
                 ( beta_0_index(k, _from) == from ) * 
                 ( beta_0_index(k, _to) == to) * 
@@ -354,11 +347,11 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             }
             
             // f(q) component
-            for ( uword k=0; k<beta_q_index.n_rows; k++ ) { 
+            for ( arma::uword k=0; k<beta_q_index.n_rows; k++ ) { 
               
               // Lookup which point in the qs function we need to use for the 
               // current neighbor situation.
-              uword qthis = qs(i, beta_q_index(k, _state_1)) * qpointn;
+              arma::uword qthis = qs(i, beta_q_index(k, _state_1)) * qpointn;
               
               ptrans(to) += 
                 ( beta_q_index(k, _from) == from ) * 
@@ -370,39 +363,39 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             }
             
             // pp
-            for ( uword k=0; k<beta_pp_index.n_rows; k++ ) { 
+            for ( arma::uword k=0; k<beta_pp_index.n_rows; k++ ) { 
               double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
               double p2 = ps[beta_pp_index(k, _state_2)] / ncells; 
               
               ptrans(to) += 
                 ( beta_pp_index(k, _from) == from ) * 
                 ( beta_pp_index(k, _to) == to) * 
-                beta_pp_vals(k, _coef) * pow(p1, beta_pp_vals(k, _expo_1)) * 
-                  pow(p2, beta_pp_vals(k, _expo_2));
+                beta_pp_vals(k, _coef) * pow(p1, beta_pp_index(k, _expo_1)) * 
+                  pow(p2, beta_pp_index(k, _expo_2));
             }
             
             // qq
-            for ( uword k=0; k<beta_qq_index.n_rows; k++ ) { 
+            for ( arma::uword k=0; k<beta_qq_index.n_rows; k++ ) { 
               double q1 = (double) qs(i, beta_qq_index(k, _state_1)) / total_nb;
-              double q2 = (double) qs(i, beta_qq_index(k, _state_1)) / total_nb;
+              double q2 = (double) qs(i, beta_qq_index(k, _state_2)) / total_nb;
               
               ptrans(to) += 
                 ( beta_qq_index(k, _from) == from ) * 
                 ( beta_qq_index(k, _to) == to) * 
-                beta_qq_vals(k, _coef) * pow(q1, beta_qq_vals(k, _expo_1)) * 
-                  pow(q2, beta_qq_vals(k, _expo_2));
+                beta_qq_vals(k, _coef) * pow(q1, beta_qq_index(k, _expo_1)) * 
+                  pow(q2, beta_qq_index(k, _expo_2));
             }
             
             // pq
-            for ( uword k=0; k<beta_pq_index.n_rows; k++ ) { 
+            for ( arma::uword k=0; k<beta_pq_index.n_rows; k++ ) { 
               double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
-              double q1 = (double) qs(i, beta_pq_index(k, _state_1)) / total_nb;
+              double q1 = (double) qs(i, beta_pq_index(k, _state_2)) / total_nb;
               
               ptrans(to) += 
                 ( beta_pq_index(k, _from) == from ) * 
                 ( beta_pq_index(k, _to) == to) * 
-                beta_pq_vals(k, _coef) * pow(p1, beta_pq_vals(k, _expo_1)) * 
-                  pow(q1, beta_pq_vals(k, _expo_2));
+                beta_pq_vals(k, _coef) * pow(p1, beta_pq_index(k, _expo_1)) * 
+                  pow(q1, beta_pq_index(k, _expo_2));
             }
             
           }

@@ -11,13 +11,12 @@ camodel_cpp_engine_wrap <- function(ctrl) {
   for ( tab in c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq") ) { 
     tabix <- ctrl[[tab]] 
     tabix <- tabix[ ,intersect(colnames(tabix), c("from", "to", "state_1", "state_2",
-                                                  "qs")), 
+                                                  "qs", "expo_1", "expo_2")), 
                    drop = FALSE]
     ctrl[[paste0(tab, "_index")]] <- intmat(tabix)
     
     tabfl <- ctrl[[tab]] 
-    tabfl <- tabfl[ ,intersect(colnames(tabfl), c("coef", "expo_1", "expo_2")), 
-                   drop = FALSE]
+    tabfl <- tabfl[ ,intersect(colnames(tabfl), "coef"), drop = FALSE]
     ctrl[[paste0(tab, "_vals")]] <- tabfl
   }
   
@@ -30,3 +29,4 @@ intmat <- function(m) {
   colnames(mn) <- colnames(m)
   mn
 }
+

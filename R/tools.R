@@ -13,7 +13,7 @@ summary.ca_model_result <- function(x, ...) {
   covers <- x[["output"]][["covers"]]
   if ( ! is.null(covers) ) { 
     cat("Global covers:\n")
-    print(tail(covers, n = 6))
+    print(utils::tail(covers, n = 6))
   } else { 
     cat("Covers were not saved during simulation\n")
   }
@@ -46,21 +46,21 @@ plot.ca_model_result <- function(x,
   
   
   colors <- seq.int(ncol(covers)-1)
-  matplot(covers[ ,1], 
-          covers[ ,-1],
-          type = "l", 
-          col = colors, 
-          xlab = "Time", 
-          ylab = "Covers", 
-          ...)
+  graphics::matplot(covers[ ,1], 
+                    covers[ ,-1],
+                    type = "l", 
+                    col = colors, 
+                    xlab = "Time", 
+                    ylab = "Covers", 
+                    ...)
   
   legend.x <- ifelse(is.null(legend.x), min(covers[ ,1]), legend.x) # max t 
   legend.y <- ifelse(is.null(legend.y), max(covers[ ,-1]), legend.y) # max covers 
   
-  legend(legend.x, legend.y, 
-         legend = colnames(covers)[-1], 
-         lty = 1,
-         col = colors)
+  graphics::legend(legend.x, legend.y, 
+                   legend = colnames(covers)[-1], 
+                   lty = 1,
+                   col = colors)
   
 }
 
@@ -111,7 +111,7 @@ list_methods <- function(class,
                          exclude = c("print", "summary")) { 
   
   all_methods <- lapply(class, function(class) { 
-    tab <- attr(methods(class = class), "info")
+    tab <- attr(utils::methods(class = class), "info")
 #     tab[tab[ ,"from"] == "spatialwarnings", "generic"]
     tab[ ,"generic"]
   })
