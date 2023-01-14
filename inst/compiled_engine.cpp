@@ -5,9 +5,9 @@
 // 
 
 
-// #ifndef ARMA_NO_DEBUG
-// #define ARMA_NO_DEBUG
-// #endif 
+#ifndef ARMA_NO_DEBUG
+#define ARMA_NO_DEBUG
+#endif 
 
 #define USE_OMP __USE_OMP__
 

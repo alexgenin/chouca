@@ -1,5 +1,7 @@
 
 #include <RcppArmadillo.h>
+#include "../inst/include/chouca.h"
+
 using namespace arma; 
 
 
