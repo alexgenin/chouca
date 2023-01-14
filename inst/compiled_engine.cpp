@@ -28,7 +28,8 @@ __OUNROLL__
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-#include "./include/chouca.h"
+// [[Rcpp::depends(chouca)]]
+#include <chouca.h>
 
 using namespace arma;
 
