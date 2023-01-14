@@ -3,6 +3,8 @@
 // all platforms. 
 //
 
-// We need this on windows for some reason to be able to declare arma::Mat with unsigned 
-// shorts, on linux it works well. 
-typedef unsigned short ushort; 
+// We need this on windows for some reason as we cannot declare arma::Mat<ushort> on that
+// platform for some reason
+#ifdef _WIN32
+typedef short ushort; 
+#endif
