@@ -221,7 +221,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
                         state_2 = seq.int(ns), 
                         expo_1  = seq(0, deg), 
                         expo_2  = seq(0, deg))
-    vals <- subset(vals, expo_1 > 0 & expo_2 > 0)
+    vals <- vals[vals[ ,"expo_1"] > 0 & vals[ ,"expo_2"] > 0, ]
     
     # Clamp to low degree
     # vals <- subset(vals, expo_1 + expo_2 <= deg)
