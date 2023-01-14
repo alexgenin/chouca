@@ -56,7 +56,7 @@ test_that("fixed neighborhood works", {
   ctrl <- list(console_output_every = 0, 
                save_snapshots_every = 1, 
                engine = "compiled")
-
+  
   results <- plyr::ldply(seq.int(1999), function(i) { 
     a <- run_camodel(mod, initmm, 1, control = ctrl)
     mat_final <- a[["output"]][["snapshots"]][[2]]

@@ -5,8 +5,7 @@
 ^draft$
 ^notes.txt$
 ^lines.out$
-^.github$
-^\.github$
+^\.github.*$
 ^polynomial.png$
 ^/tools/caspr-test/caspr/tests/testthat/_snaps$
 ^.*callgrind\.out.*$
@@ -16,3 +15,6 @@
 ^\.covrignore$
 ^benchmarks_last_commit.png$
 ^tools$
+^src/.gitignore$
+^..Rcheck$
+^\.git.*$

@@ -385,9 +385,9 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
                         expo_2  = seq(0, deg))
     
     if ( nosingle ) { 
-      vals <- subset(vals, expo_1 > 0 & expo_2 > 0)
+      vals <- vals[vals[ ,"expo_1"] > 0 & vals[ ,"expo_2"] > 0, ]
     } else { 
-      vals <- subset(vals, expo_1 > 0 | expo_2 > 0)
+      vals <- vals[vals[ ,"expo_1"] > 0 | vals[ ,"expo_2"] > 0, ]
     }
     
     # Clamp to low degree
