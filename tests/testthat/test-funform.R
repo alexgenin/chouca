@@ -37,12 +37,12 @@ allerrs <- plyr::ldply(seq.int(0, 9), function(d) {
   })
 }, .progress = "none")
 
-library(ggplot2)
-
-ggplot(allerrs, aes(x = deg, y = relerr)) + 
-  geom_point() + 
-  scale_y_continuous(trans = "log10")
-
+# library(ggplot2)
+# 
+# ggplot(allerrs, aes(x = deg, y = relerr)) + 
+#   geom_point() + 
+#   scale_y_continuous(trans = "log10")
+# 
 
 
 
