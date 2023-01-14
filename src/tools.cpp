@@ -7,6 +7,7 @@
 #endif 
 
 #include <RcppArmadillo.h>
+#include "../inst/include/chouca.h"
 
 #define _state_p 0
 #define _state_q 1
