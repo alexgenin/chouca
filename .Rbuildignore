@@ -18,3 +18,4 @@
 ^src/.gitignore$
 ^..Rcheck$
 ^\.git.*$
+^\.github$
