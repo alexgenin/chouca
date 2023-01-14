@@ -363,7 +363,7 @@ load_control_list <- function(l) {
   control_list <- list(
     substeps = 1, 
     save_covers_every = 1, 
-    save_snapshots_every = 2, 
+    save_snapshots_every = 0, 
     console_output_every = 10, 
     custom_output_every = 0, 
     custom_output_fun = NULL, 

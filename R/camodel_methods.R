@@ -129,7 +129,8 @@ image.ca_model_result <- function(x, snapshot_time = "last", ...) {
     
     times_available <- plyr::laply(snapshots, function(o) attr(o, "t"))
     time_closest <- abs(times_available - snapshot_time) 
-    time_closest <- times_available[time_closest == min(time_closest)]
+    # This can have several values, always take the first one
+    time_closest <- times_available[time_closest == min(time_closest)][1]
     
     if ( time_closest != snapshot_time ) { 
       warning(sprintf("Exact snapshot not found for t=%s in the saved data, returning closest one at t=%s", snapshot_time, time_closest))
