@@ -28,13 +28,12 @@ __OUNROLL__
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-// [[Rcpp::depends(chouca)]]
-#include <chouca.h>
 
 using namespace arma;
 
-// Define an unsigned char as uchar for better legibility 
+// Some typedefs for better legibility
 typedef unsigned char uchar; 
+typedef unsigned short ushort; 
 
 // These strings will be replaced by their values 
 constexpr arma::uword nr     = __NR__; 
@@ -78,7 +77,7 @@ static arma::Mat<double> beta_qq_vals(  beta_qq_nrow, 1);
 
 // Compute transition probabilities between all possible qs states 
 inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns], 
-                                               const uchar all_qs[all_qs_nrow][ns+1], 
+                                               const unsigned char all_qs[all_qs_nrow][ns+1], 
                                                const arma::uword ps[ns]) { 
   
   // Note tprob_interval here. In all combinations of neighbors, only some of them 

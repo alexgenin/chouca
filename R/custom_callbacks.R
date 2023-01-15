@@ -97,7 +97,6 @@ landscape_plotter <- function(mod,
   }
   
   # We open a new graphic
-  grDevices::dev.new()
   
   last_call_time <- Sys.time()
   
@@ -114,6 +113,10 @@ landscape_plotter <- function(mod,
     # If {1/fps_cap} has not passed since last time, we wait a little bit
     if ( dtime < (1/fps_cap) ) { 
       Sys.sleep( (1/fps_cap) - dtime )
+    }
+    
+    if ( is.null(grDevices::dev.list()) ) { 
+      grDevices::dev.new()
     }
     
     # Hold plot update, and flush it when exiting the function and everything is drawn
@@ -178,6 +181,11 @@ trace_plotter <- function(mod, initmat,
     backlog_sorted <- backlog_sorted[order(backlog_sorted[ ,1]), , drop = FALSE]
     
     if ( nrow(backlog_sorted) > 1 ) { 
+      
+      if ( is.null(grDevices::dev.list()) ) { 
+        grDevices::dev.new()
+      }
+      
       grDevices::dev.hold() 
       on.exit({ 
         grDevices::dev.flush() 

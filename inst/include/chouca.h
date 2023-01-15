@@ -3,8 +3,3 @@
 // all platforms. 
 //
 
-// We need this on windows for some reason as we cannot declare arma::Mat<ushort> on that
-// platform 
-#ifdef _WIN32
-typedef short ushort; 
-#endif

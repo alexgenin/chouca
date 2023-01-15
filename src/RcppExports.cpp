@@ -13,12 +13,12 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // local_dens
-arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m, const arma::uword nstates, const arma::uword i, const arma::uword j, const bool wrap, const bool use_8_nb);
+arma::Col<arma::uword> local_dens(const arma::Mat<unsigned short> m, const arma::uword nstates, const arma::uword i, const arma::uword j, const bool wrap, const bool use_8_nb);
 RcppExport SEXP _chouca_local_dens(SEXP mSEXP, SEXP nstatesSEXP, SEXP iSEXP, SEXP jSEXP, SEXP wrapSEXP, SEXP use_8_nbSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type m(mSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<unsigned short> >::type m(mSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type nstates(nstatesSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type i(iSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type j(jSEXP);
@@ -29,12 +29,12 @@ BEGIN_RCPP
 END_RCPP
 }
 // local_dens_col
-arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m, const arma::uword nstates, const arma::uword j, const bool wrap, const bool use_8_nb);
+arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m, const arma::uword nstates, const arma::uword j, const bool wrap, const bool use_8_nb);
 RcppExport SEXP _chouca_local_dens_col(SEXP mSEXP, SEXP nstatesSEXP, SEXP jSEXP, SEXP wrapSEXP, SEXP use_8_nbSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const arma::Mat<ushort> >::type m(mSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<unsigned short> >::type m(mSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type nstates(nstatesSEXP);
     Rcpp::traits::input_parameter< const arma::uword >::type j(jSEXP);
     Rcpp::traits::input_parameter< const bool >::type wrap(wrapSEXP);

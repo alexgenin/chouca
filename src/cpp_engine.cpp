@@ -5,7 +5,10 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-#include "../inst/include/chouca.h"
+
+// Some typedefs for better legibility
+typedef unsigned char uchar; 
+typedef unsigned short ushort; 
 
 // Define some column names for clarity
 #define _from 0
@@ -18,7 +21,7 @@
 #define _coef 0
 
 inline void get_local_densities(arma::Col<arma::uword>& qs, 
-                                const arma::Mat<ushort>& m, 
+                                const arma::Mat<unsigned short>& m, 
                                 const arma::uword i, 
                                 const arma::uword j, 
                                 const bool wrap, 
@@ -102,7 +105,7 @@ inline void get_local_densities(arma::Col<arma::uword>& qs,
 // This is a function that returns the local state counts to R. i and j must be indexed 
 // the R-way (1-indexing)
 // [[Rcpp::export]]
-arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m, 
+arma::Col<arma::uword> local_dens(const arma::Mat<unsigned short> m, 
                                   const arma::uword nstates, 
                                   const arma::uword i, 
                                   const arma::uword j, 
@@ -117,7 +120,7 @@ arma::Col<arma::uword> local_dens(const arma::Mat<ushort> m,
 }
 
 inline void get_local_densities_column(arma::Mat<arma::uword>& qs, 
-                                       const arma::Mat<ushort>& m, 
+                                       const arma::Mat<unsigned short>& m, 
                                        const arma::uword j, 
                                        const bool wrap, 
                                        const bool use_8_nb) { 
@@ -206,7 +209,7 @@ inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
 // This is a function that returns the local state counts to R, for the full column of 
 // a matrix. j must be indexed the R-way (1-indexing)
 //[[Rcpp::export]]
-arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort> m, 
+arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m, 
                                       const arma::uword nstates, 
                                       const arma::uword j, 
                                       const bool wrap, 
