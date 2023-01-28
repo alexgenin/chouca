@@ -115,6 +115,7 @@ ca_library <- function(model,
       wrap = wrap, 
       parms = parms, 
       all_states = c("EMPTY", "TREE"), 
+      continuous = FALSE, 
       check_model = FALSE
     )
   
@@ -143,6 +144,7 @@ ca_library <- function(model,
       wrap = wrap, 
       parms = parms, 
       all_states = c("MUSSEL", "EMPTY", "DISTURB"), 
+      continuous = FALSE, 
       check_model = FALSE
     )
   }
@@ -182,7 +184,8 @@ ca_library <- function(model,
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 
-      all_states = c("DEGR", "EMPTY", "VEGE"), 
+      all_states = c("DEGR", "EMPTY", "VEGE"),
+      continuous = FALSE, 
       check_model = FALSE
     )
     
@@ -223,6 +226,7 @@ ca_library <- function(model,
       wrap = wrap, 
       parms = parms, 
       all_states = c("BARE", "ALGAE", "CORAL"), 
+      continuous = FALSE, 
       check_model = FALSE
     )
   }
@@ -242,7 +246,8 @@ ca_library <- function(model,
       transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
       wrap = wrap, 
       neighbors = neighbors, 
-      all_states = c("DEAD", "LIVE")
+      all_states = c("DEAD", "LIVE"), 
+      continuous = FALSE
     )
   }
   
@@ -266,7 +271,8 @@ ca_library <- function(model,
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 
-      check_model = FALSE
+      check_model = FALSE, 
+      continuous = FALSE
     )
     
   }

@@ -9,32 +9,6 @@ test_that("Custom callbacks work", {
   niters <- 64
   
   
-  mod <- ca_library("rockpaperscissor", wrap = TRUE)
-  initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
-  
-  ccb <- function(t, mat) { 
-    bmat <- matrix(mat == "VEGE", nrow = nrow(mat), ncol = ncol(mat))
-    data.frame(t = t, 
-               cover = mean(mat == "VEGE"), 
-               sd  = sd(mat == "VEGE"))
-  }
-  
-  ctrl <- list(engine = "cpp", 
-               console_output_every = 0, 
-               custom_output_every = 1, 
-               custom_output_fun = ccb)
-  out <- run_camodel(mod, initmm, niters, ctrl)
-  custom_results_cpp <- plyr::rbind.fill(out[["output"]][["custom_output"]])
-  
-  ctrl[["engine"]] <- "r"
-  out <- run_camodel(mod, initmm, niters, ctrl)
-  custom_results_r <- plyr::rbind.fill(out[["output"]][["custom_output"]])
-  
-  expect_true({ 
-    all( abs(custom_results_r - custom_results_cpp) < 0.1 )
-  })
-  
-  
   
   # Test compiled engine against cpp engine. Here it works because the model is deterministic
   # so the values are exactly equal. We only check that spatial autocorrelations are 

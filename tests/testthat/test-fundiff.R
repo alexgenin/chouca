@@ -21,10 +21,11 @@ for ( i in seq(2, length(times)) ) {
 mod <- camodel(
   transition("0", "+", ~ 0.05 * p["+"] ), 
   wrap = TRUE, 
-  neighbors = 4
+  neighbors = 4, 
+  continuous = FALSE
 )
 initmm <- generate_initmat(mod, c(`0` = 1 - 0.001, `+` = 0.001), nr = 1024)
-run <- run_camodel(mod, initmm, max(times), 
+run <- run_camodel(mod, initmm, times, 
                    control = list(engine = "compiled", 
                                   precompute_probas = "auto", 
                                   console_output_every = 0))

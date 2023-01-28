@@ -97,13 +97,6 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'   way the simulation is run. The possible options are the following: 
 #'  
 #'  \enumerate{ 
-#'    \item \code{substeps} The number of substeps within each iteration. Probabilities 
-#'      defined in the model definition may go above one for some models, which produces 
-#'      results that are approximate. To avoid this problem, each time step of the 
-#'      model can be divided into several 'substeps'. Transitions between cell 
-#'      probabilities may occur between each substep, but with a probability divided 
-#'      by the number of substeps. This makes sure that every probability evaluated 
-#'      during the model run is below one. Default is 1.
 #'    
 #'    \item \code{save_covers_every} The period of time between which the global covers 
 #'      of each state in the landscape is saved. Set to zero to turn off saving 
@@ -113,33 +106,15 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'      2D grid is saved. Set to zero to turn off the saving of snapshots (default
 #'      option).
 #'     
-#'    \item \code{console_callback_every} Sets the number of iterations between which 
+#'    \item \code{console_output_every} Sets the number of iterations between which 
 #'      progress report is printed on the console. Set to zero to turn off progress 
 #'      report. Default is to print progress every ten iterations.
-#'    
-#'    \item \code{neighbors} The number of neighbors to use. Use the integer value 4 to 
-#'      use a four-way (von-Neumann) neighborhood, or 8 for an 8-way (Moore) 
-#'      neighborhood. Any other values will produce an error. Default is to use 4
-#'      neighbors.
-#'    
-#'    \item \code{wrap} Set to \code{TRUE} to use a toric space in which edges wrap 
-#'      around, i.e. that cells on a side of the landscape are considered neighbors of
-#'      cells on the other side. 
 #'    
 #'    \item \code{engine} The engine to use to run the simulations. Accepted values 
 #'      are 'r', to use the pure-R engine, 'cpp' to use the C++ engine, or 'compiled', to
 #'      compile the model code on the fly. Default is to use the C++ engine. Note that 
 #'      the 'compiled' engine uses its own random number generator, and for this reason
 #'      may produce results that are different from the two other engines.
-#'    
-#'    \item \code{olevel} (Compiled engine only) The optimization level to use when
-#'      compiling the model code (default, O2, O3 or Ofast). This requires compiling with 
-#'      gcc. By default, \code{\link[Rcpp]{sourceCpp}} options are used 
-#'      (option 'default').
-#'    
-#'    \item \code{unroll_loops} (Compiled engine only) Set to \code{TRUE} to unroll loops 
-#'      or not when compiling the model. Default is \code{FALSE}. Requires compiling with
-#'      gcc.  
 #'    
 #'    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
 #'      precompute probabilities of transitions for all possible combinations of 
@@ -190,9 +165,8 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #' matplot(covers[ ,1], covers[ ,-1], type = "l")
 #' 
 #'@export
-run_camodel <- function(mod, initmat, niter, 
+run_camodel <- function(mod, initmat, times, 
                         control = list()) { 
-  check_length1_integer(niter, "niter", 1)
   
   ns <- mod[["nstates"]]
   states <- mod[["states"]]
@@ -203,17 +177,26 @@ run_camodel <- function(mod, initmat, niter,
   # Read parameters
   control <- load_control_list(control)
   
-  # NOTE: callbacks defined below will modify things in the current environment
+  # Check that delta_t is correct 
+  if ( abs(control[["delta_t"]] - 1) > 1e-8 && ! mod[["continuous"]] ) { 
+    warning("delta_t can only be equal to 1 when working with discrete SCA.")
+    control[["delta_t"]] <- 1L
+  }
+  
+  # NOTE: callbacks defined below will modify things in the current environment, so that 
+  # this function returns the output of the simulation. 
   
   # Handle cover-storage callback 
   cover_callback <- function(t, ps, n) { }  
   cover_callback_active <- is_positive(control[["save_covers_every"]])
   if ( cover_callback_active ) { 
-    nl <- 1 + niter %/% control[["save_covers_every"]]
-    global_covers <- matrix(NA_real_, ncol = 1+ns, nrow = nl)
+    n_exports <- ifelse(mod[["continuous"]], 
+                        length(times), 
+                        length(unique(floor((times)))))
+    
+    global_covers <- matrix(NA_real_, ncol = 1+ns, nrow = n_exports)
     colnames(global_covers) <- c("t", as.character(states))
     cur_line <- 1
-    
     cover_callback <- function(t, ps, n) { 
       global_covers[cur_line, ] <<- c(t, ps / n)
       cur_line <<- cur_line + 1  
@@ -238,29 +221,32 @@ run_camodel <- function(mod, initmat, niter,
   # Handle console output callback 
   console_callback <- function(t, ps, n) { } 
   console_callback_active <- is_positive(control[["console_output_every"]])
-  
+    
   if ( console_callback_active ) { 
     last_time <- proc.time()["elapsed"]
     first_time <- last_time
-    last_iter <- 1 
+    last_iter <- 0
+    tmax <- max(times) 
+    niter <- floor( max(times) / control[["delta_t"]] + 1 )
     
-    console_callback <- function(t, ps, n) { 
+    console_callback <- function(iter, ps, n) { 
       new_time <- proc.time()["elapsed"]
-      iter_per_s <- (t - last_iter) / (new_time - last_time) 
+      
+      iter_per_s <- (iter - last_iter) / (new_time - last_time) 
       
       cover_string <- paste(states[seq.int(length(ps))], 
                             format(ps/n, digits = 3, width = 4), 
                             sep = ":", collapse = " ")
       
-      perc  <- paste0(format(100 * (t / niter), digits = 1, width = 3), " %")
+      perc  <- paste0(format(100 * (iter / niter), digits = 1, width = 3), " %")
       
       speed <- ifelse(is.nan(iter_per_s) | iter_per_s < 0, "", 
                       paste("[", sprintf("%0.2f", iter_per_s), " iter/s]", sep = ""))
       
-      tstring <- paste0("t = ", format(t, width = ceiling(log10(niter))))
+      tstring <- paste0("iter = ", format(iter, width = ceiling(log10(niter))))
       cat(paste0(tstring, " (", perc, ") ", cover_string, " ", speed, "\n"))
       last_time <<- new_time
-      last_iter <<- t 
+      last_iter <<- iter 
     }
   }
   
@@ -283,14 +269,12 @@ run_camodel <- function(mod, initmat, niter,
   initmat <- as.integer(initmat) - 1
   dim(initmat) <- d 
   
-  #TODO: warn when there is only 1/0 in probas but we are using substeps
-  
   # Convert state factors to internal representation
   fix <- function(x) { 
     as.integer(factor(as.character(x), levels = states)) - 1 
   }
   
-  # Prepare data for internal representation
+  # Prepare data for internal representation, and take substeps into account
   betas <- mod[c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")]
   betas <- lapply(betas, function(tab) { 
     # Convert references to state to internal representation
@@ -302,19 +286,20 @@ run_camodel <- function(mod, initmat, niter,
     if ( "state_2" %in% colnames(tab) ) { 
       tab[ ,"state_2"] <- fix(tab[ ,"state_2"])
     }
-    if ( "coef" %in% colnames(tab) ) { 
-      tab[ ,"coef"] <- tab[ ,"coef"] / control[["substeps"]]
-    }
+    
+    # We divide all probabilities by the number of substeps
+    tab[ ,"coef"] <- tab[ ,"coef"] / control[["substeps"]]
     
     as.matrix(tab)
   })
   
   # Adjust the control list to add some components
   control_list <- c(control, 
-                    mod[c("wrap", "neighbors", "xpoints", "fixed_neighborhood")], 
+                    mod[c("wrap", "continuous", 
+                          "neighbors", "xpoints", "fixed_neighborhood")], 
                     betas, 
                     list(init     = initmat, 
-                         niter    = niter, 
+                         times    = times, 
                          nstates  = ns, 
                          console_callback       = console_callback, 
                          cover_callback         = cover_callback, 
@@ -322,9 +307,7 @@ run_camodel <- function(mod, initmat, niter,
                          custom_callback        = custom_callback))
   
   engine <- control[["engine"]][1]
-  if ( tolower(engine) == "r" ) { 
-    camodel_r_engine(control_list)
-  } else if ( tolower(engine) %in% c("cpp", "c++") ) { 
+  if ( tolower(engine) %in% c("cpp", "c++") ) { 
     camodel_cpp_engine_wrap(control_list)
   } else if ( tolower(engine) %in% c("compiled") ) { 
     camodel_compiled_engine_wrap(control_list)
@@ -335,7 +318,6 @@ run_camodel <- function(mod, initmat, niter,
   # Store artefacts and return result 
   results <- list(model = mod, 
                   initmat = initmat, 
-                  niter = niter, 
                   control = control, 
                   output = list())
   
@@ -359,9 +341,9 @@ run_camodel <- function(mod, initmat, niter,
 load_control_list <- function(l) { 
   #TODO: make sure all elements of l are named 
   #TODO: update doc with new options
+  #TODO: add force_compilation
   
   control_list <- list(
-    substeps = 1, 
     save_covers_every = 1, 
     save_snapshots_every = 0, 
     console_output_every = 10, 
@@ -370,10 +352,10 @@ load_control_list <- function(l) {
     engine = "cpp", 
     # Compiled engine options
     fixed_neighborhood = FALSE, 
-    olevel = "default", 
-    unroll_loops = FALSE, 
     precompute_probas = "auto", 
     cores = 1, 
+    delta_t = 1, 
+    substeps = 1, 
     verbose_compilation = FALSE
   )
   
@@ -389,27 +371,24 @@ load_control_list <- function(l) {
     stop("Duplicated elements in control list")
   }
   
-  check_length1_integer(control_list[["substeps"]], "substeps", 1)
   check_length1_integer(control_list[["save_covers_every"]], "save_covers_every", 0)
   check_length1_integer(control_list[["save_snapshots_every"]], "save_snapshots_every", 0)
   check_length1_integer(control_list[["console_output_every"]], "console_output_every", 0)
   check_length1_integer(control_list[["custom_output_every"]], "custom_output_every", 0)
+  check_length1_integer(control_list[["substeps"]], "substeps", 1)
   check_length1_integer(control_list[["cores"]], "cores", 1)
+  
+  if ( ! length(control_list[["delta_t"]]) == 1 && 
+       is.numeric(control_list[["delta_t"]]) ) { 
+    stop("delta_t must be a single numeric value")
+  }
   
   if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 
     stop(sprintf("Engine must be one of 'cpp', 'compiled' or 'r'"))
   }
   
-  if ( ! control_list[["olevel"]] %in% c("O0", "O1", "O2", "O3", "Ofast", "default") ) { 
-    stop("'olevel' option must be one of 'default', 'O0', 'O1', 'O2', 'O3' or 'Ofast'")
-  }
-  
-  if ( ! is.logical(control_list[["unroll_loops"]]) ) { 
+  if ( ! is.logical(control_list[["fixed_neighborhood"]]) ) { 
     stop("'fixed_neighborhood' option must be TRUE or FALSE")
-  }
-  
-  if ( ! is.logical(control_list[["unroll_loops"]]) ) { 
-    stop("'unroll_loops' option must be TRUE or FALSE")
   }
   
   if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 

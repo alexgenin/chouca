@@ -5,13 +5,13 @@
 camodel_r_engine <- function(ctrl) { 
   
   # Unwrap elements of the ctrl list 
-  substeps <- ctrl[["substeps"]]
   wrap     <- ctrl[["wrap"]]
   use_8_nb <- ctrl[["neighbors"]] == 8 # whether we use 8 neighbors
   init     <- ctrl[["init"]]
   niter    <- ctrl[["niter"]]
   ns       <- ctrl[["nstates"]]
   xpoints <- ctrl[["xpoints"]] 
+  substeps <- ctrl[["substeps"]] 
   
   beta_0 <- ctrl[["beta_0"]]
   beta_q <- ctrl[["beta_q"]]
@@ -61,7 +61,6 @@ camodel_r_engine <- function(ctrl) {
     }
     
     for ( s in seq.int(substeps) ) { 
-      
       for ( i in seq.int(nr) ) { 
         for ( j in seq.int(nc) ) { 
           
@@ -74,7 +73,7 @@ camodel_r_engine <- function(ctrl) {
           # value for the local probability
           nbs <- sum(qs)
           qpointn <- as.integer(qs / nbs * (xpoints-1))
-#           qs <- qs / sum(qs)
+  #           qs <- qs / sum(qs)
           # Compute probability of transition to other states
           trates <- rep(0, ns)
           
@@ -129,7 +128,7 @@ camodel_r_engine <- function(ctrl) {
           ctrates <- cumsum(trates)
           
           if ( max(ctrates) > 1 + sqrt(.Machine$double.eps) ) { 
-            warning("Computed probabilities were above one, results will be approximate. Consider increasing control parameter 'substeps'")
+            warning("Computed probabilities were above one, results will be approximate.")
           }
           
           # Flip a coin to see if the transition occurs

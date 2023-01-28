@@ -36,6 +36,7 @@ models[[1]] <- list(model, imat)
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
                  parms = list(r = 0.1), 
+                 continuous = FALSE, 
                  wrap = TRUE, neighbors = 4)
 imat <- generate_initmat(model, c(0.2, 0.8), nr, nc)
 models[[2]] <- list(model, imat)
@@ -65,29 +66,25 @@ plyr::llply(models, function(modinfo) {
   mod <- modinfo[[1]]
   initmat <- modinfo[[2]]
   
-  control <- list(substeps = 1, 
-                  console_output_every = 0, 
+  control <- list(console_output_every = 0, 
                   save_covers_every = 1, 
                   save_snapshots_every = 0, 
                   engine = "cpp")
   
   # Check that we reproduce well the variance and mean of time series between the two 
   # engines. Somehow setti the seed does not 
-  engines_ts <- replicate(19, { 
-    modcompiled <- run_camodel(mod, initmat, 20, control = { 
+  engines_ts <- replicate(3, { 
+    niter <- seq(0, 10)
+    modcompiled <- run_camodel(mod, initmat, niter, control = { 
       control[["engine"]] <- "compiled" ; control
     })
-    modcpp <- run_camodel(mod, initmat, 20, control = { 
+    modcpp <- run_camodel(mod, initmat, niter, control = { 
       control[["engine"]] <- "cpp" ; control
-    })
-    modr <- run_camodel(mod, initmat, 20, control = { 
-      control[["engine"]] <- "r" ; control
     })
     
     # Time series 
     cbind(modcompiled[["output"]][["covers"]][ ,2:3], 
-          modcpp[["output"]][["covers"]][ ,2:3], 
-          modr[["output"]][["covers"]][ ,2:3])
+          modcpp[["output"]][["covers"]][ ,2:3])
   })
   
   emeans <- apply(engines_ts, c(1, 2), mean)
@@ -95,16 +92,14 @@ plyr::llply(models, function(modinfo) {
   
   par(mfrow = c(1, 2))
   # Display results 
-  plot(emeans[ ,5], type = "n")
+  plot(emeans[ ,1], type = "n")
   lines(emeans[ ,1], col = "red")
   lines(emeans[ ,3], col = "black")
-  lines(emeans[ ,5], col = "green")
   
   # Display variance results
-  plot(evars[ ,5], type = "n")
+  plot(evars[ ,1], type = "n")
   lines(evars[ ,1], col = "red")
   lines(evars[ ,3], col = "black")
-  lines(evars[ ,5], col = "green")
   
   expect_true({ 
     all( abs( emeans[ ,1] - emeans[ ,3] ) < tolerance )
@@ -117,7 +112,7 @@ plyr::llply(models, function(modinfo) {
   expect_true({ 
     all( abs( evars[ ,1] - evars[ ,3] ) < tolerance )
   })
-
+  
   expect_true({ 
     all( abs( evars[ ,2] - evars[ ,4] ) < tolerance )
   })

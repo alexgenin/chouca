@@ -116,7 +116,7 @@
 #'   all_states = c("DEAD", "LIVE")
 #' )
 #' 
-#' # A spiral-generating rock-paper-scissor model (run with substeps = 1)
+#' # A spiral-generating rock-paper-scissor model
 #' mod <- camodel(
 #'   transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
 #'   transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
@@ -130,6 +130,7 @@
 camodel <- function(..., 
                     neighbors, # default to von-neumann neighborhood
                     wrap, 
+                    continuous, 
                     parms = list(), 
                     all_states = NULL, 
                     check_model = TRUE, 
@@ -152,7 +153,6 @@ camodel <- function(...,
 
   # Read transition objects
   transitions <- list(...)
-  
   
   # Check that they are all transitions 
   if ( ! all(sapply(transitions, inherits, "camodel_transition")) ) { 
@@ -221,6 +221,7 @@ camodel <- function(...,
                 beta_qq = beta_qq, 
                 wrap = wrap, 
                 neighbors = neighbors, 
+                continuous = continuous, 
                 epsilon = epsilon, 
                 xpoints = xpoints, 
                 max_error = max_error, 
@@ -277,6 +278,7 @@ update.ca_model <- function(object,
                             parms = NULL, 
                             neighbors = NULL, 
                             wrap = NULL, 
+                            continuous = NULL, 
                             check_model = TRUE, 
                             verbose = FALSE, 
                             ...) { 
@@ -290,11 +292,15 @@ update.ca_model <- function(object,
   if ( is.null(parms) ) { 
     parms <- object[["parms"]]
   }
+  if ( is.null(continuous) ) { 
+    continuous <- object[["continuous"]]
+  }
   
   # Extract model parameters, and do the call
   newcall <- c(object[["transitions_defs"]], # always a list, so result of c() is a list
                neighbors = neighbors, 
                wrap = wrap, 
+               continuous = continuous, 
                parms = list(parms), 
                all_states = list(object[["states"]]), 
                check_model = check_model, 

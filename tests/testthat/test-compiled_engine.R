@@ -13,7 +13,7 @@ initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
 
 test_that("Compiled model produces OK results regardless of proba precomputation", { 
   
-  iters <- 32
+  iters <- seq(0, 32)
   # iters <- 1
   control <- list(save_covers_every = 1, 
                   console_output_every = 0, 
@@ -81,11 +81,6 @@ test_that("Verbose compilation prints something", {
   })
   
 })
-
-
-mod <- update(mod, wrap = FALSE, parms = list(prob = 1))
-benchmark_compiled_model(mod, initmm, niter = 5, 
-                         control = list(console_output_every = 0))
 
 
 

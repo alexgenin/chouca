@@ -453,89 +453,125 @@ inline void adjust_nb_plines(uword pline[nr][nc],
 }
 
 // Compute probability components 
-static inline double compute_proba(const uchar qs[ns], 
-                                   const uword ps[ns], 
-                                   const arma::uword & qpointn, 
-                                   const arma::uword & total_nb, 
-                                   const arma::uword & from, 
-                                   const arma::uword & to) { 
+static inline void compute_rate(double tprob_line[ns], 
+                                const uchar qs[ns], 
+                                const uword ps[ns], 
+                                const arma::uword & qpointn, 
+                                const arma::uword & total_nb, 
+                                const arma::uword & from, 
+                                const double delta_t) { 
   
-  double total = 0.0; 
-  
-  // constant component
-  for ( uword k=0; k<beta_0_nrow; k++ ) { 
-    total += 
-      ( beta_0_index(k, _from) == from ) * 
-      ( beta_0_index(k, _to) == to) * 
-      beta_0_vals(k); 
-  }
-  
-  // f(q) component
-  for ( uword k=0; k<beta_q_nrow; k++ ) { 
+  for ( ushort to=0; to<ns; to++ ) { 
+    double total = 0.0; 
     
-    // Lookup which point in the qs function we need to use for the 
-    // current neighbor situation.
-    uword qthis = qs[beta_q_index(k, _state_1)] * qpointn;
+    // constant component
+    for ( uword k=0; k<beta_0_nrow; k++ ) { 
+      total += 
+        ( beta_0_index(k, _from) == from ) * 
+        ( beta_0_index(k, _to) == to) * 
+        beta_0_vals(k); 
+    }
     
-    total += 
-      ( beta_q_index(k, _from) == from ) * 
-      ( beta_q_index(k, _to) == to) * 
-      // Given the observed local abundance of this state, which line in 
-      // beta_q should be retained ? 
-      ( beta_q_index(k, _qs) == qthis ) * 
-      beta_q_vals(k); 
+    // f(q) component
+    for ( uword k=0; k<beta_q_nrow; k++ ) { 
+      
+      // Lookup which point in the qs function we need to use for the 
+      // current neighbor situation.
+      uword qthis = qs[beta_q_index(k, _state_1)] * qpointn;
+      
+      total += 
+        ( beta_q_index(k, _from) == from ) * 
+        ( beta_q_index(k, _to) == to) * 
+        // Given the observed local abundance of this state, which line in 
+        // beta_q should be retained ? 
+        ( beta_q_index(k, _qs) == qthis ) * 
+        beta_q_vals(k); 
+    }
+
+    // pp
+    for ( uword k=0; k<beta_pp_nrow; k++ ) { 
+      double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
+      double p2 = ps[beta_pp_index(k, _state_2)] / ncells; 
+      
+      total += 
+        ( beta_pp_index(k, _from) == from ) * 
+        ( beta_pp_index(k, _to) == to) * 
+        beta_pp_vals(k, _coef) * fintpow(p1, beta_pp_index(k, _expo_1)) * 
+          fintpow(p2, beta_pp_index(k, _expo_2));
+    }
+    
+    // qq
+    for ( uword k=0; k<beta_qq_nrow; k++ ) { 
+      double q1 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
+      double q2 = (double) qs[beta_qq_index(k, _state_2)] / total_nb; //TODO state_1 ????
+      
+      total += 
+        ( beta_qq_index(k, _from) == from ) * 
+        ( beta_qq_index(k, _to) == to) * 
+        beta_qq_vals(k, _coef) * fintpow(q1, beta_qq_index(k, _expo_1)) * 
+          fintpow(q2, beta_qq_index(k, _expo_2));
+    }
+    
+    // pq
+    // Rcpp::Rcout << beta_pq_vals << "\n";
+    // Rcpp::Rcout << beta_pq_index << "\n";
+    for ( uword k=0; k<beta_pq_nrow; k++ ) { 
+      double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
+      double q1 = (double) qs[beta_pq_index(k, _state_2)] / total_nb;
+      
+      // Rcpp::Rcout << "k: " << k << "\n"; 
+      // Rcpp::Rcout << "beta_pq_nrow: " << beta_pq_nrow << "\n"; 
+      // Rcpp::Rcout << "beta_pq_ix_ncol: " << beta_pq_index.n_cols << "\n"; 
+      // Rcpp::Rcout << "beta_pq_vals_ncol: " << beta_pq_vals.n_cols << "\n"; 
+      // Rcpp::Rcout << "_expo_1: " << _expo_1 << "\n"; 
+      // Rcpp::Rcout << "_expo_2: " << _expo_2 << "\n"; 
+      // Rcpp::Rcout << "_to: " << _to << "\n"; 
+      // Rcpp::Rcout << "_from: " << _from << "\n"; 
+      // Rcpp::Rcout << beta_pq_vals << "\n"; 
+      
+      total += 
+        ( beta_pq_index(k, _from) == from ) * 
+        ( beta_pq_index(k, _to) == to) * 
+        beta_pq_vals(k, _coef) * 
+          fintpow(p1, beta_pq_index(k, _expo_1)) * 
+          fintpow(q1, beta_pq_index(k, _expo_2));
+    }
+    
+    tprob_line[to] = total; 
   }
 
-  // pp
-  for ( uword k=0; k<beta_pp_nrow; k++ ) { 
-    double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
-    double p2 = ps[beta_pp_index(k, _state_2)] / ncells; 
+  
+  // tprobs holds the rate at which things transition, we need to transform it if we 
+  // are working with a continuous-time SCA
+  // P(i -> j) = ( 1 - exp( - rate * delta_t ) ) * ( rate / sum(rates) ) 
+  // TODO: This is "wrong", it only works asymptotically as delta_t -> 0. 
+  // We need to compute the probability that after xx time units 
+  // have passed, the chain is in a given state. We need to simulate the switches 
+  // between time steps. 
+  if ( continuous_sca ) { 
     
-    total += 
-      ( beta_pp_index(k, _from) == from ) * 
-      ( beta_pp_index(k, _to) == to) * 
-      beta_pp_vals(k, _coef) * fintpow(p1, beta_pp_index(k, _expo_1)) * 
-        fintpow(p2, beta_pp_index(k, _expo_2));
+    double sum_rates = 0; 
+    for ( ushort k=0; k<ns; k++ ) { 
+      sum_rates += tprob_line[k]; 
+    }
+    
+    for ( ushort k=0; k<ns; k++ ) { 
+      double rate = tprob_line[k]; 
+      // Rcpp::Rcout << "from: " << from << " to: " << (int) k << ": " << tprob_line[k] << 
+        // " sum: " << sum_rates << " delta_t: " << delta_t << "\n"; 
+      tprob_line[k] = ( 1 - exp( - rate * delta_t ) ) * ( rate / sum_rates ); 
+    }
+    
+    
+    // Now tprobs holds the probabilities of switching for a continuous SCA. If we 
+    // were working with a discrete SCA, there would be nothing to do here. 
   }
   
-  // qq
-  for ( uword k=0; k<beta_qq_nrow; k++ ) { 
-    double q1 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
-    double q2 = (double) qs[beta_qq_index(k, _state_2)] / total_nb; //TODO state_1 ????
-    
-    total += 
-      ( beta_qq_index(k, _from) == from ) * 
-      ( beta_qq_index(k, _to) == to) * 
-      beta_qq_vals(k, _coef) * fintpow(q1, beta_qq_index(k, _expo_1)) * 
-        fintpow(q2, beta_qq_index(k, _expo_2));
+  // Compute cumsum of probabilities
+  for ( ushort k=1; k<ns; k++ ) { 
+    tprob_line[k] += tprob_line[k-1];
   }
   
-  // pq
-  // Rcpp::Rcout << beta_pq_vals << "\n";
-  // Rcpp::Rcout << beta_pq_index << "\n";
-  for ( uword k=0; k<beta_pq_nrow; k++ ) { 
-    double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
-    double q1 = (double) qs[beta_pq_index(k, _state_2)] / total_nb;
-    
-    // Rcpp::Rcout << "k: " << k << "\n"; 
-    // Rcpp::Rcout << "beta_pq_nrow: " << beta_pq_nrow << "\n"; 
-    // Rcpp::Rcout << "beta_pq_ix_ncol: " << beta_pq_index.n_cols << "\n"; 
-    // Rcpp::Rcout << "beta_pq_vals_ncol: " << beta_pq_vals.n_cols << "\n"; 
-    // Rcpp::Rcout << "_expo_1: " << _expo_1 << "\n"; 
-    // Rcpp::Rcout << "_expo_2: " << _expo_2 << "\n"; 
-    // Rcpp::Rcout << "_to: " << _to << "\n"; 
-    // Rcpp::Rcout << "_from: " << _from << "\n"; 
-    // Rcpp::Rcout << beta_pq_vals << "\n"; 
-    
-    total += 
-      ( beta_pq_index(k, _from) == from ) * 
-      ( beta_pq_index(k, _to) == to) * 
-      beta_pq_vals(k, _coef) * 
-        fintpow(p1, beta_pq_index(k, _expo_1)) * 
-        fintpow(q1, beta_pq_index(k, _expo_2));
-  }
-  
-  return total; 
 }
 
 
@@ -549,7 +585,7 @@ void console_callback_wrap(const arma::uword iter,
   console_callback(iter, ps_arma, ncells); 
 }
 
-void snapshot_callback_wrap(const arma::uword iter, 
+void snapshot_callback_wrap(const double t, 
                             const uchar omat[nr][nc],
                             const Rcpp::Function snapshot_callback) { 
     
@@ -561,12 +597,12 @@ void snapshot_callback_wrap(const arma::uword iter,
     }
   }
   
-  snapshot_callback(iter, m); 
+  snapshot_callback(t, m); 
 }
 
-void custom_callback_wrap(const arma::uword iter, 
-                            const uchar omat[nr][nc],
-                            const Rcpp::Function custom_callback) { 
+void custom_callback_wrap(const double t, 
+                          const uchar omat[nr][nc],
+                          const Rcpp::Function custom_callback) { 
     
   // Make arma array to give back to R
   Mat<ushort> m(nr, nc);
@@ -576,15 +612,16 @@ void custom_callback_wrap(const arma::uword iter,
     }
   }
   
-  custom_callback(iter, m); 
+  custom_callback(t, m); 
 }
 
-void cover_callback_wrap(const arma::uword iter, 
+void cover_callback_wrap(const double t, 
                          const arma::uword ps[ns], 
                          Rcpp::Function cover_callback) { 
   uvec ps_arma(ns); 
   for ( uchar k=0; k<ns; k++ ) { 
     ps_arma(k) = ps[k]; 
   }
-  cover_callback(iter, ps_arma, ncells); 
+  
+  cover_callback(t, ps_arma, ncells); 
 }

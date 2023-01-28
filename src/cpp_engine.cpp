@@ -229,13 +229,14 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m,
 void camodel_cpp_engine(const Rcpp::List ctrl) { 
   
   // Unpack control list
-  const arma::uword substeps     = ctrl["substeps"]; 
-  const bool  wrap         = ctrl["wrap"]; 
-  const arma::Mat<ushort> init   = ctrl["init"];
-  const arma::uword niter  = ctrl["niter"]; // TODO: think about overflow in those values
-  const ushort ns          = ctrl["nstates"]; 
-  const ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
-  const bool use_8_nb      = nbs == 8 ? true : false; 
+  const bool  wrap             = ctrl["wrap"]; 
+  const arma::Mat<ushort> init = ctrl["init"];
+  const ushort ns              = ctrl["nstates"]; 
+  const ushort nbs             = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
+  const bool use_8_nb          = nbs == 8 ? true : false; 
+  const arma::uword substeps   = ctrl["substeps"]; 
+  const arma::Col<double> times = ctrl["times"]; 
+  const double delta_t         = ctrl["delta_t"]; 
   
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
@@ -289,34 +290,44 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
     }
   }
   
-  arma::uword iter = 0; 
-  
   // Allocate some things we will reuse later 
   arma::Mat<arma::uword> qs(nr, ns);
   arma::Col<double> qs_prop(ns);
   arma::Col<double> ptrans(ns); 
+
+  // Allocate essentials things to keep track of time  
+  double current_t = 0.0; 
+  double last_t = times(times.n_elem-1); 
+  arma::uword export_n = 0; 
+  double next_export_t = times(export_n); 
+  arma::uword iter = 0; 
   
-  while ( iter <= niter ) { 
-//     Rcpp::Rcout << omat << "\n"; 
+  while ( current_t < (last_t + delta_t) ) { 
     
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
       console_callback(iter, ps, ncells); 
     }
     
-    if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-      cover_callback(iter, ps, ncells); 
+    if ( next_export_t <= current_t ) { 
+
+      if ( cover_callback_active && export_n % cover_callback_every == 0 ) { 
+        cover_callback(current_t, ps, ncells); 
+      }
+      
+      if ( snapshot_callback_active && export_n % snapshot_callback_every == 0 ) { 
+        snapshot_callback(current_t, omat); 
+      }
+      
+      if ( custom_callback_active && export_n % custom_callback_every == 0 ) { 
+        custom_callback(current_t, omat); 
+      }
+      
+      export_n++; 
+      next_export_t = times(export_n); 
     }
     
-    if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
-      snapshot_callback(iter, omat); 
-    }
-    
-    if ( custom_callback_active && iter % custom_callback_every == 0 ) { 
-      custom_callback(iter, omat); 
-    }
-    
-    for ( arma::uword substep = 0; substep < substeps; substep++ ) { 
+    for ( arma::uword s=0; s<substeps; s++ ) { 
       
       for ( arma::uword j=0; j<nc; j++ ) { 
         
@@ -442,8 +453,9 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
       }
       omat = nmat; 
       
-    } // end of substep loop
+    }
     
+    current_t += delta_t; 
     iter++; 
   }
   

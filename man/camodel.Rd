@@ -9,6 +9,7 @@ camodel(
   ...,
   neighbors,
   wrap,
+  continuous,
   parms = list(),
   all_states = NULL,
   check_model = TRUE,
@@ -143,7 +144,7 @@ mod <- camodel(
   all_states = c("DEAD", "LIVE")
 )
 
-# A spiral-generating rock-paper-scissor model (run with substeps = 1)
+# A spiral-generating rock-paper-scissor model
 mod <- camodel(
   transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
   transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 

@@ -18,7 +18,8 @@ exp_approx <- function(x, d) {
 mkmod <- function(tr) { 
   camodel(tr, 
           wrap = TRUE, 
-          neighbors = 4)
+          neighbors = 4, 
+          continuous = FALSE)
 }
 
 

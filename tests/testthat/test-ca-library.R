@@ -19,13 +19,10 @@ test_that("Example models produce correct results", {
   fmat <- factor(ifelse(imat > 0, "LIVE", "DEAD"), levels = c("DEAD", "LIVE"))
   dim(fmat) <- dim(imat)
   
-  control <- list(substeps = 1, 
-                  console_output_every = 0, 
+  control <- list(console_output_every = 0, 
                   save_covers_every = 1, 
                   save_snapshots_every = 1, 
-                  engine = "cpp", 
-                  olevel = "O3", 
-                  unroll_loops = FALSE)
+                  engine = "cpp")
 
   a <- run_camodel(gol, fmat, 10, control = control)
 

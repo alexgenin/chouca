@@ -6,21 +6,24 @@ test_that("autocorrelation in spatial patterns make sense", {
   # We need raw_moran from spatialwarnings
   if ( requireNamespace("spatialwarnings") ) { 
     
-    nr <- 50 
-    nc <- 50 
+    nr <- 256
+    nc <- 256
+    ts <- seq(0, 1000)
     
     # This model should have spatial autocorrelation 
-    mod_pos_autocor <- camodel(transition(from = "a", to = "b", ~ 0.04 * q["b"]), 
-                              transition(from = "b", to = "a", ~ 0.01), 
-                              all_states = c("a", "b"), 
-                              neighbors = 8, 
-                              wrap = TRUE)
+    mod_pos_autocor <- camodel(transition(from = "a", to = "b", ~ 0.08 * q["b"]), 
+                               transition(from = "b", to = "a", ~ 0.04), 
+                               all_states = c("a", "b"), 
+                               neighbors = 8, 
+                               continuous = FALSE, 
+                               wrap = TRUE)
     im <- generate_initmat(mod_pos_autocor, c(0.5, 0.5), nr, nc)
     
     # Run the thing, then make sure there is autocorrelation
     ctrl <- list(save_snapshots_every = 100, 
-                console_output_every = 0)
-    run <- run_camodel(mod_pos_autocor, im, 1000, control = ctrl)
+                 console_output_every = 0, 
+                 engine = "compiled")
+    run <- run_camodel(mod_pos_autocor, im, ts, control = ctrl)
     # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])
 
     a <- lapply(run[["output"]][["snapshots"]], function(m) { 
@@ -38,9 +41,11 @@ test_that("autocorrelation in spatial patterns make sense", {
                                transition(from = "b", to = "a", ~ 0.01 * q["b"]), 
                                all_states = c("a", "b"), 
                                neighbors = 8, 
+                               continuous = FALSE, 
+
                                wrap = TRUE)
     
-    run <- run_camodel(mod_neg_autocor, im, 1000, control = ctrl)
+    run <- run_camodel(mod_neg_autocor, im, ts, control = ctrl)
     # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])
 
     a <- lapply(run[["output"]][["snapshots"]], function(m) { 
@@ -59,10 +64,11 @@ test_that("autocorrelation in spatial patterns make sense", {
                                  transition(from = "b", to = "a", ~ 0.01), 
                                  all_states = c("a", "b"), 
                                  neighbors = 8, 
+                                 continuous = TRUE, 
                                  wrap = TRUE)
       
       all_autocors <- replicate(99, { 
-        run <- run_camodel(mod_neg_autocor, im, 1000, control = ctrl)
+        run <- run_camodel(mod_neg_autocor, im, ts, control = ctrl)
         # spatialwarnings::display_matrix(run[["output"]][["snapshots"]])
         
         a <- lapply(run[["output"]][["snapshots"]], function(m) { 

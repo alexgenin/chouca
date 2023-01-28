@@ -21,11 +21,6 @@
 #define _qs 3 // only in beta_q, so no overlap with _state_2 above
 #define _coef 0
 
-// We tell gcc to unroll loops, as we have many small loops. This can double 
-// performance in some cases (!)
-__OLEVEL__
-__OUNROLL__ 
-
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
@@ -36,14 +31,16 @@ typedef unsigned char uchar;
 typedef unsigned short ushort; 
 
 // These strings will be replaced by their values 
-constexpr arma::uword nr     = __NR__; 
-constexpr arma::uword nc     = __NC__; 
+constexpr uword nr     = __NR__; 
+constexpr uword nc     = __NC__; 
 constexpr uchar ns           = __NS__; 
 constexpr bool wrap          = __WRAP__; 
 constexpr bool use_8_nb      = __USE_8_NB__; 
 constexpr bool fixed_nb      = __FIXED_NEIGHBOR_NUMBER__; 
+constexpr uword substeps      = __SUBSTEPS__; 
+constexpr bool continuous_sca = __CONTINUOUS_SCA__; 
+constexpr double delta_t     = __DELTA_T__; 
 constexpr uword xpoints      = __XPOINTS__; 
-constexpr arma::uword substeps = __SUBSTEPS__; 
 constexpr double ncells      = nr * nc; 
 constexpr uword beta_0_nrow  = __BETA_0_NROW__; 
 constexpr uword beta_q_nrow  = __BETA_Q_NROW__; 
@@ -58,6 +55,8 @@ constexpr uword cores        = __CORES__;
 
 // The maximum number of neighbors
 constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
+
+// constexpr double delta_t = 1.0;  // TODO
 
 // Declare the betas arrays as static here. Number of columns/rows is known at 
 // compile time. 
@@ -89,25 +88,19 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
     
     for ( uchar from=0; from<ns; from++ ) { 
       
-      for ( uchar to=0; to<ns; to++ ) { 
-        
-        // Factor to convert the number of neighbors into the point at which the 
-        // dependency on q is sampled.
-        // all_qs[ ][ns] holds the total number of neighbors
-        uword qpointn_factorf = (xpoints - 1) / all_qs[l][ns]; 
-        
-        // Init probability
-        tprobs[l][from][to] = compute_proba(all_qs[l], // qs for this line of all_qs
-                                            ps, // current ps 
-                                            qpointn_factorf, // where to find the q value
-                                            all_qs[l][ns], // total of neighbors
-                                            from, to); // from, to states
-      }
+      // Factor to convert the number of neighbors into the point at which the 
+      // dependency on q is sampled.
+      // all_qs[ ][ns] holds the total number of neighbors
+      uword qpointn_factorf = (xpoints - 1) / all_qs[l][ns]; 
       
-      // Compute cumsum 
-      for ( ushort k=1; k<ns; k++ ) { 
-        tprobs[l][from][k] += tprobs[l][from][k-1];
-      }
+      // Init probability
+      compute_rate(tprobs[l][from], 
+                   all_qs[l], // qs for this line of all_qs
+                   ps, // current ps 
+                   qpointn_factorf, // where to find the q value
+                   all_qs[l][ns], // total of neighbors
+                   from, 
+                   delta_t); // from, to states
       
     }
   }
@@ -121,7 +114,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   
   // Unpack control list
   const Mat<ushort> init = ctrl["init"]; // this is ushort because init is an arma mat
-  const uword niter      = ctrl["niter"]; // TODO: think about overflow in those values
+  const Col<double> times = ctrl["times"]; 
   
   const uword console_callback_every = ctrl["console_output_every"]; 
   const bool console_callback_active = console_callback_every > 0; 
@@ -222,35 +215,46 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   }
   
   // Allocate some things we will reuse later
+#if PRECOMPUTE_TRANS_PROBAS
+#else
   double ptrans[ns]; 
+#endif
   
+  double current_t = 0.0; 
+  double last_t = times(times.n_elem-1); 
+  uword export_n = 0; 
+  double next_export_t = times(export_n); 
   uword iter = 0; 
   
-  while ( iter <= niter ) { 
+  while ( current_t < (last_t + delta_t) ) { 
     
-    // Rcpp::Rcout << "iter: " << iter << "\n"; 
     // Call callbacks 
     if ( console_callback_active && iter % console_callback_every == 0 ) { 
       console_callback_wrap(iter, old_ps, console_callback); 
     }
     
-    if ( cover_callback_active && iter % cover_callback_every == 0 ) { 
-      cover_callback_wrap(iter, old_ps, cover_callback); 
+    if ( next_export_t <= current_t ) { 
+      
+      if ( cover_callback_active && export_n % cover_callback_every == 0 ) { 
+        cover_callback_wrap(current_t, old_ps, cover_callback); 
+      }
+      
+      if ( snapshot_callback_active && export_n % snapshot_callback_every == 0 ) { 
+        snapshot_callback_wrap(current_t, old_mat, snapshot_callback); 
+      }
+      
+      if ( custom_callback_active && export_n % custom_callback_every == 0 ) { 
+        custom_callback_wrap(current_t, old_mat, custom_callback); 
+      }
+      
+      export_n++; 
+      next_export_t = times(export_n); 
     }
     
-    if ( snapshot_callback_active && iter % snapshot_callback_every == 0 ) { 
-      snapshot_callback_wrap(iter, old_mat, snapshot_callback); 
-    }
-    
-    if ( custom_callback_active && iter % custom_callback_every == 0 ) { 
-      custom_callback_wrap(iter, old_mat, custom_callback); 
-    }
-    
-    for ( uword substep=0; substep < substeps; substep++ ) { 
+    for ( uword s=0; s < substeps; s++ ) { 
     
 #if PRECOMPUTE_TRANS_PROBAS
       precompute_transition_probabilites(tprobs, all_qs, old_ps); 
-      // return; 
 #endif 
     
 #if USE_OMP
@@ -258,16 +262,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       // process a line and wait for the others to finish before switching to the next
       // line. This ensures that two threads will never write to the same cell in the 
       // shared data structures. 
-// #pragma omp parallel num_threads(cores) 
-        // {
-// #pragma omp single
       for ( uword c=0; c<(nr/cores); c++ ) { 
 #pragma omp parallel num_threads(cores) default(shared) private(ptrans) reduction(+:new_ps)
-        {
-          uword i = omp_get_thread_num() * (nr/cores) + c; 
-          // Make sure we never run the loop if the number of rows is beyond the number 
-          // of rows in the landscape
-          if ( i < nr ) { 
+      {
+        uword i = omp_get_thread_num() * (nr/cores) + c; 
+        // Make sure we never run the loop if the number of rows is beyond the number 
+        // of rows in the landscape
+        if ( i < nr ) { 
 #else
       for ( uword i=0; i<nr; i++ ) { 
 #endif
@@ -288,19 +289,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
               for ( ushort to=0; to<ns; to++ ) { 
                 
                 // Init probability
-                ptrans[to] = compute_proba(old_qs[i][j],    // qs
-                                           old_ps,          // ps
-                                           qpointn_factorf, // where to find f(q)
-                                           qs_total,        // total of neighbors
-                                           from,            // from (current) state
-                                           to);             // to state
+                compute_rate(ptrans, 
+                             old_qs[i][j],    // qs
+                             old_ps,          // ps
+                             qpointn_factorf, // where to find f(q)
+                             qs_total,        // total of neighbors
+                             from,            // from (current) state
+                             delta_t);        // to state
                 
               }
-              
-              // Compute cumsum 
-              for ( uchar k=1; k<ns; k++ ) { 
-                ptrans[k] += ptrans[k-1];
-            }
 #endif
           
 #if USE_OMP
@@ -333,16 +330,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else 
                 adjust_local_density(new_qs, i, j, from, new_cell_state); 
 #endif
-              } 
-            }
+              }
+              
+            } // end of loop on j (columns)
         
-// #pragma omp critical 
-          // cout << "iter: " << iter << " t:" << omp_get_thread_num() << " c: " << c << " i: " << i << "\n"; 
-// #pragma omp barrier
 #if USE_OMP
-          } // closes if() check to make sure lines are within matrix
-        } // closes parallel block 
-        // } // closes outer parallel block
+        } // closes if() check to make sure lines are within matrix
+      } // closes parallel block 
 #endif
       } // for loop on i 
       
@@ -354,8 +348,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else 
       memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
 #endif
+      
+      // Rcpp::Rcout << "substep: " << s << "\n"; 
     } // end of substep loop
     
+    // Rcpp::Rcout << " cur_t: " << current_t << " del_t: "<< delta_t << " max_t: " << last_t << "\n"; 
+    current_t += delta_t; 
     iter++; 
   }
   

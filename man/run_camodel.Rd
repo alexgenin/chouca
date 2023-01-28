@@ -4,7 +4,7 @@
 \alias{run_camodel}
 \title{Running a cellular automata}
 \usage{
-run_camodel(mod, initmat, niter, control = list())
+run_camodel(mod, initmat, times, control = list())
 }
 \arguments{
 \item{mod}{A stochastic cellular automaton model defined using \code{\link{camodel}}}
@@ -12,10 +12,10 @@ run_camodel(mod, initmat, niter, control = list())
 \item{initmat}{An initial matrix to use for the simulation, possibly created using 
 \code{\link{generate_initmat}}}
 
-\item{niter}{The number of iterations for which to run the model}
-
 \item{control}{a named list with settings to alter how the simulation is run (see 
 full list of settings in secion 'Details')}
+
+\item{niter}{The number of iterations for which to run the model}
 }
 \value{
 A \code{ca_model_result} objects, which is a list with the following 
@@ -52,13 +52,6 @@ The \code{control} list must have named elements, and allows altering the
   way the simulation is run. The possible options are the following: 
  
  \enumerate{ 
-   \item \code{substeps} The number of substeps within each iteration. Probabilities 
-     defined in the model definition may go above one for some models, which produces 
-     results that are approximate. To avoid this problem, each time step of the 
-     model can be divided into several 'substeps'. Transitions between cell 
-     probabilities may occur between each substep, but with a probability divided 
-     by the number of substeps. This makes sure that every probability evaluated 
-     during the model run is below one. Default is 1.
    
    \item \code{save_covers_every} The period of time between which the global covers 
      of each state in the landscape is saved. Set to zero to turn off saving 
@@ -68,33 +61,15 @@ The \code{control} list must have named elements, and allows altering the
      2D grid is saved. Set to zero to turn off the saving of snapshots (default
      option).
     
-   \item \code{console_callback_every} Sets the number of iterations between which 
+   \item \code{console_output_every} Sets the number of iterations between which 
      progress report is printed on the console. Set to zero to turn off progress 
      report. Default is to print progress every ten iterations.
-   
-   \item \code{neighbors} The number of neighbors to use. Use the integer value 4 to 
-     use a four-way (von-Neumann) neighborhood, or 8 for an 8-way (Moore) 
-     neighborhood. Any other values will produce an error. Default is to use 4
-     neighbors.
-   
-   \item \code{wrap} Set to \code{TRUE} to use a toric space in which edges wrap 
-     around, i.e. that cells on a side of the landscape are considered neighbors of
-     cells on the other side. 
    
    \item \code{engine} The engine to use to run the simulations. Accepted values 
      are 'r', to use the pure-R engine, 'cpp' to use the C++ engine, or 'compiled', to
      compile the model code on the fly. Default is to use the C++ engine. Note that 
      the 'compiled' engine uses its own random number generator, and for this reason
      may produce results that are different from the two other engines.
-   
-   \item \code{olevel} (Compiled engine only) The optimization level to use when
-     compiling the model code (default, O2, O3 or Ofast). This requires compiling with 
-     gcc. By default, \code{\link[Rcpp]{sourceCpp}} options are used 
-     (option 'default').
-   
-   \item \code{unroll_loops} (Compiled engine only) Set to \code{TRUE} to unroll loops 
-     or not when compiling the model. Default is \code{FALSE}. Requires compiling with
-     gcc.  
    
    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
      precompute probabilities of transitions for all possible combinations of 
