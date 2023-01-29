@@ -135,9 +135,9 @@
 #' 
 #'@export
 camodel <- function(..., 
-                    neighbors, # default to von-neumann neighborhood
+                    neighbors, 
                     wrap, 
-                    continuous, 
+                    continuous = FALSE, 
                     parms = list(), 
                     all_states = NULL, 
                     check_model = TRUE, 
