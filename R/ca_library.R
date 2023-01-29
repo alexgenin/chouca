@@ -74,7 +74,7 @@
 #' # Import a model, create an initial landscape and run it for ten iterations
 #' forestgap_model <- ca_library("forestgap")
 #' im <- generate_initmat(forestgap_model, c(0.5, 0.5), nr = 64, nc = 100) 
-#' run_camodel(forestgap_model, im, niter = 10) 
+#' run_camodel(forestgap_model, im, times = seq(0,100)) 
 #' 
 #'@export
 ca_library <- function(model, 
@@ -116,7 +116,7 @@ ca_library <- function(model,
       parms = parms, 
       all_states = c("EMPTY", "TREE"), 
       continuous = FALSE, 
-      check_model = FALSE
+      check_model = TRUE
     )
   
   }
@@ -145,7 +145,7 @@ ca_library <- function(model,
       parms = parms, 
       all_states = c("MUSSEL", "EMPTY", "DISTURB"), 
       continuous = FALSE, 
-      check_model = FALSE
+      check_model = TRUE
     )
   }
   
@@ -186,7 +186,7 @@ ca_library <- function(model,
       neighbors = neighbors, 
       all_states = c("DEGR", "EMPTY", "VEGE"),
       continuous = FALSE, 
-      check_model = FALSE
+      check_model = TRUE
     )
     
   }
@@ -227,7 +227,7 @@ ca_library <- function(model,
       parms = parms, 
       all_states = c("BARE", "ALGAE", "CORAL"), 
       continuous = FALSE, 
-      check_model = FALSE
+      check_model = TRUE
     )
   }
   
@@ -271,7 +271,7 @@ ca_library <- function(model,
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 
-      check_model = FALSE, 
+      check_model = TRUE, 
       continuous = FALSE
     )
     

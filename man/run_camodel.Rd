@@ -12,10 +12,11 @@ run_camodel(mod, initmat, times, control = list())
 \item{initmat}{An initial matrix to use for the simulation, possibly created using 
 \code{\link{generate_initmat}}}
 
+\item{times}{Time sequence for which output is wanted. Time will always start at zero
+but output will only be saved for values in this vector.}
+
 \item{control}{a named list with settings to alter how the simulation is run (see 
 full list of settings in secion 'Details')}
-
-\item{niter}{The number of iterations for which to run the model}
 }
 \value{
 A \code{ca_model_result} objects, which is a list with the following 
@@ -27,7 +28,7 @@ A \code{ca_model_result} objects, which is a list with the following
   
   \item \code{initmat} The initial landscape (matrix) used for the model run 
   
-  \item \code{niter} The number of iterations used 
+  \item \code{times} The times vector at which output is saved
   
   \item \code{control} The control list used for the model run, containing the options
     used for the run 
@@ -89,11 +90,11 @@ The \code{control} list must have named elements, and allows altering the
 # Run a model with default parameters
 mod <- ca_library("forestgap")
 im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
-run_camodel(mod, im, niter = 100) 
+run_camodel(mod, im, times = seq(0, 100))
 
 # Set some options and use the compiled engine
 ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
-run <- run_camodel(mod, im, niter = 200)
+run <- run_camodel(mod, im, times = seq(0, 200))
 
 covers <- run[["output"]][["covers"]]
 matplot(covers[ ,1], covers[ ,-1], type = "l")

@@ -15,6 +15,9 @@
 #' 
 #' @param wrap Whether the 2D grid should wrap around at the edges
 #' 
+#' @param continuous Whether this model definition should be treated as a continuous 
+#'   (TRUE) or discrete (FALSE) stochastic cellular automaton
+#' 
 #' @param parms a named list of parameters, which should be all numeric, single values
 #' 
 #' @param all_states the complete list of states (a character vector). If unspecified,
@@ -94,7 +97,8 @@
 #'                alpha = 0.2), 
 #'   all_states = c("EMPTY", "TREE"), 
 #'   neighbors = 4, 
-#'   wrap = TRUE
+#'   wrap = TRUE, 
+#'   continuous = FALSE
 #' )
 #' 
 #' # A fun plant model 
@@ -104,6 +108,7 @@
 #'   all_states = c("empty", "plant"), 
 #'   wrap = TRUE, 
 #'   neighbors = 4, 
+#'   continuous = FALSE, 
 #'   parms = list(death = 0.2496)
 #' )
 #' 
@@ -113,6 +118,7 @@
 #'   transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
 #'   wrap = TRUE, 
 #'   neighbors = 8, 
+#'   continuous = FALSE, 
 #'   all_states = c("DEAD", "LIVE")
 #' )
 #' 
@@ -123,6 +129,7 @@
 #'   transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
 #'   parms = list(prob = 1), 
 #'   wrap = TRUE, 
+#'   continuous = FALSE, 
 #'   neighbors = 8
 #' )
 #' 

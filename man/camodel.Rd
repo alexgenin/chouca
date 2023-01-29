@@ -29,6 +29,9 @@ or von-Neumann neghborhood, or 8 for a Moore neighborhood)}
 
 \item{wrap}{Whether the 2D grid should wrap around at the edges}
 
+\item{continuous}{Whether this model definition should be treated as a continuous 
+(TRUE) or discrete (FALSE) stochastic cellular automaton}
+
 \item{parms}{a named list of parameters, which should be all numeric, single values}
 
 \item{all_states}{the complete list of states (a character vector). If unspecified,
@@ -122,7 +125,8 @@ kubo <- camodel(
                alpha = 0.2), 
   all_states = c("EMPTY", "TREE"), 
   neighbors = 4, 
-  wrap = TRUE
+  wrap = TRUE, 
+  continuous = FALSE
 )
 
 # A fun plant model 
@@ -132,6 +136,7 @@ mod <- camodel(
   all_states = c("empty", "plant"), 
   wrap = TRUE, 
   neighbors = 4, 
+  continuous = FALSE, 
   parms = list(death = 0.2496)
 )
 
@@ -141,6 +146,7 @@ mod <- camodel(
   transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
   wrap = TRUE, 
   neighbors = 8, 
+  continuous = FALSE, 
   all_states = c("DEAD", "LIVE")
 )
 
@@ -151,6 +157,7 @@ mod <- camodel(
   transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
   parms = list(prob = 1), 
   wrap = TRUE, 
+  continuous = FALSE, 
   neighbors = 8
 )
 

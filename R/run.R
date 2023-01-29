@@ -79,7 +79,8 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #' @param initmat An initial matrix to use for the simulation, possibly created using 
 #'   \code{\link{generate_initmat}} 
 #' 
-#' @param niter The number of iterations for which to run the model 
+#' @param times Time sequence for which output is wanted. Time will always start at zero
+#'   but output will only be saved for values in this vector. 
 #' 
 #' @param control a named list with settings to alter how the simulation is run (see 
 #'   full list of settings in secion 'Details')
@@ -138,7 +139,7 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #'   
 #'   \item \code{initmat} The initial landscape (matrix) used for the model run 
 #'   
-#'   \item \code{niter} The number of iterations used 
+#'   \item \code{times} The times vector at which output is saved
 #'   
 #'   \item \code{control} The control list used for the model run, containing the options
 #'     used for the run 
@@ -155,11 +156,11 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #' # Run a model with default parameters
 #' mod <- ca_library("forestgap")
 #' im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
-#' run_camodel(mod, im, niter = 100) 
+#' run_camodel(mod, im, times = seq(0, 100))
 #' 
 #' # Set some options and use the compiled engine
 #' ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
-#' run <- run_camodel(mod, im, niter = 200)
+#' run <- run_camodel(mod, im, times = seq(0, 200))
 #' 
 #' covers <- run[["output"]][["covers"]]
 #' matplot(covers[ ,1], covers[ ,-1], type = "l")
@@ -194,10 +195,18 @@ run_camodel <- function(mod, initmat, times,
                         length(times), 
                         length(unique(floor((times)))))
     
+    if ( control[["save_covers_every"]] > 1 ) { 
+      n_exports <- 1 + n_exports %/% control[["save_covers_every"]]
+    }
+    
     global_covers <- matrix(NA_real_, ncol = 1+ns, nrow = n_exports)
     colnames(global_covers) <- c("t", as.character(states))
     cur_line <- 1
+    
     cover_callback <- function(t, ps, n) { 
+      if ( cur_line > nrow(global_covers) ) { 
+        browser()
+      }
       global_covers[cur_line, ] <<- c(t, ps / n)
       cur_line <<- cur_line + 1  
     }
@@ -219,7 +228,7 @@ run_camodel <- function(mod, initmat, times,
   }
   
   # Handle console output callback 
-  console_callback <- function(t, ps, n) { } 
+  console_callback <- function(iter, ps, n) { } 
   console_callback_active <- is_positive(control[["console_output_every"]])
     
   if ( console_callback_active ) { 
@@ -238,7 +247,8 @@ run_camodel <- function(mod, initmat, times,
                             format(ps/n, digits = 3, width = 4), 
                             sep = ":", collapse = " ")
       
-      perc  <- paste0(format(100 * (iter / niter), digits = 1, width = 3), " %")
+      perc <- paste0(format(100 * (iter / niter), digits = 1, width = 3), " %")
+      perc <- ifelse(iter == 0, "", perc)
       
       speed <- ifelse(is.nan(iter_per_s) | iter_per_s < 0, "", 
                       paste("[", sprintf("%0.2f", iter_per_s), " iter/s]", sep = ""))
@@ -318,6 +328,7 @@ run_camodel <- function(mod, initmat, times,
   # Store artefacts and return result 
   results <- list(model = mod, 
                   initmat = initmat, 
+                  times = times, 
                   control = control, 
                   output = list())
   

@@ -567,6 +567,11 @@ static inline void compute_rate(double tprob_line[ns],
     // were working with a discrete SCA, there would be nothing to do here. 
   }
   
+  // Cap probabilities to values above zero 
+  for ( ushort k=0; k<ns; k++ ) { 
+    tprob_line[k] = tprob_line[k] < 0 ? 0 : tprob_line[k]; 
+  }
+  
   // Compute cumsum of probabilities
   for ( ushort k=1; k<ns; k++ ) { 
     tprob_line[k] += tprob_line[k-1];

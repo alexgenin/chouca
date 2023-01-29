@@ -33,7 +33,6 @@ camodel_compiled_engine_wrap <- local({
   use_8_nb   <- ctrl[["neighbors"]] == 8
   fixed_neighborhood <- ctrl[["fixed_neighborhood"]]
   init       <- ctrl[["init"]]
-  niter      <- ctrl[["niter"]]
   ns         <- ctrl[["nstates"]]
   
   # Read file

@@ -13,7 +13,7 @@ test_that("Test console output", {
     string <- capture.output({ 
       run_camodel(model, im, seq(0, 6), ctrl)
     })
-      
+    
     expect_true({ 
       grepl("iter = 3 ( 43 %", string[4], fixed = TRUE)
     })

@@ -31,7 +31,7 @@ ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor", "ari
 
 time_mod <- function(mod, init, control, niter) { 
   timings <- system.time({ 
-    a <- try( run_camodel(mod, init, niter = niter, control = control) )
+    a <- try( run_camodel(mod, init, niter = seq(0, niter), control = control) )
   })
   list(error = inherits(a, "try-error"), timings = timings)
 }

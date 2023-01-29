@@ -45,7 +45,7 @@ export_landscapes <- function(t, mat) {
 }
 
 invisible({ 
-  run_camodel(mod, init, niter = 164, 
+  run_camodel(mod, init, times = seq(0, 164), 
             control = list(custom_output_every = 1, 
                            custom_output_fun = export_landscapes, 
                            console_output_every = 0))
@@ -141,7 +141,7 @@ argument `pvec`, and use a landscape of 128 rows by 256 columns. We can now run
 the simulation: 
 
 ```{r run}
-out <- run_camodel(kubo_model, init_mat, niter = 100)
+out <- run_camodel(kubo_model, init_mat, times = seq(0, 100))
 ```
 
 We can then display the results, either in the R console using `summary()`, or as a 
@@ -289,7 +289,7 @@ control_args <- list(engine = "compiled",
 
 out <- run_camodel(kubo_model, 
                    initmat = init_mat, 
-                   niter = 512, 
+                   niter = seq(0, 512), 
                    control = control_args)
 ```
 
@@ -315,7 +315,7 @@ control_args <- list(engine = "compiled",
 
 out <- run_camodel(kubo_model, 
                    initmat = init_mat, 
-                   niter = 512, 
+                   niter = seq(0, 512), 
                    control = control_args)
 
 ```
@@ -342,7 +342,7 @@ control_args <- list(engine = "compiled",
 
 out <- run_camodel(kubo_model, 
                    initmat = init_mat, 
-                   niter = 512, 
+                   niter = seq(0, 512), 
                    control = control_args)
 
 ```

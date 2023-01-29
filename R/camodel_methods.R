@@ -23,6 +23,8 @@ print.ca_model <- function(x, ...) {
   cat0("")
   cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
   cat0("Wrap: ", x[["wrap"]])
+  cat0("Continuous: ", x[["continuous"]])
+  
   cat0("Max error: ", format(max(x[["max_error"]])), " (", 
        ifelse(max(x[["max_error"]]) < ERROR_ABS_MAX, 
               "OK", "WARNING"), ")" )
@@ -51,7 +53,7 @@ summary.ca_model_result <- function(object, ...) {
   
   cat("Stochastic Cellular Automaton simulation\n") 
   cat("\n")
-  cat(sprintf("Iterations: %s\n", object[["niter"]]))
+  cat(sprintf("Times: %s to %s\n", min(object[["times"]]), max(object[["times"]])))
   cat(sprintf("Landscape size: %sx%s\n", 
               nrow(object[["initmat"]]), ncol(object[["initmat"]])))
   

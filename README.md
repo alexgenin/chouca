@@ -49,7 +49,7 @@ Running the model for 200 iterations on a 100x100 grid is another couple of line
 
 ```r
 initmat <- generate_initmat(kubo, c(TREE = 0.5, EMPTY = 0.5), nr = 100, nc = 100)
-run_camodel(kubo, initmat, niter = 200)
+run_camodel(kubo, initmat, times = seq(0, 200))
 ```
 
 Conway's game of life can be declared in the following way. Note that we declare that 
