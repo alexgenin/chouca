@@ -25,15 +25,15 @@ test_that("Custom callbacks work", {
   
   ctrl <- list(engine = "cpp", 
                console_output_every = 0, 
-               custom_output_every = 1, 
-               custom_output_fun = ccb)
+               custom_every = 1, 
+               custom_fun = ccb)
   
   ctrl[["engine"]] <- "cpp"
-  out_cpp <- run_camodel(mod, initmm, seq(0, niters), ctrl)[["output"]][["custom_output"]]
+  out_cpp <- run_camodel(mod, initmm, seq(0, niters), ctrl)[["output"]][["custom"]]
   out_cpp <- plyr::rbind.fill(out_cpp)
   
   ctrl[["engine"]] <- "compiled"
-  out_compiled <- run_camodel(mod, initmm, seq(0, niters), ctrl)[["output"]][["custom_output"]]
+  out_compiled <- run_camodel(mod, initmm, seq(0, niters), ctrl)[["output"]][["custom"]]
   out_compiled <- plyr::rbind.fill(out_compiled)
   
   expect_true( all( abs(out_cpp - out_compiled) < 1e-10 ) )
