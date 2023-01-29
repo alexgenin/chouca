@@ -214,11 +214,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
     randunif(k); 
   }
   
-  // Allocate some things we will reuse later
-#if PRECOMPUTE_TRANS_PROBAS
-#else
+  // Allocate some things we will reuse later. We always need to define this as 
+  // otherwise the omp pragma will complain it's undefined.
   double ptrans[ns]; 
-#endif
   
   double current_t = 0.0; 
   double last_t = times(times.n_elem-1); 
