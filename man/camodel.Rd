@@ -9,7 +9,7 @@ camodel(
   ...,
   neighbors,
   wrap,
-  continuous,
+  continuous = FALSE,
   parms = list(),
   all_states = NULL,
   check_model = TRUE,

@@ -1,12 +1,24 @@
 ---
-  title: The complete guide to `chouca`
-  author: Alexandre Génin <a.a.h.genin@uu.nl>
-  output:
-    html_document:
-      self_contained: no
-      toc: yes
-      toc_float: yes
+title: The complete guide to `chouca`
+author: Alexandre Génin <a.a.h.genin@uu.nl>
+output:
+  html_document:
+    self_contained: no
+    toc: yes
+    toc_float: yes
+    toc_collapsed: false
+    code_folding: show
 ---
+
+```{css, echo = FALSE}
+<!-- Make sure videos are centered -->
+video { 
+  margin-left:auto; 
+  margin-right:auto; 
+  display:block; 
+}
+
+```
 
 ```{r, echo = FALSE}
 knitr::opts_chunk$set(
@@ -14,8 +26,14 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r}
+```{r, echo = FALSE, results = FALSE, warning = FALSE, message = FALSE}
+devtools::install_github("alexgenin/chouca", upgrade = FALSE)
 library(chouca)
+
+library(plyr)
+library(tidyr)
+library(ggplot2)
+
 ```
 
 # Introduction
@@ -163,7 +181,7 @@ image(out)
 
 
 
-# Supported models 
+## Supported models 
 
 `chouca` works only with models that use either a 4x4 or 8x8 neighborhood (von Neumann or 
 Moore neighborhood, respectively), and in which the effects are isotropic, i.e. all 
@@ -172,38 +190,39 @@ cell. Cellular automata that involve a preferencial direction cannot be implemen
 in `chouca`, for example with water running downslope in a landscape (Mayor et al. 2013).
 
 The probabilities of transition can have any form, but respecting those two principles 
-will work better for `chouca`: 
+will work better: 
 
 * To be accurately computed, transition probabilities must be a linear
 polynomial of the products of the local or global proportion of cells in a given state. 
 For example, a transition probability defined between states $i$ and $j$ as 
 $P(i \rightarrow j) = 0.1 + p_i + p_j q_i$ works perfectly, but something involving non-linear functions such as 
-$P(0 \rightarrow +) = 0.1 + sin^{p_i}$ may not be able to be correctly handled by 
-`chouca` (see below for the consequences). 
+$P(0 \rightarrow +) = 0.1 + sin(p_i)$ may not be correctly handled (see below for the consequences). 
 
 * There is some tolerance is discontinuities in the transition rules. Rules such as "if 
 one neighbor is in state $i$, then the probability of transition is increased" are OK. 
 However, such rule involving multiple types of neighbors are not, e.g. "if one neighbor is 
 in state $i$ *and* another one in state $j$, then...". This type of discontinuity is 
-hard to accomodate by chouca. 
+hard to accomodate. 
 
 Overall, the assumed functional form of transitions probabilities must be the following: 
 
 $$ 
-P( a \rightarrow b ) = \beta_0 + 
-  \sum_{s \in S} f_s(q_s) + 
-  \alpha_1 p_1 ... \alpha_n p_S + 
-  \beta_1  p_1 q_1, p_1^2 q_1^2 ...  \beta_n p_S^k q_S^k + 
-  \gamma_1 q_1 q_2, q_1^2 q_2^2 ... \gamma_n q_(S-1)^k q_S^k + 
-  \delta_1 p_1 q_1, p_1^2 q_1^2 ... \delta_n p_S^k q_S^k 
+P( a \rightarrow b ) = \beta_0 \\ 
+  + \sum_{s \in S} f_s(q_s) \\
+  + \alpha_1 p_1 ... \alpha_n p_S \\
+  + \beta_1  p_1 p_2 + p_1 p_2^2 + p_1^2 p_2 ...  \beta_n p_S^k p_S^k \\
+  + \gamma_1 q_1 q_2 + q_1 q_2^2 + q_1^2 q_2 ... \gamma_n q_{S-1}^k q_S^k \\
+  + \delta_1 p_1 q_1 + p_1 q_1^2 + p_1^2 q_1 ... \delta_n p_S^k q_S^k 
 $$
 
 where $S$ represents the set of states of the cellular automaton, $f_s$ can be any 
-function of $q_s$. All the $(\alpha)$, $(\beta)$, $(\gamma)$, $(\delta)$ are 
+function of $q_s$. All the $(\alpha_i)$, $(\beta_i)$, $(\gamma_i)$ and $(\delta_i)$ are 
 constants (model parameters). Many models can be represented using this functional form - 
-however, occasionnaly this may not be the case. This functional form can be daunting, but 
-`chouca` will warn you if the transition probabilities cannot be accurately modelled, so 
-the best way is to write your model and see if it is supported. 
+however, this may not always be the case, especially as soon as non-linear 
+functions are involved (exp, sin, etc.), or functions with discontinuities. This 
+functional form can be daunting, but `chouca` will warn you if the transition 
+probabilities cannot be accurately modelled, so the best way is to write your model and 
+see if it is supported. 
 
 For all models, `chouca` reports an estimation of the error on the probabilities of 
 transition, and whether those can be above one or below zero. For example, the 
@@ -232,7 +251,7 @@ The reported maximum absolute error on the probability of transitions is `r form
 error, in other words the error in percentage of the exact probability, is also 
 very small (`r format(max(mod$max_rel_error), digits = 2)`). Because both of this 
 probabilities are very small, you are probably safe to run this model in chouca and 
-obtain correct results. 
+obtain correct results, despite the fact that it does not follow the ideal form. 
 
 The following model gives more trouble: 
 
@@ -275,36 +294,42 @@ print(mod) # negligible error this time, as we use an approximation of sin()
 
 # Performance 
 
-One of the main appeal of `chouca` is its performance. Several approaches exist to 
-improve simulation speed (i) on-the-fly compilation, (ii) memoisation of transition 
-probabilities and (iii) multithreading. 
+One of the main appeal of `chouca` is its performance: which is affected by various 
+factors. The main one is the model complexity. Using a model with transition 
+probabilities that are complicated products of global or neighbor covers, or that 
+do not fit well the functional form expected will lead to poor performance. When 
+possible, try to make your model follow those forms. However, several approaches exist 
+to improve simulation speed in chouca, regardless of the model: (i) on-the-fly 
+compilation, (ii) memoisation of transition probabilities and (iii) multithreading. 
 
-On-the-fly compilation can be enabled using a control argument to chouca. 
+On-the-fly compilation can be enabled using the "compiled" engine to run the cellular 
+automaton. This is done by setting the `engine` control argument to "compiled": 
 
 ```{r}
 control_args <- list(engine = "compiled", 
-                     precompute_probas = TRUE, 
-                     verbose_compilation = TRUE, 
+                     precompute_probas = FALSE, 
                      console_output_every = 128) 
 
 out <- run_camodel(kubo_model, 
                    initmat = init_mat, 
-                   niter = seq(0, 512), 
+                   times = seq(0, 512), 
                    control = control_args)
 ```
 
 On the first run, this model will take a few extra seconds to run as the C++ code 
 corresponding to the model needs to be compiled. However, the simulation itself will be 
 much faster. Compilation only needs to be done when the structure of the model, or the 
-size of the landscape changes. A simple change in parameter value will not trigger a new 
-compilation most of the time. 
+size of the landscape changes. A simple change in parameter value will not trigger a 
+new compilation, except when the probabilities of transition can be simplified, for 
+example when a parameter goes to zero and part of the equation can be left out. 
+
 
 Another approach to better performance lies in the precomputation of probabilities. The 
 classic approach to run a CA is to consider each cell in the landscape one by one, and 
 compute its probability of transition to every state it could switch to. This may entail a 
 lot of repeated computations, as many cells will have the same neighborhood configuration. 
-Instead of doing so, we can compute the probabilities of transition for every neighborhood 
-configuration, and just look the number up when considering whether cells switch or not. 
+To avoid this, we can compute the probabilities of transition for every neighborhood 
+configuration, and just look the number up to know whether cells switch or not. 
 This approach is enabled by using the argument `precompute_probas` in the control list: 
 
 ```{r}
@@ -315,7 +340,7 @@ control_args <- list(engine = "compiled",
 
 out <- run_camodel(kubo_model, 
                    initmat = init_mat, 
-                   niter = seq(0, 512), 
+                   times = seq(0, 512), 
                    control = control_args)
 
 ```
@@ -342,7 +367,7 @@ control_args <- list(engine = "compiled",
 
 out <- run_camodel(kubo_model, 
                    initmat = init_mat, 
-                   niter = seq(0, 512), 
+                   times = seq(0, 512), 
                    control = control_args)
 
 ```
@@ -353,19 +378,229 @@ are probably better off parallelizing at a higher level.
 
 Finally, because the model code is compiled on the fly, you may be able to use 
 optimizations that are specific to your combination of platform and compiler. The best 
-way to do so is to edit your platform '~/.R/Makevars' file to add the flags you want, 
-such as `CXXFLAGS=-O3 -march=native -mtune=native'. However, do not expect too much as 
+way to do so is to edit your platform `~/.R/Makevars` file to add the flags you want, 
+such as `CXXFLAGS=-O3 -march=native -mtune=native`. However, do not expect too much as 
 most of the time this does not bring much more performance to the table. 
 
+Below is a summary of performance for the forest gap model, different options and 
+landscape sizes: 
 
-# Storing/discarding data 
+```{r benhmarks, results = FALSE}
+
+sizes <- 2^seq(3, 8)
+
+benchmark <- ldply(sizes, function(size) { 
+  
+  ctrl <- list(force_compilation = TRUE, 
+               console_output_every = 0)
+  niters <- 256
+  
+  ldply(c("cpp", "compiled"), function(engine) { 
+    ldply(c(TRUE, FALSE), function(precomp) { 
+      if ( precomp && engine == "cpp" ) { 
+        return(NULL)
+      }
+      
+      ctrl[["engine"]] <- engine
+      ctrl[["precompute_probas"]] <- precomp
+      
+      init <- generate_initmat(kubo_model, c(forest = 0.5, empty = 0.5), 
+                               nr = size, nc = size)
+      
+      run1 <- system.time({ 
+        run <- run_camodel(kubo_model, init, seq(0, niters), 
+                           control = ctrl)
+      })
+      
+      ctrl[["force_compilation"]] <- FALSE
+      
+      run2 <- system.time({ 
+        run <- run_camodel(kubo_model, init, seq(0, niters), 
+                           control = ctrl)
+      })
+      
+      print(
+      data.frame(size = size, 
+                 proba_precomp = precomp, 
+                 engine = engine, 
+                 run1 = run1[["elapsed"]], 
+                 run2 = run2[["elapsed"]])
+      )      
+    })
+  })
+})
+
+ggplot(benchmark, 
+       aes(x = size, 
+           y = run1, 
+           color = paste(engine, 
+                         ifelse(proba_precomp, "+precomp", "")))) + 
+  geom_point() + 
+  geom_line() + 
+  scale_color_discrete(name = "Type") + 
+  scale_y_continuous(trans = "log2") + 
+  scale_x_continuous(trans = "log2") 
+
+```
 
 
+# Storing/discarding/accessing data 
 
-# Visualising simulations 
+Various options are available to access simulation outputs. When nothing is specified, 
+the percentage of cells in each state will be saved at each time step specified 
+in the `times` vector (argument to `run_camodel()`), and the landscape at the first and 
+last time step will be saved. These can be accessed simply by acessing elements of the 
+object returned by `run_camodel()`. 
 
-`chouca` can display the covers of each state, or the complete landscape as the 
-simulation is running. 
+Global covers are saved as a matrix whose first column is the time, and the others the 
+percentages for each state: 
+
+```{r}
+
+init <- generate_initmat(kubo_model, c(forest = 0.5, empty = 0.5), 
+                         nr = 128)
+
+run <- run_camodel(kubo_model, init, times = seq(0, 128, by = 1))
+covers <- run[["output"]][["covers"]]
+tail(covers)
+```
+
+The landscape are also available, using the following syntax. A nifty function to 
+display landscapes is available in the spatialwarnings package, `display_matrix`: 
+
+```{r}
+landscapes <- run[["output"]][["snapshots"]]
+spatialwarnings::display_matrix(landscapes)
+```
+
+Sometimes, we do not want to store everything at all time steps. One option to reduce 
+output is to specify a diferrent `times` vector to `run_camodel()`. This will not 
+affect the precision of the simulation, but will simply reduce the time points at which
+simulation output is saved. 
+
+```{r}
+run2 <- run_camodel(kubo_model, init, times = seq(0, 128, by = 8))
+covers2 <- run2[["output"]][["covers"]]
+tail(covers2)
+
+plot(covers[ ,"t"], covers[ ,"forest"], type = "l", col = "red")
+lines(covers2[ ,"t"], covers2[ ,"forest"], col = "blue")
+```
+
+Another option is to set the control argument `save_covers_every` to something higher 
+than one. This will only save simulation output one out of several iterations: 
+
+```{r}
+ctrl <- list(save_covers_every = 8)
+run3 <- run_camodel(kubo_model, init, times = seq(0, 128, by = 1), 
+                    control = ctrl)
+covers3 <- run3[["output"]][["covers"]]
+tail(covers3)
+
+plot(covers[ ,"t"], covers[ ,"forest"], type = "l", col = "red", 
+     xlab = "t", ylab = "forest cover")
+lines(covers2[ ,"t"], covers2[ ,"forest"], col = "blue")
+lines(covers3[ ,"t"], covers3[ ,"forest"], col = "darkgreen")
+legend(x = "right", 
+       legend = c("original", "reduced 'times' vector", "using 'save_covers_every'"), 
+       col = c("black", "blue", "darkgreen"), 
+       lty = c(1, 1, 1))
+
+```
+
+A similar argument exists for saving landscapes, `save_snapshots_every`, to reduce 
+or increase the number of landscapes being saved during the simulation, with similar 
+effects. 
+
+# Running computations on the fly 
+
+## Computing things
+
+One of the easiest way to dissect the results of your simulation is simply to store 
+the landscape, or the covers of each state, then run your computation after the fact. 
+This is not always possible, however, as the landscapes may be large, or your model 
+may be running for a large number of iterations. To avoid this, chouca can take 
+a special function that will be run at regular intervals as the simulation is running. 
+
+This function must have a specific form: its first argument should be `t`, the current 
+time of the simulation, and the second should be `mat`, the current landscape. 
+
+For example, we can compute how the spatial autocorrelation changes in the landscape 
+as the simulation is running, measured by the Moran's I index (available in package 
+(spatialwarnings)[https://cran.r-project.org/package=spatialwarnings]): 
+
+```{r}
+
+mod <- ca_library("forestgap")
+init <- generate_initmat(mod, c(TREE = .5, EMPTY = .5), nr = 256)
+
+control_args <- list(save_covers_every = 0, 
+                     custom_output_every = 1, 
+                     custom_output_fun = function(t, mat) { 
+                       m <- matrix(mat == "TREE", nrow = nrow(mat), ncol = ncol(mat))
+                       data.frame(t = t, ac = spatialwarnings::raw_moran(mat))
+                     })
+
+out <- run_camodel(mod, init, times = seq(0, 64), control = control_args)
+
+```
+
+The results can be extracted the following way: 
+
+```{r}
+my_output <- out[["output"]][["custom"]]
+```
+
+By default, all custom outputs are stored in a list, so a common operation is to 
+transform it into a table using `rbind` or any other function: 
+
+```{r}
+my_tbl <- do.call(rbind, my_output)
+tail(my_tbl, 10)
+```
+
+## Visualising simulations 
+
+The use of custom functions has the nice side-effect that simulations can be visualised 
+as they are running. This can be done, again by passing a specific function to `chouca`. 
+The package includes a few helpers to do so. 
+
+The first one is `landscape_plotter()`, which can be used as follow, and will display 
+the landscape as it is being run. We use the "rock-paper-scissor" model included with 
+chouca as example for its nice results: 
+
+```{r giflandscape, output = FALSE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE, results = FALSE}
+
+mod <- ca_library("rock-paper-scissor")
+
+ctrl <- list(custom_output_every = 1, 
+             precompute_probas = FALSE, 
+             custom_output_fun = landscape_plotter(mod))
+
+init <- generate_initmat(mod, rep(1, 3)/3, 100, 178)
+
+out <- run_camodel(mod, init, seq(0, 128), control = ctrl)
+
+```
+
+Another option to visualise simulations as they are run is using `trace_plotter()`, 
+which will display the covers of each state in the landscape during the run: 
+
+```{r giftraces, output = FALSE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE, results = FALSE}
+
+ctrl <- list(custom_output_every = 1, 
+             custom_output_fun = trace_plotter(mod, init, max_samples = 128), 
+             console_output_every = 128)
+
+out <- run_camodel(mod, init, seq(0, 512), control = ctrl)
+
+```
+
+These two functions have many options to customize their output to your liking, which 
+are documented in `?trace_plotter` or `?landscape_plotter`. Of course using them involves 
+a large performance penalty as the plots needs to be redrawn during the execution of the 
+simulation. 
+
 
 # Warning about error in probabilites 
 
@@ -376,7 +611,7 @@ example, the following model has transition probabilities that cannot be represe
 100% accuracy, because of the exponential term, and as a result a warning is produced: 
 
 ```{r model_error, results = FALSE}
-camodel(transition(from = "0", to = "+", ~ 1 + exp( 1 + - p["+"] * q["+"])), 
+camodel(transition(from = "0", to = "+", ~ 1 + exp( 2 + 2 * p["+"] * q["+"])), 
         wrap = TRUE, 
         neighbors = 4)
 ```
@@ -402,7 +637,7 @@ form into something more palatable to `chouca`, by using the first few terms of 
 the exponential function: $e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!}$. 
 
 ```{r model_error_ok}
-exp_approx <- function(x) 1 + x + x^2/(2*1) + x^3/(3*2*1) + x^4/(4*3*2)
+exp_approx <- function(x) 1 + x + x^2/2 + x^3/(3*2) + x^4/(4*3*2)
 camodel(transition(from = "0", to = "+", ~ 1 + exp_approx(- p["+"] * q["+"])), 
         wrap = TRUE, 
         neighbors = 4)

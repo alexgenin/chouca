@@ -132,11 +132,13 @@ landscape_plotter <- function(mod,
     # mat is a factor, so limits should be 1:nstates
     image.camodel_initmat(mat, col = col, zlim = c(1, mod[["nstates"]]), ...)
     last_call_time <<- Sys.time()
-    return(TRUE)
+    
+    return(NULL)
   }
   
 }
 
+#'@export
 trace_plotter <- function(mod, initmat, 
                           fun = function(m) { 
                             sapply(mod[["states"]], function(s) mean(m == s))
@@ -195,7 +197,7 @@ trace_plotter <- function(mod, initmat,
                         col = col, 
                         type = "l", 
                         xlab = "time", 
-                        ylab = "trace", 
+                        ylab = "covers", 
                         ...)
     }
     
@@ -206,6 +208,7 @@ trace_plotter <- function(mod, initmat,
       backlog_line <<- 1 
     }
     
+    return(NULL)
   }
   
 }

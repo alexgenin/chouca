@@ -34,6 +34,7 @@
 <link href="guide_files/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="guide_files/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="guide_files/navigation-1.1/tabsets.js"></script>
+<script src="guide_files/navigation-1.1/codefolding.js"></script>
 <link href="guide_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
 <script src="guide_files/highlightjs-9.12.0/highlight.js"></script>
 
@@ -153,6 +154,9 @@ pre code {
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -242,6 +246,14 @@ div.tocify {
 
 <div id="header">
 
+<div class="btn-group pull-right float-right">
+<button type="button" class="btn btn-default btn-xs btn-secondary btn-sm dropdown-toggle" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu dropdown-menu-right" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">The complete guide to
@@ -252,137 +264,163 @@ class="email">a.a.h.genin@uu.nl</a></h4>
 </div>
 
 
+<style type="text/css">
+<!-- Make sure videos are centered -->
+video { 
+  margin-left:auto; 
+  margin-right:auto; 
+  display:block; 
+}
+
+</style>
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
 <p><code>chouca</code> is engine in R for <a
 href="https://en.wikipedia.org/wiki/Stochastic_cellular_automaton">stochastic
-cellular automata</a>: a class of models that describes the temporal
+cellular automata</a>, which are models that describes the temporal
 dynamics of a 2D landscape made of cells. Each cell can be in one of a
-finite number of states. In such model, the time is discrete, and at
-each iteration cells have a probability of switching from one state to
-another that typically depends on model parameters, and the state of
-their neighbors.</p>
+finite number of states, and switch states over time with probabilities
+that depend on their neighborhood.</p>
 <p>A picture being worth a thousand words, the output of a stochastic
 cellular automaton looks like the following animation in practice:</p>
 <video width="288" controls loop>
 <source src="guide_files/figure-html/gifcreate.webm" />
 </video>
 <p>Stochastic cellular automata are widely used to describe the dynamics
-of landscapes, for example in ecology, to describe the dynamics of
-forests or coral reefs over space. Yet, implementations are often
-ad-hoc, carried out by the authors themselves, which is prone to bugs
-and often leads to quite slow implementations. <code>chouca</code> tries
-to avoid this by providing a base onto which such models can be built.
-The goal is for the user to declare the probabilities of state
-transition of the model, then <code>chouca</code> handles the rest.</p>
+of landscapes, for example, that of forests or coral reefs over space.
+Yet, implementations are often ad-hoc, carried out by the authors
+themselves, which is prone to bugs and often leads to quite slow
+implementations. <code>chouca</code> tries to avoid this by providing a
+base onto which such models can be built. The goal is for the user to
+declare the probabilities of state transitions of the model, then
+<code>chouca</code> handles the rest.</p>
 <p>While <code>chouca</code> is built mainly for stochastic cellular
 automata, it can also handle non-stochastic cellular automata, such as
 the game of life or the <a
 href="https://www.youtube.com/watch?v=TvZI6Xc0J1Y">rock-paper-scissor
-automaton</a>. We aim to support a large selection of cellular automata,
-while preserving decent performance. This is done through by writing
-most of the code in C++, and being able to produce and compile C++ code
-on the fly for a specific model at run time. This enables many compiler
-optimizations that would be impossible with pre-compiled code, and often
-improves simulation speed 10-100x.</p>
-<div id="a-small-example" class="section level2">
-<h2>A small example</h2>
-<p>Let’s define a small forest model. In such model, cells can be either
-‘empty’, or filled with a tree, what we call here the ‘forest’ state.
-Trees produce seeds that fly over the whole landscape and land
-haphazardly in any cell. Thus, the probability of an empty cell to
-switch to the forested state is proportional to <span
+automaton</a>. If you are specifically interested in deterministic
+cellular automata though, there are probably better alternatives to run
+your model. Chouca supports a wide selection of models, while preserving
+decent performance. This is done by writing most of the code in C++, and
+being able to emit and compile C++ code on the fly for a specific model
+at run time. This enables compiler optimizations that would be
+impossible with pre-compiled code, and often improves simulation speed
+by one or two orders of magnitude. Chouca can also use a
+memoisation-based strategy to run simulations, in which probabilities
+are not recomputed for each cell at each iteration, providing another
+boost in perfmance. For supported models, chouca may probably be 3 to 4
+orders of magnitude faster than the common implementations.</p>
+<div id="your-first-model-in-chouca" class="section level2">
+<h2>Your first model in <code>chouca</code></h2>
+<p>Let’s implement a small forest gap model (Kubo et al. 1996). In such
+model, cells can be either ‘empty’, or filled with a tree, what we call
+here the ‘forest’ state. Trees produce seeds that can fly over the whole
+landscape and land haphazardly in any cell. Thus, the probability of an
+empty cell to switch to the forested state is proportional to <span
 class="math inline">\(p_+\)</span>, the proportion of cells with trees
 in the landscape. If we represent the empty state as <span
 class="math inline">\(0\)</span> and the forest state as <span
 class="math inline">\(+\)</span>, this probability of transition is
 thus:</p>
 <p><span class="math display">\[P(0 \rightarrow +) = \alpha
-p_+\]</span></p>
+p_{forest}\]</span></p>
 <p>where <span class="math inline">\(\alpha\)</span> is the rate at
 which seeds are produced by each tree.</p>
 <p>Trees naturally die over time, and because wind bursts are stronger
-in empty areas, trees have a higher of dying when they have empty
-neighboring cells:</p>
+in empty areas, trees have a higher probability of dying when they have
+empty neighboring cells:</p>
 <p><span class="math display">\[P(+ \rightarrow 0) = \delta_0 + \delta
-q_{0}\]</span></p>
-<p>Here, <span class="math inline">\(q_0\)</span> denotes the proportion
-of cells around the focal cell that are empty, i.e. in the <span
-class="math inline">\(0\)</span> state.</p>
+q_{empty}\]</span></p>
+<p>Here, <span class="math inline">\(q_{empty}\)</span> denotes the
+proportion of cells around the focal cell that are empty, i.e. in the
+“empty” state. <span class="math inline">\(q_{empty}\)</span> is equal
+to one when a cell has all of its neighbors in the empty state, and zero
+when none of the neighbors is in this state.</p>
 <p>This model has three parameters, <span
 class="math inline">\(\alpha\)</span>, <span
 class="math inline">\(\delta_0\)</span> and <span
-class="math inline">\(\delta\)</span>. Such a model can be defined in
+class="math inline">\(\delta\)</span>, and can be defined in
 <code>chouca</code> using the following syntax:</p>
-<pre class="r"><code>model &lt;- camodel(transition(from = &quot;0&quot;, to = &quot;+&quot;, ~ alpha * p[&quot;+&quot;]), 
-                 transition(from = &quot;+&quot;, to = &quot;0&quot;, ~ delta0 + delta * q[&quot;0&quot;]), 
-                 parms = list(alpha = 0.6, delta0 = 0.05, delta = 0.4), 
-                 wrap = TRUE, 
-                 neighbors = 8)</code></pre>
-<p>We first declare the two transitions, by the states between which it
-occurs, and how to compute the probability. In that expression,
-<code>p</code> refers to the proportions of cells in each state, and
-<code>q</code> refers to the the proportion of neighbors in each state.
-We then set the argument <code>parms</code> to a list containing the
+<pre class="r"><code>kubo_model &lt;- camodel(transition(from = &quot;empty&quot;,  to = &quot;forest&quot;, 
+                                 ~ alpha * p[&quot;forest&quot;]), 
+                      transition(from = &quot;forest&quot;, to = &quot;empty&quot;,  
+                                 ~ delta0 + delta * q[&quot;empty&quot;]), 
+                      parms = list(alpha = 0.6, delta0 = 0.05, delta = 0.4), 
+                      wrap = TRUE, 
+                      neighbors = 8)</code></pre>
+<p>We first declare the two transitions, i.e. the states between which
+they occur, and an expression describing how to compute the probability.
+In that expression, <code>p</code> refers to the proportions of cells of
+the landscape in each state, and <code>q</code> refers to the the
+proportion of neighbors in each state. <code>q["forest"]</code> for
+example represents the proportion of neighbors in the
+<code>forest</code> state, which is a number between 0 and 1.</p>
+<p>We then set the argument <code>parms</code> to a list containing the
 numerical values of the model parameters. We use the argument
 <code>wrap = TRUE</code> to state that the model will be run on a space
 in which the edges “wrap around”, and the first column/top row of the
-landscape is neighboring the rightmost/bottom column. We use the
-argument <code>neighbors = 8</code> to state that we want to consider
-all 8 neighbors of a cell, i.e. including those that are diagonal. This
-type of neighborhood is referred to as <a
+landscape is neighboring the rightmost/bottom column (a toric space). We
+use the argument <code>neighbors = 8</code> to state that we want to
+consider all 8 neighbors of a cell, i.e. including those that are
+diagonal. This type of neighborhood is referred to as <a
 href="https://en.wikipedia.org/wiki/Moore_neighborhood">Moore</a>
+neighborhood, the other supported type being a 4-way (Von-Neumann)
 neighborhood.</p>
 <p>A summary of the model can be printed on the R command line, that
-recalls the model parameters, along with the</p>
-<pre class="r"><code>model</code></pre>
+recalls the model definition and options.</p>
+<pre class="r"><code>kubo_model</code></pre>
 <pre><code>## Stochastic Cellular Automaton 
 ##  
-## States: 0 + 
+## States: empty forest 
 ##  
-## Transition: 0 -&gt; + 
-##   ~   alpha * p[&quot;+&quot;] 
-## Transition: + -&gt; 0 
-##   ~   delta0 + delta * q[&quot;0&quot;] 
+## Transition: empty -&gt; forest 
+##   ~   alpha * p[&quot;forest&quot;] 
+## Transition: forest -&gt; empty 
+##   ~   delta0 + delta * q[&quot;empty&quot;] 
 ##  
 ## Neighborhood: 8x8 
 ## Wrap: TRUE 
-## Max error: 2.734479e-13 (OK) 
-## Max rel error: 5.195466e-13 (OK)</code></pre>
+## Continuous: FALSE 
+## Max error: 1.110223e-16 (OK) 
+## Max rel error: 2.816902e-16 (OK)</code></pre>
 <p>The next step is to define the initial landscape from which we want
 to start the simulation. We can do so using the function
 <code>generate_initmat</code>:</p>
-<pre class="r"><code>init_mat &lt;- generate_initmat(model, pvec = c(`0` = 0.5, `+` = 0.5), nr = 128, nc = 256)</code></pre>
-<p>Here we initalize the covers to half tree and half empty space using
-the argument <code>pvec</code>, and use a landscape of 128 rows by 256
-columns. We can now run the simulation:</p>
-<pre class="r"><code>out &lt;- run_camodel(model, init_mat, niter = 100)</code></pre>
-<pre><code>## t =  0 (  0 %) 0:0.499 +:0.501 
-## t = 10 ( 10 %) 0:0.29 +:0.71 [32.57 iter/s]
-## t = 20 ( 20 %) 0:0.241 +:0.759 [33.90 iter/s]
-## t = 30 ( 30 %) 0:0.227 +:0.773 [34.25 iter/s]
-## t = 40 ( 40 %) 0:0.225 +:0.775 [33.22 iter/s]
-## t = 50 ( 50 %) 0:0.222 +:0.778 [32.68 iter/s]
-## t = 60 ( 60 %) 0:0.221 +:0.779 [33.90 iter/s]
-## t = 70 ( 70 %) 0:0.231 +:0.769 [34.84 iter/s]
-## t = 80 ( 80 %) 0:0.225 +:0.775 [35.09 iter/s]
-## t = 90 ( 90 %) 0:0.226 +:0.774 [35.34 iter/s]
-## t = 100 (100 %) 0:0.223 +:0.777 [34.36 iter/s]</code></pre>
-<p>And display the results, either in the R console, or as a plot:</p>
+<pre class="r"><code>init_mat &lt;- generate_initmat(kubo_model, pvec = c(empty = 0.5, forest = 0.5), 
+                             nr = 128, nc = 256)</code></pre>
+<p>Here we initalize the covers to half forest and half empty space
+using the argument <code>pvec</code>, and use a landscape of 128 rows by
+256 columns. We can now run the simulation:</p>
+<pre class="r"><code>out &lt;- run_camodel(kubo_model, init_mat, times = seq(0, 100))</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
+## iter =  10 ( 10 %) empty:0.296 forest:0.704 [52.08 iter/s]
+## iter =  20 ( 20 %) empty:0.232 forest:0.768 [53.76 iter/s]
+## iter =  30 ( 30 %) empty:0.229 forest:0.771 [53.76 iter/s]
+## iter =  40 ( 40 %) empty:0.227 forest:0.773 [53.48 iter/s]
+## iter =  50 ( 50 %) empty:0.227 forest:0.773 [53.76 iter/s]
+## iter =  60 ( 59 %) empty:0.229 forest:0.771 [54.05 iter/s]
+## iter =  70 ( 69 %) empty:0.231 forest:0.769 [53.76 iter/s]
+## iter =  80 ( 79 %) empty:0.226 forest:0.774 [54.05 iter/s]
+## iter =  90 ( 89 %) empty:0.224 forest:0.776 [53.76 iter/s]
+## iter = 100 ( 99 %) empty:0.224 forest:0.776 [54.05 iter/s]</code></pre>
+<p>We can then display the results, either in the R console using
+<code>summary()</code>, or as a plot using the generic function
+<code>plot()</code>, which displays the global covers of each state
+through time, or <code>image()</code>, which displays the landscape:</p>
 <pre class="r"><code>summary(out)</code></pre>
 <pre><code>## Stochastic Cellular Automaton simulation
 ## 
-## Iterations: 100
+## Times: 0 to 100
 ## Landscape size: 128x256
 ## Global covers:
-##          t         0         +
-##  [96,]  95 0.2288818 0.7711182
-##  [97,]  96 0.2277222 0.7722778
-##  [98,]  97 0.2244568 0.7755432
-##  [99,]  98 0.2254028 0.7745972
-## [100,]  99 0.2263184 0.7736816
-## [101,] 100 0.2230225 0.7769775
-## Landscapes saved: 51
+##          t     empty    forest
+##  [96,]  95 0.2321472 0.7678528
+##  [97,]  96 0.2332458 0.7667542
+##  [98,]  97 0.2265930 0.7734070
+##  [99,]  98 0.2258911 0.7741089
+## [100,]  99 0.2248230 0.7751770
+## [101,] 100 0.2243042 0.7756958
+## Landscapes saved: 2
 ## 
 ## The following methods are available: 
 ## image plot</code></pre>
@@ -392,79 +430,397 @@ title(&quot;Global covers over time&quot;)
 image(out)</code></pre>
 <p><img src="guide_files/figure-html/display_plot-1.png" width="1152" style="display: block; margin: auto;" /></p>
 </div>
-</div>
-<div id="supported-models" class="section level1">
-<h1>Supported models</h1>
+<div id="supported-models" class="section level2">
+<h2>Supported models</h2>
 <p><code>chouca</code> works only with models that use either a 4x4 or
 8x8 neighborhood (von Neumann or Moore neighborhood, respectively), and
 in which the effects are isotropic, i.e. all neighbors have a similar
-effect regardless of whether they are above, or below a given cell.</p>
+effect regardless of whether they are above, or below a given cell.
+Cellular automata that involve a preferencial direction cannot be
+implemented in <code>chouca</code>, for example with water running
+downslope in a landscape (Mayor et al. 2013).</p>
 <p>The probabilities of transition can have any form, but respecting
 those two principles will work better for <code>chouca</code>:</p>
 <ul>
-<li><p>To be 100% accurate, transition probabilities must be a linear
-combination of the products of the local or global proportion of cells
-in a given state. For example, a transition probability defined as <span
-class="math inline">\(P(0 \rightarrow +) = 0.1 + p_+ + p_0 q_0\)</span>
-works perfectly, but something involving non-linear functions such as
-<span class="math inline">\(P(0 \rightarrow +) = 0.1 + e^{-
-p_+}\)</span> will not be ideal (see below for the
-consequences).</p></li>
-<li><p>The transition probabilities can be any function of the
-proportion of neighbors in a given state. Rules such as “if one neighbor
-is in state <span class="math inline">\(0\)</span>, then the probability
-of transition is modified” are OK. Such rules involving multiple types
-of neighbors are not, e.g. “if one neighbor is in state <span
-class="math inline">\(0\)</span> <em>and</em> another one in state <span
-class="math inline">\(+\)</span>, then…”.</p></li>
+<li><p>To be accurately computed, transition probabilities must be a
+linear polynomial of the products of the local or global proportion of
+cells in a given state. For example, a transition probability defined
+between states <span class="math inline">\(i\)</span> and <span
+class="math inline">\(j\)</span> as <span class="math inline">\(P(i
+\rightarrow j) = 0.1 + p_i + p_j q_i\)</span> works perfectly, but
+something involving non-linear functions such as <span
+class="math inline">\(P(0 \rightarrow +) = 0.1 + sin^{p_i}\)</span> may
+not be able to be correctly handled by <code>chouca</code> (see below
+for the consequences).</p></li>
+<li><p>There is some tolerance is discontinuities in the transition
+rules. Rules such as “if one neighbor is in state <span
+class="math inline">\(i\)</span>, then the probability of transition is
+increased” are OK. However, such rule involving multiple types of
+neighbors are not, e.g. “if one neighbor is in state <span
+class="math inline">\(i\)</span> <em>and</em> another one in state <span
+class="math inline">\(j\)</span>, then…”. This type of discontinuity is
+hard to accomodate by chouca.</p></li>
 </ul>
-<p>Overall, the functional form of transitions probabilities must be the
-following:</p>
+<p>Overall, the assumed functional form of transitions probabilities
+must be the following:</p>
 <p><span class="math display">\[
-P( a \rightarrow b ) = \beta_0 +
-  \sum_{s \in S} f_s(q_s) +
-  \sum_{s \in S, t \in S} \beta_{qq,s,t} q_s^{ \alpha_{qq, s} } q_t^{
-\alpha_{qq, t} } +
-  \sum_{s \in S, t \in S} \beta_{pq,s,t} p_s^{ \alpha_{pq, s} } q_t^{
-\alpha_{pq, t} } +
-  \sum_{s \in S, t \in S} \beta_{pp,s,t} p_s^{ \alpha_{pp, s} } p_t^{
-\alpha_{pp, t} }
+P( a \rightarrow b ) = \beta_0 \\
+  + \sum_{s \in S} f_s(q_s) \\
+  + \alpha_1 p_1 ... \alpha_n p_S \\
+  + \beta_1  p_1 p_2 + p_1 p_2^2 + p_1^2 p_2 ...  \beta_n p_S^k p_S^k \\
+  + \gamma_1 q_1 q_2 + q_1 q_2^2 + q_1^2 q_2 ... \gamma_n q_{S-1}^k
+q_S^k \\
+  + \delta_1 p_1 q_1 + p_1 q_1^2 + p_1^2 q_1 ... \delta_n p_S^k q_S^k
 \]</span></p>
 <p>where <span class="math inline">\(S\)</span> represents the set of
 states of the cellular automaton, <span
-class="math inline">\(f_s\)</span> can be any function, the <span
-class="math inline">\(\beta_{x,y,z}\)</span>s are constants, and the
-<span class="math inline">\(\alpha_{x,y}\)</span> are integer
-constants.</p>
+class="math inline">\(f_s\)</span> can be any function of <span
+class="math inline">\(q_s\)</span>. All the <span
+class="math inline">\((\alpha_i)\)</span>, <span
+class="math inline">\((\beta_i)\)</span>, <span
+class="math inline">\((\gamma_i)\)</span> and <span
+class="math inline">\((\delta_i)\)</span> are constants (model
+parameters). Many models can be represented using this functional form -
+however, this may not always be the case, especially as soon as
+non-linear functions are involved (exp, sin, etc.), or functions with
+discontinuities. This functional form can be daunting, but
+<code>chouca</code> will warn you if the transition probabilities cannot
+be accurately modelled, so the best way is to write your model and see
+if it is supported.</p>
+<p>For all models, <code>chouca</code> reports an estimation of the
+error on the probabilities of transition, and whether those can be above
+one or below zero. For example, the above mussel bed model can be
+perfectly represented by <code>chouca</code>, so the reported error is
+zero:</p>
+<pre class="r"><code>print(kubo_model)</code></pre>
+<pre><code>## Stochastic Cellular Automaton 
+##  
+## States: empty forest 
+##  
+## Transition: empty -&gt; forest 
+##   ~   alpha * p[&quot;forest&quot;] 
+## Transition: forest -&gt; empty 
+##   ~   delta0 + delta * q[&quot;empty&quot;] 
+##  
+## Neighborhood: 8x8 
+## Wrap: TRUE 
+## Continuous: FALSE 
+## Max error: 1.110223e-16 (OK) 
+## Max rel error: 2.816902e-16 (OK)</code></pre>
+<p>The following model, which includes an exponential function of the
+neighborhood, has a non-zero error, because this exponential function
+cannot be perfectly approximated by a polynomial:</p>
+<pre class="r"><code>mod &lt;- camodel(transition(from = &quot;dead&quot;, to = &quot;live&quot;, 
+                          ~ 0.1 + exp(0.2 * q[&quot;dead&quot;] + p[&quot;dead&quot;])), 
+               transition(from = &quot;live&quot;, to = &quot;dead&quot;, 
+                          ~ 0.1), 
+               wrap = TRUE, 
+               neighbors = 8)
+print(mod)</code></pre>
+<pre><code>## Stochastic Cellular Automaton 
+##  
+## States: dead live 
+##  
+## Transition: dead -&gt; live 
+##   ~   0.1 + exp(0.2 * q[&quot;dead&quot;] + p[&quot;dead&quot;]) 
+## Transition: live -&gt; dead 
+##   ~   0.1 
+##  
+## Neighborhood: 8x8 
+## Wrap: TRUE 
+## Continuous: FALSE 
+## Max error: 0.0001398803 (OK) 
+## Max rel error: 9.181989e-05 (OK)</code></pre>
+<p>The reported maximum absolute error on the probability of transitions
+is 0.00014, which is very small. The relative maximum error, in other
+words the error in percentage of the exact probability, is also very
+small (9.2e-05). Because both of this probabilities are very small, you
+are probably safe to run this model in chouca and obtain correct
+results, despite the fact that it does not follow the ideal form.</p>
+<p>The following model gives more trouble:</p>
+<pre class="r"><code>mod &lt;- camodel(transition(from = &quot;dead&quot;, to = &quot;live&quot;, 
+                          ~ 0.1 + sin(pi * q[&quot;dead&quot;] * p[&quot;dead&quot;] )), 
+               transition(from = &quot;live&quot;, to = &quot;dead&quot;, 
+                          ~ 0.1), 
+               wrap = TRUE, 
+               neighbors = 8)</code></pre>
+<pre><code>## Warning: Residual error in computed probabilities
+##   max error: 0.246
+##   max rel error: 1.27
+## Problematic probability expression: 
+## Transition from dead to live
+##   ~ 0.1 + sin(pi * q[&quot;dead&quot;] * p[&quot;dead&quot;])</code></pre>
+<pre class="r"><code>print(mod)</code></pre>
+<pre><code>## Stochastic Cellular Automaton 
+##  
+## States: dead live 
+##  
+## Transition: dead -&gt; live 
+##   ~   0.1 + sin(pi * q[&quot;dead&quot;] * p[&quot;dead&quot;]) 
+## Transition: live -&gt; dead 
+##   ~   0.1 
+##  
+## Neighborhood: 8x8 
+## Wrap: TRUE 
+## Continuous: FALSE 
+## Max error: 0.2463987 (WARNING) 
+## Max rel error: 1.270006 (WARNING)</code></pre>
+<p>Here, both the absolute and relative errors on the computed
+probabilities are non-negligible (0.25 and 1.3). A warning is produced,
+and the problematic transition is pointed out. You should probably
+revise this model if you want to make it work with <code>chouca</code>.
+A possible approach is to approximate the function by a taylor expansion
+of <span class="math inline">\(sin\)</span>, for example using the
+expansion in zero: <span class="math inline">\(sin(x) \approx x -
+\frac{x^3}{3!} + \frac{x^5}{5!}\)</span>.</p>
+<pre class="r"><code>sin_approx &lt;- function(x) { 
+  x - x^3/factorial(3) + x^5/factorial(5) 
+}
+
+mod &lt;- camodel(transition(from = &quot;dead&quot;, to = &quot;live&quot;, 
+                          ~ 0.1 + sin_approx(pi * q[&quot;dead&quot;] * p[&quot;dead&quot;]) ), 
+               transition(from = &quot;live&quot;, to = &quot;dead&quot;, 
+                          ~ 0.1), 
+               wrap = TRUE, 
+               neighbors = 8)
+print(mod) # negligible error this time, as we use an approximation of sin()</code></pre>
+<pre><code>## Stochastic Cellular Automaton 
+##  
+## States: dead live 
+##  
+## Transition: dead -&gt; live 
+##   ~   0.1 + sin_approx(pi * q[&quot;dead&quot;] * p[&quot;dead&quot;]) 
+## Transition: live -&gt; dead 
+##   ~   0.1 
+##  
+## Neighborhood: 8x8 
+## Wrap: TRUE 
+## Continuous: FALSE 
+## Max error: 1.559383e-11 (OK) 
+## Max rel error: 9.762318e-11 (OK)</code></pre>
+</div>
+</div>
+<div id="performance" class="section level1">
+<h1>Performance</h1>
+<p>One of the main appeal of <code>chouca</code> is its performance:
+which is affected by various factors. The main one is the model
+complexity. Using a model with transition probabilities that are
+complicated products of global or neighbor covers, or that do not fit
+well the functional form expected will lead to poor performance. When
+possible, try to make your model follow those forms. However, several
+approaches exist to improve simulation speed in chouca, regardless of
+the model: (i) on-the-fly compilation, (ii) memoisation of transition
+probabilities and (iii) multithreading.</p>
+<p>On-the-fly compilation can be enabled using the “compiled” engine to
+run the cellular automaton. This is done by setting the
+<code>engine</code> control argument to “compiled”:</p>
+<pre class="r"><code>control_args &lt;- list(engine = &quot;compiled&quot;, 
+                     console_output_every = 128) 
+
+out &lt;- run_camodel(kubo_model, 
+                   initmat = init_mat, 
+                   times = seq(0, 512), 
+                   control = control_args)</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
+## iter = 128 ( 25 %) empty:0.226 forest:0.774 [1319.59 iter/s]
+## iter = 256 ( 50 %) empty:0.226 forest:0.774 [1376.34 iter/s]
+## iter = 384 ( 75 %) empty:0.227 forest:0.773 [1376.34 iter/s]
+## iter = 512 (100 %) empty:0.232 forest:0.768 [1376.34 iter/s]</code></pre>
+<p>On the first run, this model will take a few extra seconds to run as
+the C++ code corresponding to the model needs to be compiled. However,
+the simulation itself will be much faster. Compilation only needs to be
+done when the structure of the model, or the size of the landscape
+changes. A simple change in parameter value will not trigger a new
+compilation, except when the probabilities of transition can be
+simplified, for example when a parameter goes to zero and part of the
+equation can be left out.</p>
+<p>Another approach to better performance lies in the precomputation of
+probabilities. The classic approach to run a CA is to consider each cell
+in the landscape one by one, and compute its probability of transition
+to every state it could switch to. This may entail a lot of repeated
+computations, as many cells will have the same neighborhood
+configuration. To avoid this, we can compute the probabilities of
+transition for every neighborhood configuration, and just look the
+number up to know whether cells switch or not. This approach is enabled
+by using the argument <code>precompute_probas</code> in the control
+list:</p>
+<pre class="r"><code>control_args &lt;- list(engine = &quot;compiled&quot;, 
+                     precompute_probas = TRUE, 
+                     console_output_every = 128) 
+
+out &lt;- run_camodel(kubo_model, 
+                   initmat = init_mat, 
+                   times = seq(0, 512), 
+                   control = control_args)</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
+## iter = 128 ( 25 %) empty:0.225 forest:0.775 [1319.59 iter/s]
+## iter = 256 ( 50 %) empty:0.231 forest:0.769 [1376.34 iter/s]
+## iter = 384 ( 75 %) empty:0.229 forest:0.771 [1376.34 iter/s]
+## iter = 512 (100 %) empty:0.229 forest:0.771 [1391.30 iter/s]</code></pre>
+<p>This approach can dramatically improve the performance for models
+that have a small number of states and simple transition rules. However,
+it may be counter-productive for models with a larger number of states,
+as the number of neighborhood configurations grows very quickly with the
+number of different model states (<span
+class="math inline">\(S^4\)</span> or <span
+class="math inline">\(S^8\)</span> depending on the type of
+neighborhood). By default, a simple heuristic is used to make a decent
+choice.</p>
+<p>The last approach to improve performance is to use multithreading. In
+chouca, the approach is to consider the updating of cells in parallel,
+instead of doing it serially. However, there is some synchronisation
+work required between threads to make sure the different cores are not
+writing to shared data structures. This often results in a significant
+overhead, and only small performance improvements.</p>
+<pre class="r"><code>control_args &lt;- list(engine = &quot;compiled&quot;, 
+                     precompute_probas = TRUE, 
+                     cores = 4, 
+                     console_output_every = 128) 
+
+out &lt;- run_camodel(kubo_model, 
+                   initmat = init_mat, 
+                   times = seq(0, 512), 
+                   control = control_args)</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
+## iter = 128 ( 25 %) empty:0.221 forest:0.779 [528.93 iter/s]
+## iter = 256 ( 50 %) empty:0.229 forest:0.771 [707.18 iter/s]
+## iter = 384 ( 75 %) empty:0.228 forest:0.772 [1542.17 iter/s]
+## iter = 512 (100 %) empty:0.228 forest:0.772 [2169.49 iter/s]</code></pre>
+<p>Future improvements of the package may improve this situation. In the
+meantime, if you happen to be running several simulations at the same
+time (which is often the case), you are probably better off
+parallelizing at a higher level.</p>
+<p>Finally, because the model code is compiled on the fly, you may be
+able to use optimizations that are specific to your combination of
+platform and compiler. The best way to do so is to edit your platform
+<code>~/.R/Makevars</code> file to add the flags you want, such as
+<code>CXXFLAGS=-O3 -march=native -mtune=native</code>. However, do not
+expect too much as most of the time this does not bring much more
+performance to the table.</p>
+</div>
+<div id="storingdiscardingaccessing-data" class="section level1">
+<h1>Storing/discarding/accessing data</h1>
+</div>
+<div id="running-computations-on-the-fly" class="section level1">
+<h1>Running computations on the fly</h1>
+<div id="computing-metrics" class="section level2">
+<h2>Computing metrics</h2>
+<p>One of the easiest way to dissect the results of your simulation is
+simply to store the landscape, or the covers of each state, then run
+your computation after the fact. This is not always possible, however,
+as the landscapes may be large, or your model may be running for a large
+number of iterations. To avoid this, chouca can take a special function
+that will be run at regular intervals as the simulation is running.</p>
+<p>This function must have a specific form: its first argument should be
+<code>t</code>, the current time of the simulation, and the second
+should be <code>mat</code>, the current landscape.</p>
+<p>For example, we can compute how the spatial autocorrelation changes
+in the landscape as the simulation is running, measured by the Moran’s I
+index (available in package (spatialwarnings)[<a
+href="https://cran.r-project.org/package=spatialwarnings"
+class="uri">https://cran.r-project.org/package=spatialwarnings</a>]):</p>
+<pre class="r"><code>mod &lt;- ca_library(&quot;forestgap&quot;)
+init &lt;- generate_initmat(mod, c(TREE = .5, EMPTY = .5), nr = 256)
+
+control_args &lt;- list(save_covers_every = 0, 
+                     custom_output_every = 1, 
+                     custom_output_fun = function(t, mat) { 
+                       m &lt;- matrix(mat == &quot;TREE&quot;, nrow = nrow(mat), ncol = ncol(mat))
+                       data.frame(t = t, ac = spatialwarnings::raw_moran(mat))
+                     })
+
+out &lt;- run_camodel(mod, init, times = seq(0, 64), control = control_args)</code></pre>
+<pre><code>## iter =  0 (  0 %) EMPTY:0.502 TREE:0.498 
+## iter = 10 ( 15 %) EMPTY:0.708 TREE:0.292 [27.10 iter/s]
+## iter = 20 ( 31 %) EMPTY:0.708 TREE:0.292 [28.99 iter/s]
+## iter = 30 ( 46 %) EMPTY:0.708 TREE:0.292 [28.09 iter/s]
+## iter = 40 ( 62 %) EMPTY:0.708 TREE:0.292 [28.57 iter/s]
+## iter = 50 ( 77 %) EMPTY:0.708 TREE:0.292 [28.57 iter/s]
+## iter = 60 ( 92 %) EMPTY:0.708 TREE:0.292 [28.09 iter/s]</code></pre>
+<p>The results can be extracted the following way:</p>
+<pre class="r"><code>my_output &lt;- out[[&quot;output&quot;]][[&quot;custom&quot;]]</code></pre>
+<p>By default, all custom outputs are stored in a list, so a common
+operation is to transform it into a table using <code>rbind</code> or
+any other function:</p>
+<pre class="r"><code>my_tbl &lt;- do.call(rbind, my_output)
+tail(my_tbl, 10)</code></pre>
+<pre><code>##     t        ac
+## 56 55 0.1174364
+## 57 56 0.1174577
+## 58 57 0.1174364
+## 59 58 0.1174577
+## 60 59 0.1174364
+## 61 60 0.1174577
+## 62 61 0.1174364
+## 63 62 0.1174577
+## 64 63 0.1174364
+## 65 64 0.1174577</code></pre>
+</div>
+<div id="visualising-simulations" class="section level2">
+<h2>Visualising simulations</h2>
+<p>The use of custom functions has the nice side-effect that simulations
+can be visualised as they are running. This can be done, again by
+passing a specific function to <code>chouca</code>. The package includes
+a few helpers to do so.</p>
+<p>The first one is <code>landscape_plotter()</code>, which can be used
+as follow, and will display the landscape as it is being run. We use the
+“rock-paper-scissor” model included with chouca as example for its nice
+results:</p>
+<pre class="r"><code>mod &lt;- ca_library(&quot;rock-paper-scissor&quot;)
+
+ctrl &lt;- list(custom_output_every = 1, 
+             precompute_probas = FALSE, 
+             custom_output_fun = landscape_plotter(mod))
+
+init &lt;- generate_initmat(mod, rep(1, 3)/3, 100, 178)
+
+out &lt;- run_camodel(mod, init, seq(0, 128), control = ctrl)</code></pre>
+<video width="384" controls loop>
+<source src="guide_files/figure-html/giflandscape.webm" />
+</video>
+<p>Another option to visualise simulations as they are run is using
+<code>trace_plotter()</code>, which will display the covers of each
+state in the landscape during the run:</p>
+<pre class="r"><code>ctrl &lt;- list(custom_output_every = 1, 
+             custom_output_fun = trace_plotter(mod, init, max_samples = 128), 
+             console_output_every = 128)
+
+out &lt;- run_camodel(mod, init, seq(0, 512), control = ctrl)</code></pre>
+<video width="384" controls loop>
+<source src="guide_files/figure-html/giftraces.webm" />
+</video>
+<p>These two functions have many options to customize their output to
+your liking, which are documented in <code>?trace_plotter</code> or
+<code>?landscape_plotter</code>. Of course using them involves a large
+performance penalty as the plots needs to be redrawn during the
+execution of the simulation.</p>
+</div>
+</div>
+<div id="warning-about-error-in-probabilites" class="section level1">
+<h1>Warning about error in probabilites</h1>
 <p>When writing a transition probability, <code>chouca</code> will try
 to approximate it with the above function, check that how accurately
 this has been done, and report any deviation. For example, the following
 model has transition probabilities that cannot be represented with 100%
-accuracy, because of the exponential term, and a warning is
+accuracy, because of the exponential term, and as a result a warning is
 produced:</p>
-<pre class="r"><code>camodel(transition(from = &quot;0&quot;, to = &quot;+&quot;, ~ 1 + exp( 1 + - p[&quot;+&quot;] * q[&quot;+&quot;])), 
+<pre class="r"><code>camodel(transition(from = &quot;0&quot;, to = &quot;+&quot;, ~ 1 + exp( 2 + 2 * p[&quot;+&quot;] * q[&quot;+&quot;])), 
         wrap = TRUE, 
         neighbors = 4)</code></pre>
-<pre><code>## Warning in FUN(X[[i]], ...): Residual error in computed probabilities
-##   max error: 0.000188
-##   max rel error: 7.34e-05
-## Problematic probability expression: 
-## Transition from 0 to +
-##   ~ 1 + exp(1 + -p[&quot;+&quot;] * q[&quot;+&quot;])</code></pre>
 <p><code>chouca</code> reports both the absolute and relative difference
 between the approximated and true model probability. Many models have no
 error and no approximation is made, but you can go on with a model with
-error if you know what you are doing. Here, the relative error is
-3.852457e-05 in the worst case, so the results would probably be
-extremely close to a model without approximation.</p>
-<p>To control a bit better this error, we can convert the above model to
-a form that is more palatable to <code>chouca</code>, by using the first
-few terms of the (Maclaurin)[<a
+error if you know what you are doing. Here, the relative error is tiny,
+so the results would probably be extremely close to a model without
+approximation.</p>
+<p>To get rid of this warning, we can provide our own approximation to
+make the above form into something more palatable to
+<code>chouca</code>, by using the first few terms of the (Maclaurin)[<a
 href="https://en.wikipedia.org/wiki/Taylor_series#Exponential_function"
 class="uri">https://en.wikipedia.org/wiki/Taylor_series#Exponential_function</a>]
 series for the exponential function: <span class="math inline">\(e^x = 1
 + x + \frac{x^2}{2!} + \frac{x^3}{3!}\)</span>.</p>
-<pre class="r"><code>exp_approx &lt;- function(x) 1 + x + x^2/(2*1) + x^3/(3*2*1)
+<pre class="r"><code>exp_approx &lt;- function(x) 1 + x + x^2/2 + x^3/(3*2) + x^4/(4*3*2)
 camodel(transition(from = &quot;0&quot;, to = &quot;+&quot;, ~ 1 + exp_approx(- p[&quot;+&quot;] * q[&quot;+&quot;])), 
         wrap = TRUE, 
         neighbors = 4)</code></pre>
@@ -477,49 +833,23 @@ camodel(transition(from = &quot;0&quot;, to = &quot;+&quot;, ~ 1 + exp_approx(- 
 ##  
 ## Neighborhood: 4x4 
 ## Wrap: TRUE 
-## Max error: 9.031531e-11 (OK) 
-## Max rel error: 5.718224e-11 (OK)</code></pre>
+## Continuous: FALSE 
+## Max error: 3.229172e-11 (OK) 
+## Max rel error: 2.152963e-11 (OK)</code></pre>
 <p>This time, no error is reported by chouca, as this new model follows
 the exact functional form required.</p>
 </div>
-<div id="chouca-goals" class="section level1">
-<h1><code>chouca</code> goals:</h1>
-<ul>
-<li><p><code>chouca</code> is fast, although some things could be
-faster. It depends on your model complexity.</p></li>
-<li><p><code>chouca</code> wants to be fast, and help you explore your
-model behavior.</p></li>
-</ul>
-<div id="supported-types-of-models" class="section level2">
-<h2>Supported types of models</h2>
-<p><code>chouca</code> does not support all kinds of cellular automata.
-Probabilities must follow the following form. Calling x, y z,</p>
-<p>If a model does not follow this, the probabilities of transition will
-be approximate. The good news is that <code>chouca</code> is able to
-tell you the error, both relative and absolute: it is up to you to
-decide whether this is a sufficiently good approximation.</p>
-</div>
-</div>
-<div id="visualising-simulations" class="section level1">
-<h1>Visualising simulations</h1>
-<p><code>chouca</code> can display the covers of each state, or the
-complete landscape as the simulation is running.</p>
-</div>
-<div id="performance" class="section level1">
-<h1>Performance</h1>
-<p>Parallel processing</p>
-</div>
-<div id="examples" class="section level1">
-<h1>Examples</h1>
-<div id="a-first-example" class="section level2">
-<h2>A first example</h2>
-</div>
-<div id="a-more-complex-example" class="section level2">
-<h2>A more complex example</h2>
-</div>
-<div id="a-model-with-errors" class="section level2">
-<h2>A model with errors</h2>
-</div>
+<div id="references" class="section level1">
+<h1>References</h1>
+<p>Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial
+Dynamics with Gap Expansion: Total Gap Area and Gap Size Distribution.”
+Journal of Theoretical Biology 180 (3): 229–46.</p>
+<p>Mayor, Ángeles G., Sonia Kéfi, Susana Bautista, Francisco Rodríguez,
+Fabrizio Cartení, and Max Rietkerk. 2013. “Feedbacks between Vegetation
+Pattern and Resource Loss Dramatically Decrease Ecosystem Resilience and
+Restoration Potential in a Simple Dryland Model.” Landscape Ecology 28
+(5): 931–42. <a href="https://doi.org/10.1007/s10980-013-9870-4"
+class="uri">https://doi.org/10.1007/s10980-013-9870-4</a>.</p>
 </div>
 
 
@@ -557,6 +887,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("show" === "show");
+});
+</script>
 
 <script>
 $(document).ready(function ()  {

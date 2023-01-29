@@ -248,10 +248,10 @@ run_camodel <- function(mod, initmat, times,
                             sep = ":", collapse = " ")
       
       perc <- paste0(format(100 * (iter / niter), digits = 1, width = 3), " %")
-      perc <- ifelse(iter == 0, "", perc)
       
       speed <- ifelse(is.nan(iter_per_s) | iter_per_s < 0, "", 
                       paste("[", sprintf("%0.2f", iter_per_s), " iter/s]", sep = ""))
+      speed <- ifelse(iter == 0, "", speed)
       
       tstring <- paste0("iter = ", format(iter, width = ceiling(log10(niter))))
       cat(paste0(tstring, " (", perc, ") ", cover_string, " ", speed, "\n"))
@@ -341,7 +341,7 @@ run_camodel <- function(mod, initmat, times,
   }
   
   if ( custom_callback_active ) { 
-    results[["output"]][["custom_output"]] <- custom_output
+    results[["output"]][["custom"]] <- custom_output
   }
   
   class(results) <- list("ca_model_result", "list")
@@ -352,7 +352,6 @@ run_camodel <- function(mod, initmat, times,
 load_control_list <- function(l, tmax) { 
   #TODO: make sure all elements of l are named 
   #TODO: update doc with new options
-  #TODO: add force_compilation
   
   control_list <- list(
     save_covers_every = 1, 
@@ -360,14 +359,15 @@ load_control_list <- function(l, tmax) {
     console_output_every = 10, 
     custom_output_every = 0, 
     custom_output_fun = NULL, 
-    engine = "cpp", 
-    # Compiled engine options
-    fixed_neighborhood = FALSE, 
-    precompute_probas = "auto", 
-    cores = 1, 
     delta_t = 1, 
     substeps = 1, 
-    verbose_compilation = FALSE
+    engine = "cpp", 
+    # Compiled engine options
+    precompute_probas = "auto", 
+    verbose_compilation = FALSE, 
+    force_compilation = TRUE, 
+    cores = 1, 
+    fixed_neighborhood = FALSE 
   )
   
   for ( nm in names(l) ) { 
@@ -408,6 +408,10 @@ load_control_list <- function(l, tmax) {
   
   if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 
     stop("'verbose_compilation' option must be TRUE or FALSE")
+  }
+  
+  if ( ! is.logical(control_list[["force_compilation"]]) ) { 
+    stop("'force_compilation' option must be TRUE or FALSE")
   }
   
   if ( ! ( is.logical(control_list[["precompute_probas"]]) || 

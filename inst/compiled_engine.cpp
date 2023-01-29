@@ -56,8 +56,6 @@ constexpr uword cores        = __CORES__;
 // The maximum number of neighbors
 constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
 
-// constexpr double delta_t = 1.0;  // TODO
-
 // Declare the betas arrays as static here. Number of columns/rows is known at 
 // compile time. 
 static arma::Mat<ushort> beta_0_index(  beta_0_nrow,  2); 

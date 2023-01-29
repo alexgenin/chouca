@@ -105,12 +105,13 @@ camodel_compiled_engine_wrap <- local({
   cmaxlines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), cmaxlines)
   
   # Source cpp if needed 
-  if ( ! exists(fname) ) { 
+  if ( ! exists(fname) || ctrl[["force_compilation"]] ) { 
     
     # We compile from the file, so that lines can be put in a debug run
     funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
                       verbose = ctrl[["verbose_compilation"]], 
                       cleanupCacheDir = FALSE, 
+                      rebuild = TRUE, # always force rebuild has we have our own cache
                       env = function_envir)
   }
   
