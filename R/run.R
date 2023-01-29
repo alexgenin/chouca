@@ -176,7 +176,7 @@ run_camodel <- function(mod, initmat, times,
     stop("States in the initial matrix do not match the model states")
   }
   # Read parameters
-  control <- load_control_list(control)
+  control <- load_control_list(control, max(times))
   
   # Check that delta_t is correct 
   if ( abs(control[["delta_t"]] - 1) > 1e-8 && ! mod[["continuous"]] ) { 
@@ -230,7 +230,7 @@ run_camodel <- function(mod, initmat, times,
   # Handle console output callback 
   console_callback <- function(iter, ps, n) { } 
   console_callback_active <- is_positive(control[["console_output_every"]])
-    
+  
   if ( console_callback_active ) { 
     last_time <- proc.time()["elapsed"]
     first_time <- last_time
@@ -349,14 +349,14 @@ run_camodel <- function(mod, initmat, times,
 }
 
 
-load_control_list <- function(l) { 
+load_control_list <- function(l, tmax) { 
   #TODO: make sure all elements of l are named 
   #TODO: update doc with new options
   #TODO: add force_compilation
   
   control_list <- list(
     save_covers_every = 1, 
-    save_snapshots_every = 0, 
+    save_snapshots_every = NULL, 
     console_output_every = 10, 
     custom_output_every = 0, 
     custom_output_fun = NULL, 
@@ -376,6 +376,10 @@ load_control_list <- function(l) {
     } else { 
       stop(sprintf("%s is not a CA model option", nm))
     }
+  }
+  
+  if ( is.null(control_list[["save_snapshots_every"]]) ) { 
+    control_list[["save_snapshots_every"]] <- tmax
   }
   
   if ( any(duplicated(names(l))) ) { 
