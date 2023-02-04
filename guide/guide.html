@@ -393,16 +393,16 @@ using the argument <code>pvec</code>, and use a landscape of 128 rows by
 256 columns. We can now run the simulation:</p>
 <pre class="r"><code>out &lt;- run_camodel(kubo_model, init_mat, times = seq(0, 100))</code></pre>
 <pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
-## iter =  10 ( 10 %) empty:0.296 forest:0.704 [52.08 iter/s]
-## iter =  20 ( 20 %) empty:0.232 forest:0.768 [53.76 iter/s]
-## iter =  30 ( 30 %) empty:0.229 forest:0.771 [53.76 iter/s]
-## iter =  40 ( 40 %) empty:0.227 forest:0.773 [53.48 iter/s]
-## iter =  50 ( 50 %) empty:0.227 forest:0.773 [53.76 iter/s]
-## iter =  60 ( 59 %) empty:0.229 forest:0.771 [54.05 iter/s]
-## iter =  70 ( 69 %) empty:0.231 forest:0.769 [53.76 iter/s]
-## iter =  80 ( 79 %) empty:0.226 forest:0.774 [54.05 iter/s]
-## iter =  90 ( 89 %) empty:0.224 forest:0.776 [53.76 iter/s]
-## iter = 100 ( 99 %) empty:0.224 forest:0.776 [54.05 iter/s]</code></pre>
+## iter =  10 ( 10 %) empty:0.296 forest:0.704 [52.91 iter/s]
+## iter =  20 ( 20 %) empty:0.232 forest:0.768 [54.35 iter/s]
+## iter =  30 ( 30 %) empty:0.229 forest:0.771 [54.35 iter/s]
+## iter =  40 ( 40 %) empty:0.227 forest:0.773 [54.35 iter/s]
+## iter =  50 ( 50 %) empty:0.227 forest:0.773 [54.35 iter/s]
+## iter =  60 ( 59 %) empty:0.229 forest:0.771 [54.35 iter/s]
+## iter =  70 ( 69 %) empty:0.231 forest:0.769 [54.35 iter/s]
+## iter =  80 ( 79 %) empty:0.226 forest:0.774 [54.35 iter/s]
+## iter =  90 ( 89 %) empty:0.224 forest:0.776 [54.05 iter/s]
+## iter = 100 ( 99 %) empty:0.224 forest:0.776 [54.35 iter/s]</code></pre>
 <p>We can then display the results, either in the R console using
 <code>summary()</code>, or as a plot using the generic function
 <code>plot()</code>, which displays the global covers of each state
@@ -440,7 +440,7 @@ Cellular automata that involve a preferencial direction cannot be
 implemented in <code>chouca</code>, for example with water running
 downslope in a landscape (Mayor et al. 2013).</p>
 <p>The probabilities of transition can have any form, but respecting
-those two principles will work better for <code>chouca</code>:</p>
+those two principles will work better:</p>
 <ul>
 <li><p>To be accurately computed, transition probabilities must be a
 linear polynomial of the products of the local or global proportion of
@@ -449,9 +449,8 @@ between states <span class="math inline">\(i\)</span> and <span
 class="math inline">\(j\)</span> as <span class="math inline">\(P(i
 \rightarrow j) = 0.1 + p_i + p_j q_i\)</span> works perfectly, but
 something involving non-linear functions such as <span
-class="math inline">\(P(0 \rightarrow +) = 0.1 + sin^{p_i}\)</span> may
-not be able to be correctly handled by <code>chouca</code> (see below
-for the consequences).</p></li>
+class="math inline">\(P(0 \rightarrow +) = 0.1 + sin(p_i)\)</span> may
+not be correctly handled (see below for the consequences).</p></li>
 <li><p>There is some tolerance is discontinuities in the transition
 rules. Rules such as “if one neighbor is in state <span
 class="math inline">\(i\)</span>, then the probability of transition is
@@ -459,7 +458,7 @@ increased” are OK. However, such rule involving multiple types of
 neighbors are not, e.g. “if one neighbor is in state <span
 class="math inline">\(i\)</span> <em>and</em> another one in state <span
 class="math inline">\(j\)</span>, then…”. This type of discontinuity is
-hard to accomodate by chouca.</p></li>
+hard to accomodate.</p></li>
 </ul>
 <p>Overall, the assumed functional form of transitions probabilities
 must be the following:</p>
@@ -615,6 +614,7 @@ probabilities and (iii) multithreading.</p>
 run the cellular automaton. This is done by setting the
 <code>engine</code> control argument to “compiled”:</p>
 <pre class="r"><code>control_args &lt;- list(engine = &quot;compiled&quot;, 
+                     precompute_probas = FALSE, 
                      console_output_every = 128) 
 
 out &lt;- run_camodel(kubo_model, 
@@ -622,10 +622,10 @@ out &lt;- run_camodel(kubo_model,
                    times = seq(0, 512), 
                    control = control_args)</code></pre>
 <pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
-## iter = 128 ( 25 %) empty:0.226 forest:0.774 [1319.59 iter/s]
-## iter = 256 ( 50 %) empty:0.226 forest:0.774 [1376.34 iter/s]
-## iter = 384 ( 75 %) empty:0.227 forest:0.773 [1376.34 iter/s]
-## iter = 512 (100 %) empty:0.232 forest:0.768 [1376.34 iter/s]</code></pre>
+## iter = 128 ( 25 %) empty:0.226 forest:0.774 [194.23 iter/s]
+## iter = 256 ( 50 %) empty:0.226 forest:0.774 [195.72 iter/s]
+## iter = 384 ( 75 %) empty:0.227 forest:0.773 [196.02 iter/s]
+## iter = 512 (100 %) empty:0.232 forest:0.768 [195.72 iter/s]</code></pre>
 <p>On the first run, this model will take a few extra seconds to run as
 the C++ code corresponding to the model needs to be compiled. However,
 the simulation itself will be much faster. Compilation only needs to be
@@ -654,8 +654,8 @@ out &lt;- run_camodel(kubo_model,
                    control = control_args)</code></pre>
 <pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
 ## iter = 128 ( 25 %) empty:0.225 forest:0.775 [1319.59 iter/s]
-## iter = 256 ( 50 %) empty:0.231 forest:0.769 [1376.34 iter/s]
-## iter = 384 ( 75 %) empty:0.229 forest:0.771 [1376.34 iter/s]
+## iter = 256 ( 50 %) empty:0.231 forest:0.769 [1391.30 iter/s]
+## iter = 384 ( 75 %) empty:0.229 forest:0.771 [1391.30 iter/s]
 ## iter = 512 (100 %) empty:0.229 forest:0.771 [1391.30 iter/s]</code></pre>
 <p>This approach can dramatically improve the performance for models
 that have a small number of states and simple transition rules. However,
@@ -682,10 +682,10 @@ out &lt;- run_camodel(kubo_model,
                    times = seq(0, 512), 
                    control = control_args)</code></pre>
 <pre><code>## iter =   0 (  0 %) empty:0.504 forest:0.496 
-## iter = 128 ( 25 %) empty:0.221 forest:0.779 [528.93 iter/s]
-## iter = 256 ( 50 %) empty:0.229 forest:0.771 [707.18 iter/s]
-## iter = 384 ( 75 %) empty:0.228 forest:0.772 [1542.17 iter/s]
-## iter = 512 (100 %) empty:0.228 forest:0.772 [2169.49 iter/s]</code></pre>
+## iter = 128 ( 25 %) empty:0.221 forest:0.779 [2370.37 iter/s]
+## iter = 256 ( 50 %) empty:0.229 forest:0.771 [2612.24 iter/s]
+## iter = 384 ( 75 %) empty:0.228 forest:0.772 [2031.75 iter/s]
+## iter = 512 (100 %) empty:0.228 forest:0.772 [2560.00 iter/s]</code></pre>
 <p>Future improvements of the package may improve this situation. In the
 meantime, if you happen to be running several simulations at the same
 time (which is often the case), you are probably better off
@@ -697,14 +697,187 @@ platform and compiler. The best way to do so is to edit your platform
 <code>CXXFLAGS=-O3 -march=native -mtune=native</code>. However, do not
 expect too much as most of the time this does not bring much more
 performance to the table.</p>
+<p>Below is a summary of performance for the forest gap model, different
+options and landscape sizes:</p>
+<pre class="r"><code>sizes &lt;- 2^seq(3, 8)
+
+benchmark &lt;- ldply(sizes, function(size) { 
+  
+  ctrl &lt;- list(force_compilation = TRUE, 
+               console_output_every = 0)
+  niters &lt;- 256
+  
+  ldply(c(&quot;cpp&quot;, &quot;compiled&quot;), function(engine) { 
+    ldply(c(TRUE, FALSE), function(precomp) { 
+      if ( precomp &amp;&amp; engine == &quot;cpp&quot; ) { 
+        return(NULL)
+      }
+      
+      ctrl[[&quot;engine&quot;]] &lt;- engine
+      ctrl[[&quot;precompute_probas&quot;]] &lt;- precomp
+      
+      init &lt;- generate_initmat(kubo_model, c(forest = 0.5, empty = 0.5), 
+                               nr = size, nc = size)
+      
+      run1 &lt;- system.time({ 
+        run &lt;- run_camodel(kubo_model, init, seq(0, niters), 
+                           control = ctrl)
+      })
+      
+      ctrl[[&quot;force_compilation&quot;]] &lt;- FALSE
+      
+      run2 &lt;- system.time({ 
+        run &lt;- run_camodel(kubo_model, init, seq(0, niters), 
+                           control = ctrl)
+      })
+      
+      print(
+      data.frame(size = size, 
+                 proba_precomp = precomp, 
+                 engine = engine, 
+                 run1 = run1[[&quot;elapsed&quot;]], 
+                 run2 = run2[[&quot;elapsed&quot;]])
+      )      
+    })
+  })
+})
+
+ggplot(benchmark, 
+       aes(x = size, 
+           y = run1, 
+           color = paste(engine, 
+                         ifelse(proba_precomp, &quot;+precomp&quot;, &quot;&quot;)))) + 
+  geom_point() + 
+  geom_line() + 
+  scale_color_discrete(name = &quot;Type&quot;) + 
+  scale_y_continuous(trans = &quot;log2&quot;) + 
+  scale_x_continuous(trans = &quot;log2&quot;) </code></pre>
+<p><img src="guide_files/figure-html/benhmarks-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
 <div id="storingdiscardingaccessing-data" class="section level1">
 <h1>Storing/discarding/accessing data</h1>
+<p>Various options are available to access simulation outputs. When
+nothing is specified, the percentage of cells in each state will be
+saved at each time step specified in the <code>times</code> vector
+(argument to <code>run_camodel()</code>), and the landscape at the first
+and last time step will be saved. These can be accessed simply by
+acessing elements of the object returned by
+<code>run_camodel()</code>.</p>
+<p>Global covers are saved as a matrix whose first column is the time,
+and the others the percentages for each state:</p>
+<pre class="r"><code>init &lt;- generate_initmat(kubo_model, c(forest = 0.5, empty = 0.5), 
+                         nr = 128)
+
+run &lt;- run_camodel(kubo_model, init, times = seq(0, 128, by = 1))</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.501 forest:0.499 
+## iter =  10 (  8 %) empty:0.301 forest:0.699 [106.38 iter/s]
+## iter =  20 ( 16 %) empty:0.236 forest:0.764 [107.53 iter/s]
+## iter =  30 ( 23 %) empty:0.225 forest:0.775 [119.05 iter/s]
+## iter =  40 ( 31 %) empty:0.232 forest:0.768 [107.53 iter/s]
+## iter =  50 ( 39 %) empty:0.228 forest:0.772 [107.53 iter/s]
+## iter =  60 ( 47 %) empty:0.23 forest:0.77 [107.53 iter/s]
+## iter =  70 ( 54 %) empty:0.226 forest:0.774 [107.53 iter/s]
+## iter =  80 ( 62 %) empty:0.232 forest:0.768 [107.53 iter/s]
+## iter =  90 ( 70 %) empty:0.222 forest:0.778 [107.53 iter/s]
+## iter = 100 ( 78 %) empty:0.222 forest:0.778 [107.53 iter/s]
+## iter = 110 ( 85 %) empty:0.224 forest:0.776 [107.53 iter/s]
+## iter = 120 ( 93 %) empty:0.223 forest:0.777 [107.53 iter/s]</code></pre>
+<pre class="r"><code>covers &lt;- run[[&quot;output&quot;]][[&quot;covers&quot;]]
+tail(covers)</code></pre>
+<pre><code>##          t     empty    forest
+## [124,] 123 0.2203979 0.7796021
+## [125,] 124 0.2181396 0.7818604
+## [126,] 125 0.2180176 0.7819824
+## [127,] 126 0.2155151 0.7844849
+## [128,] 127 0.2213135 0.7786865
+## [129,] 128 0.2255249 0.7744751</code></pre>
+<p>The landscape are also available, using the following syntax. A nifty
+function to display landscapes is available in the spatialwarnings
+package, <code>display_matrix</code>:</p>
+<pre class="r"><code>landscapes &lt;- run[[&quot;output&quot;]][[&quot;snapshots&quot;]]
+spatialwarnings::display_matrix(landscapes)</code></pre>
+<pre><code>## Warning in FUN(X[[i]], ...): The matrix has only two unique values, but it is
+## not of logical type. Did you mean to use TRUE/FALSE values?
+
+## Warning in FUN(X[[i]], ...): The matrix has only two unique values, but it is
+## not of logical type. Did you mean to use TRUE/FALSE values?</code></pre>
+<p><img src="guide_files/figure-html/unnamed-chunk-13-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Sometimes, we do not want to store everything at all time steps. One
+option to reduce output is to specify a diferrent <code>times</code>
+vector to <code>run_camodel()</code>. This will not affect the precision
+of the simulation, but will simply reduce the time points at which
+simulation output is saved.</p>
+<pre class="r"><code>run2 &lt;- run_camodel(kubo_model, init, times = seq(0, 128, by = 8))</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.501 forest:0.499 
+## iter =  10 (  8 %) empty:0.306 forest:0.694 [111.11 iter/s]
+## iter =  20 ( 16 %) empty:0.245 forest:0.755 [106.38 iter/s]
+## iter =  30 ( 23 %) empty:0.232 forest:0.768 [119.05 iter/s]
+## iter =  40 ( 31 %) empty:0.228 forest:0.772 [106.38 iter/s]
+## iter =  50 ( 39 %) empty:0.23 forest:0.77 [106.38 iter/s]
+## iter =  60 ( 47 %) empty:0.23 forest:0.77 [106.38 iter/s]
+## iter =  70 ( 54 %) empty:0.222 forest:0.778 [106.38 iter/s]
+## iter =  80 ( 62 %) empty:0.221 forest:0.779 [106.38 iter/s]
+## iter =  90 ( 70 %) empty:0.238 forest:0.762 [106.38 iter/s]
+## iter = 100 ( 78 %) empty:0.231 forest:0.769 [106.38 iter/s]
+## iter = 110 ( 85 %) empty:0.226 forest:0.774 [106.38 iter/s]
+## iter = 120 ( 93 %) empty:0.23 forest:0.77 [106.38 iter/s]</code></pre>
+<pre class="r"><code>covers2 &lt;- run2[[&quot;output&quot;]][[&quot;covers&quot;]]
+tail(covers2)</code></pre>
+<pre><code>##         t     empty    forest
+## [12,]  88 0.2309570 0.7690430
+## [13,]  96 0.2257690 0.7742310
+## [14,] 104 0.2239990 0.7760010
+## [15,] 112 0.2341309 0.7658691
+## [16,] 120 0.2296143 0.7703857
+## [17,] 128 0.2305908 0.7694092</code></pre>
+<pre class="r"><code>plot(covers[ ,&quot;t&quot;], covers[ ,&quot;forest&quot;], type = &quot;l&quot;, col = &quot;red&quot;)
+lines(covers2[ ,&quot;t&quot;], covers2[ ,&quot;forest&quot;], col = &quot;blue&quot;)</code></pre>
+<p><img src="guide_files/figure-html/unnamed-chunk-14-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>Another option is to set the control argument
+<code>save_covers_every</code> to something higher than one. This will
+only save simulation output one out of several iterations:</p>
+<pre class="r"><code>ctrl &lt;- list(save_covers_every = 8)
+run3 &lt;- run_camodel(kubo_model, init, times = seq(0, 128, by = 1), 
+                    control = ctrl)</code></pre>
+<pre><code>## iter =   0 (  0 %) empty:0.501 forest:0.499 
+## iter =  10 (  8 %) empty:0.296 forest:0.704 [93.46 iter/s]
+## iter =  20 ( 16 %) empty:0.23 forest:0.77 [106.38 iter/s]
+## iter =  30 ( 23 %) empty:0.226 forest:0.774 [107.53 iter/s]
+## iter =  40 ( 31 %) empty:0.222 forest:0.778 [120.48 iter/s]
+## iter =  50 ( 39 %) empty:0.234 forest:0.766 [107.53 iter/s]
+## iter =  60 ( 47 %) empty:0.227 forest:0.773 [107.53 iter/s]
+## iter =  70 ( 54 %) empty:0.218 forest:0.782 [107.53 iter/s]
+## iter =  80 ( 62 %) empty:0.225 forest:0.775 [107.53 iter/s]
+## iter =  90 ( 70 %) empty:0.229 forest:0.771 [107.53 iter/s]
+## iter = 100 ( 78 %) empty:0.223 forest:0.777 [107.53 iter/s]
+## iter = 110 ( 85 %) empty:0.22 forest:0.78 [106.38 iter/s]
+## iter = 120 ( 93 %) empty:0.223 forest:0.777 [108.70 iter/s]</code></pre>
+<pre class="r"><code>covers3 &lt;- run3[[&quot;output&quot;]][[&quot;covers&quot;]]
+tail(covers3)</code></pre>
+<pre><code>##         t     empty    forest
+## [12,]  88 0.2280884 0.7719116
+## [13,]  96 0.2238770 0.7761230
+## [14,] 104 0.2301636 0.7698364
+## [15,] 112 0.2282715 0.7717285
+## [16,] 120 0.2231445 0.7768555
+## [17,] 128 0.2349243 0.7650757</code></pre>
+<pre class="r"><code>plot(covers[ ,&quot;t&quot;], covers[ ,&quot;forest&quot;], type = &quot;l&quot;, col = &quot;red&quot;, 
+     xlab = &quot;t&quot;, ylab = &quot;forest cover&quot;)
+lines(covers2[ ,&quot;t&quot;], covers2[ ,&quot;forest&quot;], col = &quot;blue&quot;)
+lines(covers3[ ,&quot;t&quot;], covers3[ ,&quot;forest&quot;], col = &quot;darkgreen&quot;)
+legend(x = &quot;right&quot;, 
+       legend = c(&quot;original&quot;, &quot;reduced &#39;times&#39; vector&quot;, &quot;using &#39;save_covers_every&#39;&quot;), 
+       col = c(&quot;black&quot;, &quot;blue&quot;, &quot;darkgreen&quot;), 
+       lty = c(1, 1, 1))</code></pre>
+<p><img src="guide_files/figure-html/unnamed-chunk-15-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p>A similar argument exists for saving landscapes,
+<code>save_snapshots_every</code>, to reduce or increase the number of
+landscapes being saved during the simulation, with similar effects.</p>
 </div>
 <div id="running-computations-on-the-fly" class="section level1">
 <h1>Running computations on the fly</h1>
-<div id="computing-metrics" class="section level2">
-<h2>Computing metrics</h2>
+<div id="computing-things" class="section level2">
+<h2>Computing things</h2>
 <p>One of the easiest way to dissect the results of your simulation is
 simply to store the landscape, or the covers of each state, then run
 your computation after the fact. This is not always possible, however,
@@ -730,13 +903,13 @@ control_args &lt;- list(save_covers_every = 0,
                      })
 
 out &lt;- run_camodel(mod, init, times = seq(0, 64), control = control_args)</code></pre>
-<pre><code>## iter =  0 (  0 %) EMPTY:0.502 TREE:0.498 
-## iter = 10 ( 15 %) EMPTY:0.708 TREE:0.292 [27.10 iter/s]
-## iter = 20 ( 31 %) EMPTY:0.708 TREE:0.292 [28.99 iter/s]
-## iter = 30 ( 46 %) EMPTY:0.708 TREE:0.292 [28.09 iter/s]
-## iter = 40 ( 62 %) EMPTY:0.708 TREE:0.292 [28.57 iter/s]
-## iter = 50 ( 77 %) EMPTY:0.708 TREE:0.292 [28.57 iter/s]
-## iter = 60 ( 92 %) EMPTY:0.708 TREE:0.292 [28.09 iter/s]</code></pre>
+<pre><code>## iter =  0 (  0 %) EMPTY:0.497 TREE:0.503 
+## iter = 10 ( 15 %) EMPTY:0.702 TREE:0.298 [27.10 iter/s]
+## iter = 20 ( 31 %) EMPTY:0.702 TREE:0.298 [29.59 iter/s]
+## iter = 30 ( 46 %) EMPTY:0.702 TREE:0.298 [28.65 iter/s]
+## iter = 40 ( 62 %) EMPTY:0.702 TREE:0.298 [28.65 iter/s]
+## iter = 50 ( 77 %) EMPTY:0.702 TREE:0.298 [29.85 iter/s]
+## iter = 60 ( 92 %) EMPTY:0.702 TREE:0.298 [30.03 iter/s]</code></pre>
 <p>The results can be extracted the following way:</p>
 <pre class="r"><code>my_output &lt;- out[[&quot;output&quot;]][[&quot;custom&quot;]]</code></pre>
 <p>By default, all custom outputs are stored in a list, so a common
@@ -745,16 +918,16 @@ any other function:</p>
 <pre class="r"><code>my_tbl &lt;- do.call(rbind, my_output)
 tail(my_tbl, 10)</code></pre>
 <pre><code>##     t        ac
-## 56 55 0.1174364
-## 57 56 0.1174577
-## 58 57 0.1174364
-## 59 58 0.1174577
-## 60 59 0.1174364
-## 61 60 0.1174577
-## 62 61 0.1174364
-## 63 62 0.1174577
-## 64 63 0.1174364
-## 65 64 0.1174577</code></pre>
+## 56 55 0.1174504
+## 57 56 0.1198791
+## 58 57 0.1174504
+## 59 58 0.1198791
+## 60 59 0.1174504
+## 61 60 0.1198791
+## 62 61 0.1174504
+## 63 62 0.1198791
+## 64 63 0.1174504
+## 65 64 0.1198791</code></pre>
 </div>
 <div id="visualising-simulations" class="section level2">
 <h2>Visualising simulations</h2>

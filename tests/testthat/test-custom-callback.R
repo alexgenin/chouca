@@ -25,8 +25,8 @@ test_that("Custom callbacks work", {
   
   ctrl <- list(engine = "cpp", 
                console_output_every = 0, 
-               custom_every = 1, 
-               custom_fun = ccb)
+               custom_output_every = 1, 
+               custom_output_fun = ccb)
   
   ctrl[["engine"]] <- "cpp"
   out_cpp <- run_camodel(mod, initmm, seq(0, niters), ctrl)[["output"]][["custom"]]

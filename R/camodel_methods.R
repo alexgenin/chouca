@@ -49,7 +49,7 @@ print.camodel_transition <- function(x, ...) {
 
 
 #'@export 
-summary.ca_model_result <- function(object, ...) { 
+summary.ca_model_result <- function(object, .name = NULL, ...) { 
   
   cat("Stochastic Cellular Automaton simulation\n") 
   cat("\n")
@@ -66,7 +66,7 @@ summary.ca_model_result <- function(object, ...) {
   }
   
   snapshots <- object[["output"]][["snapshots"]]
-  if ( ! is.null(covers) ) { 
+  if ( ! is.null(snapshots) ) { 
     cat(sprintf("Landscapes saved: %s\n", length(snapshots)))
   } else { 
     cat("Landscapes were not saved during simulation\n")
@@ -74,9 +74,23 @@ summary.ca_model_result <- function(object, ...) {
   
   cat("\n")
   cat("The following methods are available: \n")
-  cat(list_methods(class(object)[1]), "\n")
+  cat("  ", list_methods(class(object)[1]), "\n")
+  
+  # Display methods to extract output 
+  objname <- ifelse(is.null(.name), as.character(substitute(x)), .name)
+  cat("\n")
+  cat("Extract simulation results using one of:\n")
+  for ( name in names(object[["output"]]) ) { 
+    cat(sprintf("  %s[[\"output\"]][[\"%s\"]]\n", 
+                as.character(substitute(object)), name))
+  }
+  
+  return( invisible(object) )
+}
 
-  return(invisible(object))
+#'@export 
+print.ca_model_result <- function(x, ...) { 
+  summary.ca_model_result(x)
 }
 
 #'@export 
@@ -154,11 +168,53 @@ image.camodel_initmat <- function(x, ...) {
   graphics::image(x, ...)
 }
 
+#'@export
+summary.camodel_initmat <- function(object, ...) { 
+  cat("Cellular Automaton landscape\n") 
+  cat("\n")
+  cat(sprintf("Size: %sx%s\n", nrow(object), ncol(object)))
+  
+  cat("\n")
+  xfmt <- format(object, nmax = 5)
+  cat(xfmt)
+  
+  rhos <- as.numeric(table(object))/(nrow(object)*ncol(object))
+  names(rhos) <- levels(object)
+  cat("\n")
+  cat("Global covers\n")
+  print(rhos)
+  
+  cat("\n")
+  cat("The following methods are available: \n")
+  cat("  ", list_methods(class(object)[1]), "\n")
+}
 
+format.camodel_initmat <- function(x, nmax, ...) { 
+  
+  xfmt <- x[1:min(nmax, nrow(x)), 1:min(nmax, ncol(x))]
+  xfmt <- matrix(as.character(levels(x)[xfmt]), nrow(xfmt), ncol(xfmt))
+  
+  # Add dots for extra cols
+  if ( ncol(x) > nmax ) { 
+    xfmt <- cbind(xfmt, rep("...", nrow(xfmt)))
+  }
+  
+  # Add dots for extra rows
+  if ( nrow(x) > nmax ) { 
+    xfmt <- rbind(xfmt, rep("...", ncol(xfmt)))
+  }
+  
+  # Collapse into string representations 
+  xfmt <- apply(format(xfmt), 1, paste, collapse = " ")
+  xfmt <- paste(xfmt, collapse = "\n")
+  xfmt <- paste(xfmt, "\n")
+  
+  return(xfmt)
+}
 
 # List the methods available for an S3 class
 list_methods <- function(class, 
-                         exclude = c("print", "summary")) { 
+                         exclude = c("print", "summary", "format")) { 
   
   all_methods <- lapply(class, function(class) { 
     tab <- attr(utils::methods(class = class), "info")

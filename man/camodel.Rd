@@ -107,9 +107,9 @@ To run a model once it is defined, the function \code{\link{run_camodel}} can be
 }
 \section{Functions}{
 \itemize{
-\item \code{transition}: 
-}}
+\item \code{transition()}: 
 
+}}
 \examples{
 
 # Redefine Kubo's 1996 forest gap model 

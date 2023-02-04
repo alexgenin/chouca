@@ -6,38 +6,43 @@
 
 #' @title Plot simulation landscapes 
 #' 
-#' @description This function creates a function to plot the model landscapes during 
-#'   a \code{chouca} simulation, as it is being run. 
+#' @description This function creates another function that plot the model landscapes 
+#'   during the of simulation a stochastic cellular automaton. 
 #' 
-#' @param mod The model being run 
+#' @param mod The model being used (created by \code{link{camodel}})
 #' 
-#' @param col a set of colors (character vector) of the same length as the number of 
+#' @param col a set of colors (character vector) of length equal to the number of 
 #'   states in the model. 
 #' 
 #' @param fps_cap The maximum number of frame per seconds at which to plot the results 
 #' 
 #' @param burn_in A number of iterations to skip before plotting
 #' 
-#' @param transpose Setting this to \code{TRUE} will transpose the landscape matrix 
-#'   before passing it to  \code{\link[graphics]{image}}
+#' @param transpose Set to \code{TRUE} to transpose the landscape matrix 
+#'   before displaying it \code{\link[graphics]{image}}
 #' 
 #' @param ... other arguments are passed to \code{\link[graphics]{image}}
 #' 
 #' @details
 #' 
-#'   This function creates another function that is suitable for use with \code{chouca}. 
-#'   It allows plotting the landscape as it is being simulated, using the base function
-#'   \code{\link[graphics]{image}}. You can set the colors using the argument \code{col}, 
-#'   or tranpose the landscape before plotting using \code{transpose}. 
+#'   This function creates another function that is suitable for use with 
+#'   \code{\link{run_camodel}}. It allows plotting the landscape as it is being 
+#'   simulated, using the base function \code{\link[graphics]{image}}. You can set 
+#'   colors using the argument \code{col}, or tranpose the landscape before 
+#'   plotting using \code{transpose}. The resulting function must by passed to 
+#'   \code{\link{run_camodel}} as the control argument \code{custom_output_fun}. 
 #'   
-#'   \code{\link[graphics]{image}} is quite slow at displaying matrices, especially if 
-#'   it is reasonably large, but if it is still to fast for your test, you can cap the 
-#'   number of landscape displayed per seconds by setting the argument \code{fps_cap}. 
+#'   \code{\link[graphics]{image}} tends to be quite slow at displaying matrices, 
+#'   especially if the matrix is large, but if it is still too fast for your visualize 
+#    your results, you can cap the number of landscape displayed per seconds by setting 
+#    the argument \code{fps_cap}. 
 #'   
 #'   It is important to note that this function will probably massively slow down a 
 #'   simulation, so this function is mostly here for exploratory analyses, or just to 
 #'   have a good look of what is happening in a model. 
-#'   
+#' 
+#' @seealso trace_plotter, run_camodel
+#' 
 #' @examples 
 #' 
 #' \dontrun{ 
@@ -48,27 +53,27 @@
 #' colors <- c("#fb8500", "#023047", "#8ecae6")
 #' ctrl <- list(custom_output_every = 1, 
 #'              custom_output_fun = landscape_plotter(mod, col = colors))
-#' init <- generate_initmat(mod, rep(1, 3)/3, 100, 178)
-#' run_camodel(mod, init, niter = 128, control = ctrl)
+#' init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#' run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #' 
 #' # Arid vegetation model 
 #' mod <- ca_library("aridvege")
-#' init <- generate_initmat(mod, rep(1, 3)/3, 100, 178)
+#' init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
 #' colors <- c("gray80", "white", "darkgreen")
 #' ctrl <- list(custom_output_every = 1, 
 #'              custom_output_fun = landscape_plotter(mod, col = colors, xaxt = "n", 
 #'                                                    yaxt = "n"))
-#' run_camodel(mod, init, niter = 128, control = ctrl)
+#' run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #' 
-#' # Game of life 
+#' # Game of life, turning off plot decoration using extra arguments read by matplot()
 #' mod <- ca_library("gameoflife") 
-#' init <- generate_initmat(mod, c(0.5, 0.5), 100, 178) 
+#' init <- generate_initmat(mod, c(0.5, 0.5), nr = 100, nc = 178)
 #' colors <- c("white", "black") 
 #' ctrl <- list(custom_output_every = 1, 
 #'              custom_output_fun = landscape_plotter(mod, col = colors, 
 #'                                                    xaxt = "n", 
 #'                                                    yaxt = "n"))
-#' run_camodel(mod, init, niter = 128, control = ctrl)
+#' run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #' 
 #' } 
 #' 
@@ -138,30 +143,118 @@ landscape_plotter <- function(mod,
   
 }
 
+#' @title Plot simulation covers 
+#' 
+#' @description This function returns another helper function to display covers or any 
+#'   other metric as a stochastic cellular automaton simulation is being run by 
+#'   \code{\link{run_camodel}}. 
+#' 
+#' @param mod The model being used (created by \code{link{camodel}})
+#' 
+#' @param initmat The initial landscape given to \code{\link{run_camodel}} 
+#' 
+#' @param fun The function used to summarise the landscape into summary metrics. By 
+#'   default, gloal covers of each state are computed. It must return a vector of 
+#'   numeric values. 
+#' 
+#' @param col a set of colors (character vector) of length equal to the number of 
+#'   values returned by fun.
+#' 
+#' @param fps_cap The maximum number of frame per seconds at which to plot the results 
+#' 
+#' @param max_samples The maximum number of samples to display in the plot 
+#' 
+#' @param burn_in A number of iterations to skip before plotting
+#' 
+#' @param ... other arguments passed to \code{\link[graphics]{matplot}}, which is used to 
+#'   display the trends. 
+#' 
+#' @details 
+#' 
+#'   This function creates another function that is suitable for use with 
+#'   \code{\link{run_camodel}}. It allows plotting any matric computed on the landscape 
+#'   as it is being simulated, using the base function \code{\link[graphics]{matplot}}. 
+#'   The resulting function must by passed to \code{\link{run_camodel}} as the control
+#'   argument \code{custom_output_fun}.
+#'   
+#'   By default, the global covers of each state in the landscape will be displayed, but 
+#'   you can pass any function as argument \code{fun} to compute something else, as long 
+#'   as \code{fun} returns a numeric vector of length at least 1. 
+#'   
+#'   \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but 
+#'   if it is still too fast for your taste, you can cap the refresh rate by setting 
+#    the argument \code{fps_cap}. 
+#'   
+#'   It is important to note that this function will probably massively slow down a 
+#'   simulation, so it is mostly here for exploratory analyses, or just to 
+#'   have a good look of what is happening in a model. 
+#' 
+#' 
+#' @seealso landscape_plotter, run_camodel
+#' 
+#' # Display covers of the rock/paper/scissor model as it is running 
+#' mod <- ca_library("rock-paper-scissor")
+#' init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#' ctrl <- list(custom_output_every = 1, 
+#'              custom_output_fun = trace_plotter(mod, init))
+#' run_camodel(mod, init, times = seq(0, 256), control = ctrl)
+#' 
+#' # Adjust colors of the previous example and increase speed 
+#' colors <- c("#fb8500", "#023047", "#8ecae6")
+#' ctrl <- list(custom_output_every = 1, 
+#'              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
+#' run_camodel(mod, init, times = seq(0, 300), control = ctrl)
+#' 
+#' # Display statistics on autocorrelation on the fly in the arid 
+#' # vegetation model 
+#' if ( requireNamespace("spatialwarnings") ) { 
+#'   mod <- ca_library("aridvege")
+#'   init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#'   moran <- function(mat) {
+#'     m <- matrix(mat == "VEGE", nrow = nrow(mat), ncol = ncol(mat))
+#'     spatialwarnings::raw_moran(m)
+#'   }
+#'   ctrl <- list(custom_output_every = 1, 
+#'                custom_output_fun = trace_plotter(mod, init, 
+#'                                                  fun = moran))
+#'   run_camodel(mod, init, times = seq(0, 128), control = ctrl)
+#' }
+# 
 #'@export
 trace_plotter <- function(mod, initmat, 
-                          fun = function(m) { 
-                            sapply(mod[["states"]], function(s) mean(m == s))
-                          }, 
+                          fun = NULL, 
                           col = NULL, 
                           max_samples = 256, 
+                          fps_cap = 24, 
                           burn_in = 0, 
                           ...) { 
   
-  # col is nothing, set default
-  if ( is.null(col) ) { 
-    col <- grDevices::hcl.colors(mod[["nstates"]], "viridis")
+  if ( is.null(fun) ) { 
+    fun <- function(m) { 
+      sapply(mod[["states"]], function(s) mean(m == s))
+    }
   }
   
   ex_res <- fun(initmat)
   if ( length(ex_res) == 0 || ! is.atomic(ex_res) || ! is.numeric(ex_res) ) { 
-    stop("The 'tracer_fun' function must return a vector of numeric values.") 
+    stop("The function 'fun' must return a vector of numeric values.") 
+  }
+  
+  # col is nothing, set default
+  if ( is.null(col) ) { 
+    col <- grDevices::hcl.colors(length(ex_res), "viridis")
+  }
+  
+  if ( length(col) != length(ex_res) ) { 
+    stop("The number of colors does not match the number of values returned by 'fun'")
   }
   
   backlog <- matrix(NA_real_, ncol = length(ex_res) + 1, nrow = max_samples)
   backlog_line <- 1
   states <- mod[["states"]]
   
+  last_call_time <- Sys.time()
+
   function(t, mat) { 
     
     # backlog persists across runs, so we need to zero it out when re-running a 
@@ -173,6 +266,14 @@ trace_plotter <- function(mod, initmat,
     # If we are before the burn_in iterations, return without doing anything
     if ( t < burn_in ) { 
       return( NULL ) 
+    }
+    
+    this_call_time <- Sys.time()
+    dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
+    
+    # If {1/fps_cap} has not passed since last time, we wait a little bit
+    if ( dtime < (1/fps_cap) ) { 
+      Sys.sleep( (1/fps_cap) - dtime )
     }
     
     # Compute covers and store them in backlog 
@@ -207,6 +308,8 @@ trace_plotter <- function(mod, initmat,
     if ( backlog_line > max_samples ) { 
       backlog_line <<- 1 
     }
+    
+    last_call_time <<- Sys.time()
     
     return(NULL)
   }

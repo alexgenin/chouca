@@ -13,10 +13,10 @@ run_camodel(mod, initmat, times, control = list())
 \code{\link{generate_initmat}}}
 
 \item{times}{Time sequence for which output is wanted. Time will always start at zero
-but output will only be saved for values in this vector.}
+but output will only be saved at multiple of values in this vector.}
 
 \item{control}{a named list with settings to alter how the simulation is run (see 
-full list of settings in secion 'Details')}
+full list of settings in 'Details' section)}
 }
 \value{
 A \code{ca_model_result} objects, which is a list with the following 
@@ -44,44 +44,87 @@ A \code{ca_model_result} objects, which is a list with the following
 Run a pre-defined stochastic cellular automaton
 }
 \details{
-\code{run_camodel()} is the function to run a pre-defined cellular automaton. It loads 
-  the model definition, and runs the simulation for a pre-defined number of 
-  iterations. It will run the simulation for \code{niter} iterations, starting from 
-  the initial landscape matrix \code{initmat}.
+\code{run_camodel()} is the workhorse function in \code{chouca} to run a pre-defined
+ cellular automaton. It loads the model definition, and runs the simulation for a 
+ pre-defined number of iterations. It will run the simulation and output the results 
+ at the time steps specified by the \code{times} argument, starting from the initial 
+ landscape \code{initmat} (a matrix typically created by 
+ \code{\link{generate_initmat}}).
 
 The \code{control} list must have named elements, and allows altering the 
-  way the simulation is run. The possible options are the following: 
+  way the simulation is run. Possible options are the following: 
  
  \enumerate{ 
    
-   \item \code{save_covers_every} The period of time between which the global covers 
-     of each state in the landscape is saved. Set to zero to turn off saving 
-     them. Default is 1 (save covers at each iteration).
+   \item \code{save_covers_every} By default, global covers are saved for each time step 
+     specified in \code{times}. Setting this argument to values higher than one will 
+     skip some time steps. For example, setting it to 2 will make \code{run_camodel} 
+     save covers only every two values specified in \code{times}. Set to 0 to turn off
+     the saving of covers. 
    
-   \item \code{save_snapshots_every} Period of time between which a snapshot of the
-     2D grid is saved. Set to zero to turn off the saving of snapshots (default
-     option).
+   \item \code{save_snapshots_every} Similar to covers, landscape snapshots can be 
+     saved every set number of values in \code{times}. By default, only the initial
+     and final landscape are saved. Set to one to save the landscape for each value 
+     specified in \code{times}. Higher values will skip elements in \code{times} by 
+     the set number. Set to zero to turn off the saving of snapshots.
     
    \item \code{console_output_every} Sets the number of iterations between which 
      progress report is printed on the console. Set to zero to turn off progress 
      report. Default is to print progress every ten iterations.
    
+   \item \code{custom_output_fun} A custom function can be passed using this 
+     argument to compute something on the landscape as the simulation is being run. 
+     This function can return anything, but needs to have two arguments, the first 
+     one being the current time in the simulation (single numeric value), and the 
+     other one the current landscape (a matrix). 
+   
+   \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
+     it will be called for every values in the \code{times} vector. Increase this 
+     value to skip some time points, in a similar way to covers and snapshots above. 
+   
+   \item \code{substeps} Stochastic CA can run into issues where the probabilities 
+     of transitions are above one. A possible solution to this is to run the model 
+     in 'substeps', i.e. an iteration is divided in several substeps, and 
+     the substeps are run subsequently with probabilities divided by this amount. For 
+     example, a model run with 4 substeps means that each iteration will be divided 
+     in 4 'sub-iterations', and probabilities of transitions are divided by 4 at 
+     each of those sub-iterations. 
+   
    \item \code{engine} The engine to use to run the simulations. Accepted values 
-     are 'r', to use the pure-R engine, 'cpp' to use the C++ engine, or 'compiled', to
-     compile the model code on the fly. Default is to use the C++ engine. Note that 
-     the 'compiled' engine uses its own random number generator, and for this reason
-     may produce results that are different from the two other engines.
+     are 'cpp' to use the C++ engine, or 'compiled', to compile the model code on the
+     fly. Default is to use the C++ engine. Note that the 'compiled' engine uses its 
+     own random number generator, and for this reason may produce results that are
+     different from the C++ engine.
    
    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
      precompute probabilities of transitions for all possible combinations of 
      neighborhood. When working with a model with a low number of states, this 
      can increase simulation speed dramatically. Default is to do it when the 
      possible total number of neighborhood combinations is below the number of cells 
-     in the landscape (so that it is effectively less work to pre-compute transitions 
-     than to compute them at each iteration). 
+     in the landscape (so that it is effectively less work to pre-compute transition 
+     probabilities than to compute them at each iteration). 
    
    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
      Rcpp messages when compiling the model. Default is \code{FALSE}. 
+
+   \item \code{force_compilation} (Compiled engine only)  \code{chouca} implements a
+     cache system so that models with similar structure are not recompiled. Set this
+     argument to \code{TRUE} to force compilation every time the model is run. 
+   
+   \item \code{cores} (Compiled engine only) The number of threads to use to run the 
+     model. This provides a moderate speedup in most cases, and is sometimes 
+     counter-productive on small landscapes. 
+   
+   \item \code{fixed_neighborhood} When a model is run on a non-toric landscape, i.e. 
+     when the cells on each border of the landscape are not neighborhood of each other, 
+     the number of neighborhood configurations increases dramatically. This is 
+     because cells do not have a fixed number of neighbors of 4 or 8, but anywhere
+     between 2 and 8 as some are in the corners or edges of the landscape. This is a 
+     problem when pre-computing probabilities, as the number of neighborhood 
+     configurations increases dramatically. Setting this option to \code{TRUE} 
+     simplifies this by considering that all cells always have 4 or 8 neighbors, even 
+     in non-toric landscapes, at the cost of some inaccuracy at the edge of the
+     landscape. 
    
 }
 }
@@ -101,5 +144,5 @@ matplot(covers[ ,1], covers[ ,-1], type = "l")
 
 }
 \seealso{
-camodel
+camodel, generate_initmat, trace_plotter, landscape_plotter
 }

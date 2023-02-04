@@ -387,7 +387,7 @@ landscape sizes:
 
 ```{r benhmarks, results = FALSE}
 
-sizes <- 2^seq(3, 8)
+sizes <- 2^seq(3, 10)
 
 benchmark <- ldply(sizes, function(size) { 
   
@@ -430,16 +430,24 @@ benchmark <- ldply(sizes, function(size) {
   })
 })
 
-ggplot(benchmark, 
+
+bench <- gather(benchmark, "run_type", "run_time", c("run1", "run2"))
+bench[ ,"run_type"] <- c(run1 = "cold", run2 = "warm")[bench[ ,"run_type"]]
+ggplot(bench, 
        aes(x = size, 
-           y = run1, 
-           color = paste(engine, 
+           y = run_time, 
+           linetype = run_type, 
+           color = paste0(engine, 
                          ifelse(proba_precomp, "+precomp", "")))) + 
   geom_point() + 
   geom_line() + 
   scale_color_discrete(name = "Type") + 
   scale_y_continuous(trans = "log2") + 
-  scale_x_continuous(trans = "log2") 
+  scale_x_continuous(trans = "log2") +
+  scale_linetype(name = "Run type") + 
+  theme_minimal() + 
+  labs(x = "Landscape size", 
+       y = "Run time (s)")
 
 ```
 
@@ -598,53 +606,8 @@ out <- run_camodel(mod, init, seq(0, 512), control = ctrl)
 
 These two functions have many options to customize their output to your liking, which 
 are documented in `?trace_plotter` or `?landscape_plotter`. Of course using them involves 
-a large performance penalty as the plots needs to be redrawn during the execution of the 
+a large performance penalty as plots needs to be redrawn during the execution of the 
 simulation. 
-
-
-# Warning about error in probabilites 
-
-
-When writing a transition probability, `chouca` will try to approximate it with the above 
-function, check that how accurately this has been done, and report any deviation. For 
-example, the following model has transition probabilities that cannot be represented with 
-100% accuracy, because of the exponential term, and as a result a warning is produced: 
-
-```{r model_error, results = FALSE}
-camodel(transition(from = "0", to = "+", ~ 1 + exp( 2 + 2 * p["+"] * q["+"])), 
-        wrap = TRUE, 
-        neighbors = 4)
-```
-
-```{r model_error_hidden, echo = FALSE, results = TRUE, warning = FALSE}
-invisible({ 
-  mod <- camodel(transition(from = "0", to = "+", ~ 1 + exp(- p["+"] * q["+"])), 
-                 wrap = TRUE, 
-                 neighbors = 4)
-  relerr <- max(mod$max_rel_error)
-})
-```
-
-`chouca` reports both the absolute and relative difference between the approximated and 
-true model probability. Many models have no error and no approximation is made, but you 
-can go on with a model with error if you know what you are doing. Here, the relative error 
-is tiny, so the results would probably be extremely close to a model without 
-approximation. 
-
-To get rid of this warning, we can provide our own approximation to make the above 
-form into something more palatable to `chouca`, by using the first few terms of the 
-(Maclaurin)[https://en.wikipedia.org/wiki/Taylor_series#Exponential_function] series for 
-the exponential function: $e^x = 1 + x + \frac{x^2}{2!} + \frac{x^3}{3!}$. 
-
-```{r model_error_ok}
-exp_approx <- function(x) 1 + x + x^2/2 + x^3/(3*2) + x^4/(4*3*2)
-camodel(transition(from = "0", to = "+", ~ 1 + exp_approx(- p["+"] * q["+"])), 
-        wrap = TRUE, 
-        neighbors = 4)
-```
-
-This time, no error is reported by chouca, as this new model follows the exact functional 
-form required. 
 
 
 
