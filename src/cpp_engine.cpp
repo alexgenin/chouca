@@ -8,6 +8,7 @@
 
 // Some typedefs for better legibility
 typedef unsigned char uchar; 
+typedef unsigned short ushort; 
 
 // Define some column names for clarity
 #define _from 0
