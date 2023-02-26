@@ -26,5 +26,6 @@ Suggests:
     covr,
     testthat (>= 3.0.0), 
     spatialwarnings, 
-    deSolve
+    deSolve, 
+    igraph
 Config/testthat/edition: 3

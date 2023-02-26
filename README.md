@@ -20,7 +20,7 @@ for your own work, expect breaking changes.
 ## What this package implements 
 
 This package is an *engine* for probabilistic cellular automata (PCA), although it can 
-also do deterministic cellular automata. The objective is to provide a high-level, 
+also run deterministic cellular automata. The objective is to provide a high-level, 
 declarative interface to a PCA model, and leave the implementation details to the 
 package. 
 
@@ -52,9 +52,9 @@ initmat <- generate_initmat(kubo, c(TREE = 0.5, EMPTY = 0.5), nr = 100, nc = 100
 run_camodel(kubo, initmat, times = seq(0, 200))
 ```
 
-Conway's game of life can be declared in the following way. Note that we declare that 
-we want the model with 8 neighbors, and with a toric space (that wraps around the 
-edges):
+Conway's game of life can be declared in the following way. Note that we set the 
+function arguments so that we want the model to use an 8x8 neighborhood, along with a 
+toric space (that wraps around the edges):
 
 ```r
   mod <- camodel( 
@@ -66,27 +66,19 @@ edges):
   )
 ```
 
-Many models are supported by `chouca`: any neighborhood rule can be used, and rules 
-depending on the global cover of a state can be included as long as it can be 
-expressed as a polynomial of that state. If you don't if your model is supported or not, 
-you can always write it: `chouca` will warn you if it cannot use your transition rules
-accurately. 
-
 ## Motivation and objectives
 
 Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
-organisms in the landscape, and investigate how local interactions between organisms may 
-affect the dynamic of a system as a whole. However, implementing those models is often 
-done using ad-hoc R code, which is slow, error-prone, and does not encourage exploring 
-different variation around a single model. `chouca` aims at providing a high-level 
-interface to such type of models, in order to reduce errors, and allow spending more time 
-on model design, than debugging ugly code. 
+organisms in a landscape, and investigate how their interactions may affect the dynamic 
+of a system as a whole. However, implementing those models is often done using ad-hoc 
+R code, which is slow, error-prone, and does not encourage exploring different 
+variations around a single model. `chouca` aims at providing a high-level interface to 
+such type of models, in order to reduce errors, and spend more time on model design, 
+rather than debugging ugly code. 
 
-`chouca` wants to be user-friendly, yet provide very good performance. Several engines are 
-included, including a pure-R engine and a C++ engine. In addition to those two, `chouca` 
-is capable of emitting and compiling the required C++ code at runtime for a specific 
-model. This allows making optimizations that would be impossible otherwise, and improves 
-performance typically by one or two orders of magnitude.
+`chouca` wants to be user-friendly, yet provide very good performance. Several backend are provided, the main one being in C++. `chouca` can also emit and compile the required 
+C++ code at runtime for a specific model (à la Stan). This allows making optimizations 
+that would be impossible otherwise, and improves performance typically 10-100 times.
 
 
 
@@ -102,7 +94,7 @@ the literature:
 ## Authors and acknowledgements 
 
 `chouca` is mainly developed by Alexandre Génin, but contributions and discussion are 
-welcome. 
+of course welcome!
 
 *This work has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie grant agreement N°896159.*
 

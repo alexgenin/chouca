@@ -36,6 +36,30 @@ print.ca_model <- function(x, ...) {
   return(invisible(x))
 }
 
+#'@export 
+plot.ca_model <- function(x, y, ...) { 
+  if ( requireNamespace("igraph") ) { 
+    gr <- igraph::as.igraph(x)
+    plot(gr, edge.label = igraph::E(gr)$name, 
+#          layout = igraph::layout_with_kk, 
+         edge.label.family = "sans", 
+         vertex.label.family = "sans", 
+         edge.curved = 0.4,
+         vertex.color = grDevices::rgb(0, 0, 0, 0),
+         vertex.size = 30, 
+         ...)
+  }
+}
+
+as.igraph.ca_model <- function(x, ...) { 
+  trans_df <- plyr::ldply(x[["transitions"]], function(tr) { 
+    data.frame(from = tr[["from"]], 
+               to   = tr[["to"]], 
+               name = as.character(tr[["prob"]])[-1])
+  })
+  igraph::graph_from_data_frame(trans_df, ...)
+}
+
 #'@export
 print.camodel_transition <- function(x, ...) { 
   cat(sprintf("Transition from %s to %s\n", x[["from"]], x[["to"]]))
@@ -44,7 +68,6 @@ print.camodel_transition <- function(x, ...) {
   
   invisible(x)
 }
-
 
 
 
