@@ -69,10 +69,10 @@ toric space (that wraps around the edges):
 ## Motivation and objectives
 
 Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
-organisms in a landscape, and investigate how their interactions may affect the dynamic 
-of a system as a whole. However, implementing those models is often done using ad-hoc 
+organisms over space, and investigate how their interactions may affect the dynamic 
+of the system as a whole. However, implementing those models is often done using ad-hoc 
 R code, which is slow, error-prone, and does not encourage exploring different 
-variations around a single model. `chouca` aims at providing a high-level interface to 
+variations around a single model. `chouca` provides a high-level interface to 
 such type of models, in order to reduce errors, and spend more time on model design, 
 rather than debugging ugly code. 
 
@@ -80,16 +80,11 @@ rather than debugging ugly code.
 C++ code at runtime for a specific model (à la Stan). This allows making optimizations 
 that would be impossible otherwise, and improves performance typically 10-100 times.
 
-
-
-## Benchmarks
-
 Here are a few graphs that should help you judge what performance to expect from 
 `chouca`. These curves represent the average performance across a few models taken from 
 the literature: 
 
 ![benchmark_results](./benchmarks_last_commit.png)
-
 
 ## Authors and acknowledgements 
 
@@ -98,8 +93,3 @@ of course welcome!
 
 *This work has received funding from the European Union’s Horizon 2020 research and innovation programme under the Marie Sklodowska-Curie grant agreement N°896159.*
 
-
-
-## References 
-
-Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics with Gap Expansion: Total Gap Area and Gap Size Distribution.” Journal of Theoretical Biology 180 (3): 229–46.
