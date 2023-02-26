@@ -19,7 +19,8 @@ mkmod <- function(tr) {
   camodel(tr, 
           wrap = TRUE, 
           neighbors = 4, 
-          continuous = FALSE)
+          continuous = FALSE, 
+          check_model = "full")
 }
 
 
@@ -65,10 +66,12 @@ options(chouca.degmax = NULL) # unset
 
 
 # Expect warning if not enough degrees to work with 
-options(chouca.degmax = 2)
+options(chouca.degmax = 1)
+while ( TRUE ) { 
 expect_warning({ 
   m <- mkmod(transition(from = "0", to = "+", ~ 1 + exp_approx(-p["+"]*q["+"], 5)))
 })
+}
 options(chouca.degmax = NULL)
 
 
@@ -156,8 +159,8 @@ err <- function(deg) {
 }
 
 x <- seq(0, 1, l = 12)
-plot(x, sin(x*pi))
-lines(x, sin_approx(x*pi, 0))
+# plot(x, sin(x*pi))
+# lines(x, sin_approx(x*pi, 0))
 
 
 allerrs <- plyr::ldply(seq.int(0, 2), function(d) { 

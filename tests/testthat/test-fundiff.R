@@ -30,7 +30,6 @@ test_that("Behavior is OK compared to differential equation", {
                      control = list(engine = "compiled", 
                                     precompute_probas = FALSE, 
                                     force_compilation = TRUE, 
-                                    write_source = "/tmp/ramdisk/model.cpp", 
                                     console_output_every = 0))
   
   covs <- as.data.frame(run[["output"]][["covers"]])

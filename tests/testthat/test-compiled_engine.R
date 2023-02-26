@@ -18,7 +18,6 @@ test_that("Compiled model produces OK results regardless of proba precomputation
   control <- list(save_covers_every = 1, 
                   console_output_every = 0, 
                   engine = "compiled", 
-                  write_source = "/tmp/ramdisk/model.cpp", 
                   precompute_probas = TRUE)
   set.seed(123)
   o <- run_camodel(mod, initmm, iters, control = control)

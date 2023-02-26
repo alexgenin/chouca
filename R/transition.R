@@ -179,7 +179,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     max_rel_error <- max(ifelse((p_refs - p_preds) != 0, 
                                 abs((p_refs - p_preds)/p_refs), 0))
     
-    if ( max_rel_error > ERROR_REL_MAX ) { 
+    if ( max_rel_error > ERROR_REL_MAX || max_error > ERROR_REL_MAX ) { 
       msg <- paste(
         "Residual error in computed probabilities", 
         paste0("  max error: ", format(max_error, digits = 3)), 
