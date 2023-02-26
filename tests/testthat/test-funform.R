@@ -67,11 +67,9 @@ options(chouca.degmax = NULL) # unset
 
 # Expect warning if not enough degrees to work with 
 options(chouca.degmax = 1)
-while ( TRUE ) { 
 expect_warning({ 
   m <- mkmod(transition(from = "0", to = "+", ~ 1 + exp_approx(-p["+"]*q["+"], 5)))
 })
-}
 options(chouca.degmax = NULL)
 
 
