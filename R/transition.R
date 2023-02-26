@@ -105,9 +105,15 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   
   # Check if we reconstruct the probabilities correctly 
   max_error <- mean_error <- max_rel_error <- NA_real_
-  if ( check_model ) { 
-    all_qss <- generate_all_qs(neighbors, ns, filter = TRUE)[ ,1:ns]
-    all_qss <- all_qss[apply(all_qss, 1, sum) == neighbors, ]
+  if ( check_model %in% c("full", "quick") ) { 
+    
+    # filter = 2 -> only keep values summing to neighbors
+    # cap is the maximum number of lines in all_qss, as a full test can test some 
+    # time since it scales horribly with the number of states 
+    cap <- ifelse(check_model == "quick", 256, 0)
+    all_qss <- generate_all_qs(neighbors, ns, filter = 2, 
+                               line_cap = cap)[ ,1:ns, drop = FALSE]
+    
     colnames(all_qss) <- state_names
     ps <- matrix(stats::runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
     ps <- t(apply(ps, 1, function(X) X / sum(X)))
@@ -123,17 +129,20 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       # transition).
       beta <- ifelse(nrow(beta_0) == 0, 0, beta_0[ ,"coef"])
       
-      # q component. 
-      qslong <- data.frame(state_1 = state_names, 
-                           # this gets the qs point corresponding to this proportion 
-                           # of neighbors. 
-                           qs = all_qss[i, ] / neighbors * (xpoints - 1))
-      
       # TODO: the join is very slow, try to do something 
-      qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong), 
-                           match = "first")
-      # If nomatch, then coef is NA, which should count as zero here
-      qssum <- sum(qslong[ ,"coef"], na.rm = TRUE)
+      qssum <- 0
+      if ( nrow(beta_q) > 0 ) { 
+        # q component. 
+        qslong <- data.frame(state_1 = state_names, 
+                             # this gets the qs point corresponding to this proportion 
+                            # of neighbors. 
+                             qs = all_qss[i, ] / neighbors * (xpoints - 1))
+        
+        qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong), 
+                            match = "first")
+        # If nomatch, then coef is NA, which should count as zero here
+        qssum <- sum(qslong[ ,"coef"], na.rm = TRUE)
+      }
       
       # pp component
       beta_pp[ ,"ps1"] <- ps[i, beta_pp[ ,"state_1"]]
@@ -244,7 +253,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     y0 <- yfun(p0, q0)
     
     # Differentiate over p, over q, if both are zero, then the coef is zero.
-    delta_yp <- plyr::laply(seq.int(nrow(vals)), function(i) { 
+    delta_yp <- lapply(seq.int(nrow(vals)), function(i) { 
       p1 <- q1 <- p0
       p1[ vals[i, "state_1"] ] <- 1 - (0.01 + 1/ns )
       yp <- yfun(p1, q1)
@@ -256,6 +265,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
       
       c(dp, dq)
     })
+    delta_yp <- do.call(rbind, delta_yp)
     
     keep_lines <- apply(delta_yp, 1, function(X) all(abs(X) > epsilon))
 #     cat("Removed ", sum(!keep_lines), " coefs\n")
@@ -275,17 +285,17 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     })
     
     ps <- as.matrix(do.call(expand.grid, c(ps, ps)))
-    qs <- ps[ ,seq(1, ns)]
-    ps <- ps[ ,seq(ns+1, ncol(ps))]
+    qs <- ps[ ,seq(1, ns), drop = FALSE]
+    ps <- ps[ ,seq(ns+1, ncol(ps)), drop = FALSE]
     
   #   ps <- subset(ps, apply(ps, 1, sum) == 1)
     colnames(ps) <- colnames(qs) <- state_names
     
     test_set <- which(seq(1, nrow(ps)) %% 3 == 0)
-    ps_test <- ps[test_set, ]
-    qs_test <- qs[test_set, ]
-    ps <- ps[-test_set, ]
-    qs <- qs[-test_set, ]
+    ps_test <- ps[test_set, , drop = FALSE]
+    qs_test <- qs[test_set, , drop = FALSE]
+    ps <- ps[-test_set, , drop = FALSE]
+    qs <- qs[-test_set, , drop = FALSE]
     
     ys <- sapply(seq.int(nrow(ps)), function(i) { yfun(ps[i, ], qs[i, ]) })
     
@@ -451,8 +461,8 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     colnames(ps) <- state_names
     
     test_set <- which(seq(1, nrow(ps)) %% 3 == 0)
-    ps_test <- ps[test_set, ]
-    ps <- ps[-test_set, ]
+    ps_test <- ps[test_set, , drop = FALSE]
+    ps <- ps[-test_set, , drop = FALSE]
     
     # We use this instead of apply because we need to preserve column names for yfun
     ys <- sapply(seq.int(nrow(ps)), function(i) yfun(ps[i, ]))

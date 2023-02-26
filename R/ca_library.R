@@ -38,6 +38,9 @@
 #'     \item \code{"aridvege"} A model of arid vegetation, in which facilitation between
 #'       neighboring plants occur, along with grazing. The original model is to be 
 #'       found in Kéfi et al. (2007), with extensions in Schneider et al. (2016)
+#'      
+#'     \item \code{"aridvege-danet"} An extension of the previous model to two species 
+#'       with assymetric facilitation (Danet et al. 2021)
 #'     
 #'     \item \code{"coralreef"} A model of coral reef with local feedbacks of corals and 
 #'       macroalgae (Génin, in prep)
@@ -52,21 +55,24 @@
 #' 
 #' @references 
 #' 
-#'  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics with Gap
-#'  Expansion: Total Gap Area and Gap Size Distribution.” Journal of Theoretical Biology 
-#'  180 (3): 229–46.
-#' 
+#'  Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021. 
+#'  "Indirect Facilitation Drives Species Composition and Stability in Drylands."
+#'  Theoretical Ecology 14 (2): 189–203. doi: 10.1007/s12080-020-00489-0.
+#'  
 #'  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
 #'  disturbance dynamics: signatures of oceanographic forcing from local interactions. The
 #'  American Naturalist, 161, 889–904. doi: 10.1086/375300
 #' 
-#'  Kéfi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
-#'  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. “Spatial Vegetation 
-#'  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems.” 
+#'  Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
+#'  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation 
+#'  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems." 
 #'  Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
 #'  
-#'  Schneider, Florian D., and Sonia Kefi. 2016. “Spatially Heterogeneous Pressure Raises
-#'  Risk of Catastrophic Shifts.” Theoretical Ecology 9 (2): 207-17. 
+#'  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
+#'  Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology 
+#'  180 (3): 229–46.
+#'  Schneider, Florian D., and Sonia Kefi. 2016. "Spatially Heterogeneous Pressure Raises
+#'  Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17. 
 #'  doi: 10.1007/s12080-015-0289-1.
 #'  
 #' @examples 
@@ -91,8 +97,8 @@ ca_library <- function(model,
 # 
 # See also Génin et al. 2018 for model definition 
 # 
-# Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics with Gap
-# Expansion: Total Gap Area and Gap Size Distribution.” Journal of Theoretical Biology 
+# Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
+# Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology 
 # 180 (3): 229–46.
 # 
   if ( model == "forestgap" || model == "forest-gap") { 
@@ -116,7 +122,7 @@ ca_library <- function(model,
       parms = parms, 
       all_states = c("EMPTY", "TREE"), 
       continuous = FALSE, 
-      check_model = TRUE
+      check_model = "quick"
     )
   
   }
@@ -145,7 +151,7 @@ ca_library <- function(model,
       parms = parms, 
       all_states = c("MUSSEL", "EMPTY", "DISTURB"), 
       continuous = FALSE, 
-      check_model = TRUE
+      check_model = "quick"
     )
   }
   
@@ -186,9 +192,44 @@ ca_library <- function(model,
       neighbors = neighbors, 
       all_states = c("DEGR", "EMPTY", "VEGE"),
       continuous = FALSE, 
-      check_model = TRUE
+      check_model = "quick"
     )
     
+  }
+  
+  if ( model == "aridvege-danet" ) { 
+    if ( is.null(parms) ) { 
+      parms <- list(delta = 0.1, 
+                    b = 0.8, 
+                    c = 0.2, 
+                    gamma = 0.1, 
+                    g = 0.1, 
+                    u = 5,
+                    m = 0.1, # or .2 ???
+                    d = 0.1,
+                    r = 0.01, 
+                    f = 0.9)
+    }
+    
+    mod <- camodel( 
+      transition(from = "0", to = "N", 
+        ~ ( delta * p["N"] + ( 1 - delta ) * q["N"] ) * 
+            ( b - c * ( p["P"] + p["N"] ) - gamma )
+      ), 
+      transition(from = "0", to = "P", 
+        ~ ( delta * p["P"] + ( 1 - delta ) * q["P"] ) * 
+            ( b - c * ( p["P"] + p["N"] ) - 
+              g * ( 1 - ( 1 - exp( - u * q["N"] ) ) ) )  
+      ), 
+      transition(from = "N", to = "0", ~ m), 
+      transition(from = "P", to = "0", ~ m), 
+      transition(from = "0", to = "-", ~ d), 
+      transition(from = "-", to = "0", ~ r + f * ( q["N"] + q["P"] ) ), 
+      wrap = TRUE, 
+      continuous = FALSE, 
+      parms = parms, 
+      neighbors = 4
+    )
   }
   
   
@@ -227,7 +268,7 @@ ca_library <- function(model,
       parms = parms, 
       all_states = c("BARE", "ALGAE", "CORAL"), 
       continuous = FALSE, 
-      check_model = TRUE
+      check_model = "quick"
     )
   }
   
@@ -271,7 +312,7 @@ ca_library <- function(model,
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 
-      check_model = TRUE, 
+      check_model = "quick", 
       continuous = FALSE
     )
     
@@ -279,9 +320,10 @@ ca_library <- function(model,
   
   
   if ( is.null(mod) ) { 
-    all_models <- c("forestgap", "musselbed", "aridvege", "coralreef", 
+    all_models <- c("forestgap", "musselbed",  "coralreef", "aridvege",
+                    "aridvege-danet", 
                     "gameoflife", "rockpaperscissor")
-    stop(paste0(model, " is an unknown model. Available models:", 
+    stop(paste0(model, " is an unknown model. Available models:\n", 
                 paste(" - ", all_models, collapse = "\n")))
   }
   

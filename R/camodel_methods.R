@@ -113,6 +113,7 @@ plot.ca_model_result <- function(x,
                     col = colors, 
                     xlab = "Time", 
                     ylab = "Covers", 
+                    lty = 1, 
                     ...)
   
   legend.x <- ifelse(is.null(legend.x), min(covers[ ,1]), legend.x) # max t 

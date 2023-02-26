@@ -13,8 +13,8 @@ camodel_cpp_engine <- function(ctrl) {
     invisible(.Call(`_chouca_camodel_cpp_engine`, ctrl))
 }
 
-generate_all_qs <- function(nb, ns, filter) {
-    .Call(`_chouca_generate_all_qs`, nb, ns, filter)
+generate_all_qs <- function(nb, ns, filter, line_cap) {
+    .Call(`_chouca_generate_all_qs`, nb, ns, filter, line_cap)
 }
 
 quick_pred_cpp <- function(coefs, ps, qs, vals) {

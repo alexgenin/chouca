@@ -25,5 +25,6 @@ Imports:
 Suggests: 
     covr,
     testthat (>= 3.0.0), 
-    spatialwarnings
+    spatialwarnings, 
+    deSolve
 Config/testthat/edition: 3

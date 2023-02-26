@@ -54,15 +54,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // generate_all_qs
-arma::umat generate_all_qs(arma::uword nb, arma::uword ns, bool filter);
-RcppExport SEXP _chouca_generate_all_qs(SEXP nbSEXP, SEXP nsSEXP, SEXP filterSEXP) {
+arma::umat generate_all_qs(arma::uword nb, arma::uword ns, arma::uword filter, arma::sword line_cap);
+RcppExport SEXP _chouca_generate_all_qs(SEXP nbSEXP, SEXP nsSEXP, SEXP filterSEXP, SEXP line_capSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::uword >::type nb(nbSEXP);
     Rcpp::traits::input_parameter< arma::uword >::type ns(nsSEXP);
-    Rcpp::traits::input_parameter< bool >::type filter(filterSEXP);
-    rcpp_result_gen = Rcpp::wrap(generate_all_qs(nb, ns, filter));
+    Rcpp::traits::input_parameter< arma::uword >::type filter(filterSEXP);
+    Rcpp::traits::input_parameter< arma::sword >::type line_cap(line_capSEXP);
+    rcpp_result_gen = Rcpp::wrap(generate_all_qs(nb, ns, filter, line_cap));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -85,7 +86,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_chouca_local_dens", (DL_FUNC) &_chouca_local_dens, 6},
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 1},
-    {"_chouca_generate_all_qs", (DL_FUNC) &_chouca_generate_all_qs, 3},
+    {"_chouca_generate_all_qs", (DL_FUNC) &_chouca_generate_all_qs, 4},
     {"_chouca_quick_pred_cpp", (DL_FUNC) &_chouca_quick_pred_cpp, 4},
     {NULL, NULL, 0}
 };

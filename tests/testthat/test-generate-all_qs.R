@@ -23,7 +23,7 @@ test_that("all_qs is generated correctly", {
   
   all_qs <- cbind(all_qs, rowSums(all_qs))
   
-  all_qs2 <- generate_all_qs(max_nb, ns, filter = wrap)
+  all_qs2 <- generate_all_qs(max_nb, ns, filter = wrap, line_cap = 0)
   
   expect_true({ 
     all( all_qs == all_qs2 ) 

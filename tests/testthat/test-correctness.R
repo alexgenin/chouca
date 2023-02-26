@@ -79,3 +79,20 @@ test_that("fixed neighborhood works", {
   })
   
 })
+
+
+test_that("We can run a model with only one state", { 
+  
+  mod <- camodel(
+    transition(from = "a", to = "a", ~ 1), 
+    wrap = TRUE, 
+    neighbors = 4
+  )
+  init <- generate_initmat(mod, 1, nr = 100)
+  expect_true({ 
+    # Just try to run the model like this
+    run_camodel(mod, init, seq(0, 2))
+    TRUE
+  })
+  
+})

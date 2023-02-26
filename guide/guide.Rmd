@@ -3,11 +3,11 @@ title: The complete guide to `chouca`
 author: Alexandre Génin <a.a.h.genin@uu.nl>
 output:
   html_document:
-    self_contained: no
-    toc: yes
-    toc_float: yes
-    toc_collapsed: false
     code_folding: show
+    self_contained: false
+    toc: true
+    toc_float: 
+      collapsed: false
 ---
 
 ```{css, echo = FALSE}
@@ -385,9 +385,9 @@ most of the time this does not bring much more performance to the table.
 Below is a summary of performance for the forest gap model, different options and 
 landscape sizes: 
 
-```{r benhmarks, results = FALSE}
+```{r benhmarks, results = FALSE, cache = TRUE}
 
-sizes <- 2^seq(3, 10)
+sizes <- 2^seq(3, 6)
 
 benchmark <- ldply(sizes, function(size) { 
   

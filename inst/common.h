@@ -452,6 +452,17 @@ inline void adjust_nb_plines(uword pline[nr][nc],
   
 }
 
+bool is_absorbing_state(const uchar from) { 
+#if has_absorb
+  for ( ushort state=0; state<n_absorbing_states; state++ ) { 
+    if ( from == absorbing_states[state] ) { 
+      return( true ); 
+    }
+  }
+#endif
+  return( false ); 
+}
+
 // Compute probability components 
 static inline void compute_rate(double tprob_line[ns], 
                                 const uchar qs[ns], 
@@ -463,6 +474,11 @@ static inline void compute_rate(double tprob_line[ns],
   
   for ( ushort to=0; to<ns; to++ ) { 
     double total = 0.0; 
+    
+    // Check if we will ever transition into the state 
+    // if ( ! transition_matrix[from][to] ) { 
+      // continue; 
+    // }
     
     // constant component
     for ( uword k=0; k<beta_0_nrow; k++ ) { 
@@ -487,7 +503,7 @@ static inline void compute_rate(double tprob_line[ns],
         ( beta_q_index(k, _qs) == qthis ) * 
         beta_q_vals(k); 
     }
-
+    
     // pp
     for ( uword k=0; k<beta_pp_nrow; k++ ) { 
       double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
@@ -503,7 +519,7 @@ static inline void compute_rate(double tprob_line[ns],
     // qq
     for ( uword k=0; k<beta_qq_nrow; k++ ) { 
       double q1 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
-      double q2 = (double) qs[beta_qq_index(k, _state_2)] / total_nb; //TODO state_1 ????
+      double q2 = (double) qs[beta_qq_index(k, _state_2)] / total_nb; 
       
       total += 
         ( beta_qq_index(k, _from) == from ) * 

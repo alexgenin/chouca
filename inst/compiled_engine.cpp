@@ -50,6 +50,18 @@ constexpr uword beta_pq_nrow = __BETA_PQ_NROW__;
 constexpr uword all_qs_nrow  = __ALL_QS_NROW__; 
 constexpr uword cores        = __CORES__; 
 
+// Information of absorbing states, i.e. states we will never get out of 
+#define has_absorb __HAS_ABSORB_STATES__ 
+#if has_absorb
+constexpr uchar n_absorbing_states = __N_ABSORB_STATES__; 
+constexpr uchar absorbing_states[n_absorbing_states] = __ABSORB_STATES_ARRAY__; 
+#else 
+constexpr uchar n_absorbing_states = 0; 
+#endif
+
+// Transition matrix (true when transition can be done, false when not)
+constexpr bool transition_matrix[ns][ns] = __TMATRIX_ARRAY__; 
+
 // Whether we want to precompute probabilities or not 
 #define PRECOMPUTE_TRANS_PROBAS __PRECOMP_PROBA_VALUE__
 
@@ -77,12 +89,13 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
                                                const unsigned char all_qs[all_qs_nrow][ns+1], 
                                                const arma::uword ps[ns]) { 
   
-  // Note tprob_interval here. In all combinations of neighbors, only some of them 
-  // can be observed in the wild. If we wraparound, then the number of neighbors is 
-  // constant, it is either 8 or 4. So we can compute the values in tprobs only at 
-  // indices every 4 or 8 values. 
-  
   for ( uword l=0; l<all_qs_nrow; l++ ) { 
+    
+    // Some combinations in all_qs will never be used because the number of 
+    // neighbors does not sum up to something we will ever encounter. Skip those. 
+    if ( all_qs[l][ns] > ( use_8_nb ? 8 : 4 ) ) { 
+      continue; 
+    }
     
     for ( uchar from=0; from<ns; from++ ) { 
       
@@ -188,6 +201,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   
   // Initialize table with precomputed probabilities 
   auto tprobs = new double[all_qs_nrow][ns][ns]; 
+  memset(tprobs, 0.0, sizeof(double)*all_qs_nrow*ns*ns); 
 #else
   // Create tables that hold local densities 
   auto old_qs = new uchar[nr][nc][ns]; 
@@ -272,6 +286,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
               
               uchar from = old_mat[i][j]; 
               
+#if __HAS_ABSORB_STATES__
+              // Check if we are in one of the absorbing states. If that is the case, 
+              // skip the checking of this cell
+              if ( is_absorbing_state(from) ) { 
+                continue; 
+              }
+#endif  
+
 #if PRECOMPUTE_TRANS_PROBAS
 #else
               // Normalized local densities to proportions
@@ -316,7 +338,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
                 new_cell_state = rn < ptrans[k] ? k : new_cell_state; 
 #endif
               } 
-          
+              
               if ( new_cell_state != from ) { 
                 new_ps[new_cell_state]++; 
                 new_ps[from]--; 
@@ -359,6 +381,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #if PRECOMPUTE_TRANS_PROBAS
   delete [] old_pline; 
   delete [] new_pline; 
+  delete [] tprobs; 
+  delete [] all_qs; 
 #else
   delete [] old_qs; 
   delete [] new_qs; 

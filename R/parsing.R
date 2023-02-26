@@ -27,10 +27,11 @@
 #' @param verbose whether information should be printed when parsing the model
 #'   definition. 
 #' 
-#' @param check_model A quick check of the model definition is done to make sure there 
+#' @param check_model A check of the model definition is done to make sure there 
 #'   are no issues (e.g. probabilities outside the [1,0] interval, or an unsupported 
-#'   model definition). Setting this argument to \code{FALSE} skips this checks, which is 
-#'   a bit faster.
+#'   model definition). A quick check that should catch most problems is performed if
+#'   check_model is "quick", an extensive check that tests all neighborhood 
+#'   configurations is done with "full", and no check is performed with "none".
 #' 
 #' @param epsilon A small value under which coefficient values are considered to be 
 #'   equal to zero
@@ -73,7 +74,7 @@
 #' \code{camodel()} will run a few checks on your model definition to make sure 
 #' transition probabilities do not go above one or below zero, and that the transition 
 #' probabilities fit the formula above. These checks should catch most errors, but are 
-#' not infaillible. They can be disabled using \code{check_model = TRUE}.
+#' not infaillible. They can be disabled using \code{check_model = "none"}.
 #' 
 #' When using compiled code used to run the model, very small coefficients in the formula
 #' above are rounded down to zero. This may be an issue if your transition 
@@ -140,7 +141,7 @@ camodel <- function(...,
                     continuous = FALSE, 
                     parms = list(), 
                     all_states = NULL, 
-                    check_model = TRUE, 
+                    check_model = "quick", 
                     verbose = FALSE, 
                     epsilon = sqrt(.Machine[["double.eps"]]), 
                     fixed_neighborhood = FALSE) { 
@@ -152,6 +153,10 @@ camodel <- function(...,
   
   if ( any( c("p", "q") %in% names(parms) ) ) { 
     stop("no parameters must be named 'q' or 'p', these are reserved to refer to densities")
+  }
+  
+  if ( ! check_model %in% c("none", "full", "quick") ) { 
+    stop("'check_model' must be 'none', 'quick' or 'full'")
   }
   
   # Read all possible states 
@@ -201,7 +206,6 @@ camodel <- function(...,
   # overwrite xpoints with the fixed value. 
   xpoints <- ifelse(fixed_neighborhood, 1+neighbors, xpoints)
   
-  
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
                                epsilon, neighbors, check_model)
   
@@ -216,16 +220,25 @@ camodel <- function(...,
   max_error <- plyr::laply(transitions_parsed, function(o) o[["max_error"]])
   max_rel_error <- plyr::laply(transitions_parsed, function(o) o[["max_rel_error"]])
   
+  # Identify absorbing states 
+  tr <- lapply(transitions, function(o) cbind(o[["from"]], o[["to"]]))
+  tr <- do.call(rbind, tr)
+  is_absorb_state <- tr[ ,2][ ! (tr[ ,2] %in% tr[ ,1]) ]
+  is_fixed_state <- states[ ! states %in% tr ]
+  absorb_states <- states[states %in% c(is_absorb_state, is_fixed_state)]
+  
+
+  
   caobj <- list(transitions = transitions, 
                 nstates = nstates, 
                 states = factor(states, levels = states), # convert explicitely to factor
-                transitions_defs = list(...), 
                 parms = parms, 
                 beta_0 = beta_0, 
                 beta_q = beta_q, 
                 beta_pp = beta_pp, 
                 beta_pq = beta_pq, 
                 beta_qq = beta_qq, 
+                absorbing_states = absorb_states, 
                 wrap = wrap, 
                 neighbors = neighbors, 
                 continuous = continuous, 
@@ -286,7 +299,8 @@ update.ca_model <- function(object,
                             neighbors = NULL, 
                             wrap = NULL, 
                             continuous = NULL, 
-                            check_model = TRUE, 
+                            fixed_neighborhood = NULL, 
+                            check_model = "quick", 
                             verbose = FALSE, 
                             ...) { 
   
@@ -302,11 +316,15 @@ update.ca_model <- function(object,
   if ( is.null(continuous) ) { 
     continuous <- object[["continuous"]]
   }
+  if ( is.null(fixed_neighborhood) ) { 
+    fixed_neighborhood <- object[["fixed_neighborhood"]]
+  }
   
   # Extract model parameters, and do the call
-  newcall <- c(object[["transitions_defs"]], # always a list, so result of c() is a list
+  newcall <- c(object[["transitions"]], # always a list, so result of c() is a list
                neighbors = neighbors, 
                wrap = wrap, 
+               fixed_neighborhood = fixed_neighborhood, 
                continuous = continuous, 
                parms = list(parms), 
                all_states = list(object[["states"]]), 

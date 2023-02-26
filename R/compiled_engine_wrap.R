@@ -36,8 +36,8 @@ camodel_compiled_engine_wrap <- local({
   ns         <- ctrl[["nstates"]]
   
   # Read file
-  cmaxfile <- system.file("compiled_engine.cpp", package = "chouca")
-  cmaxlines <- readLines(cmaxfile) 
+  cppfile <- system.file("compiled_engine.cpp", package = "chouca")
+  clines <- readLines(cppfile) 
   
   if ( ctrl[["verbose_compilation"]] ) { 
     cat("Compilation options:\n")
@@ -51,64 +51,86 @@ camodel_compiled_engine_wrap <- local({
   boolstr <- function(x) ifelse(x, "true", "false")
   
   # Replace template values
-  cmaxlines <- gsubf("__NR__", format(nrow(init)), cmaxlines)
-  cmaxlines <- gsubf("__NC__", format(ncol(init)), cmaxlines)
-  cmaxlines <- gsubf("__NS__", format(ns), cmaxlines)
-  cmaxlines <- gsubf("__WRAP__", boolstr(wrap), cmaxlines)
-  cmaxlines <- gsubf("__CONTINUOUS_SCA__", boolstr(continuous), cmaxlines)
-  cmaxlines <- gsubf("__DELTA_T__", ctrl[["delta_t"]], cmaxlines)
-  cmaxlines <- gsubf("__USE_8_NB__", boolstr(use_8_nb), cmaxlines)
-  cmaxlines <- gsubf("__SUBSTEPS__", format(ctrl[["substeps"]]), cmaxlines)
-  cmaxlines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), cmaxlines)
-  cmaxlines <- gsubf("__BETA_0_NROW__",  format(nrow(ctrl[["beta_0"]])),  cmaxlines)
-  cmaxlines <- gsubf("__BETA_Q_NROW__",  format(nrow(ctrl[["beta_q"]])), cmaxlines)
-  cmaxlines <- gsubf("__BETA_PP_NROW__", format(nrow(ctrl[["beta_pp"]])), cmaxlines)
-  cmaxlines <- gsubf("__BETA_QQ_NROW__", format(nrow(ctrl[["beta_qq"]])), cmaxlines)
-  cmaxlines <- gsubf("__BETA_PQ_NROW__", format(nrow(ctrl[["beta_pq"]])), cmaxlines)
-  cmaxlines <- gsubf("__COMMON_HEADER__", 
-                     system.file("common.h", package = "chouca"), cmaxlines)
+  clines <- gsubf("__NR__", format(nrow(init)), clines)
+  clines <- gsubf("__NC__", format(ncol(init)), clines)
+  clines <- gsubf("__NS__", format(ns), clines)
+  clines <- gsubf("__WRAP__", boolstr(wrap), clines)
+  clines <- gsubf("__CONTINUOUS_SCA__", boolstr(continuous), clines)
+  clines <- gsubf("__DELTA_T__", ctrl[["delta_t"]], clines)
+  clines <- gsubf("__USE_8_NB__", boolstr(use_8_nb), clines)
+  clines <- gsubf("__SUBSTEPS__", format(ctrl[["substeps"]]), clines)
+  clines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), clines)
+  clines <- gsubf("__BETA_0_NROW__",  format(nrow(ctrl[["beta_0"]])),  clines)
+  clines <- gsubf("__BETA_Q_NROW__",  format(nrow(ctrl[["beta_q"]])), clines)
+  clines <- gsubf("__BETA_PP_NROW__", format(nrow(ctrl[["beta_pp"]])), clines)
+  clines <- gsubf("__BETA_QQ_NROW__", format(nrow(ctrl[["beta_qq"]])), clines)
+  clines <- gsubf("__BETA_PQ_NROW__", format(nrow(ctrl[["beta_pq"]])), clines)
+  clines <- gsubf("__COMMON_HEADER__", 
+                     system.file("common.h", package = "chouca"), clines)
+  
+  # Handle absorbing states. We get the states we go to but never get out from 
+  if ( length(ctrl[["absorb_states"]]) > 0 ) { 
+    clines <- gsubf("__HAS_ABSORB_STATES__", boolstr(TRUE), clines)
+    clines <- gsubf("__N_ABSORB_STATES__", length(ctrl[["absorb_states"]]), clines)
+    
+    abs_states_array <- write_cpp_array_1d(ctrl[["absorb_states"]])
+    clines <- gsubf("__ABSORB_STATES_ARRAY__", abs_states_array, clines)
+    
+  } else { 
+    clines <- gsubf("__HAS_ABSORB_STATES__", boolstr(FALSE), clines)
+  }
+  
+  # Write transition matrix 
+  tmat_array <- write_cpp_array_2d(ctrl[["transition_mat"]])
+  clines <- gsubf("__TMATRIX_ARRAY__", tmat_array, clines)
   
   # Decide whether we fixed the number of neighbors or not 
-  cmaxlines <- gsubf("__FIXED_NEIGHBOR_NUMBER__", 
+  clines <- gsubf("__FIXED_NEIGHBOR_NUMBER__", 
                      ifelse(fixed_neighborhood, "true", "false"), 
-                     cmaxlines)
+                     clines)
   
   # Set code lines that control the number of cores 
   cores <- ctrl[["cores"]]
-  cmaxlines <- gsubf("__CORES__", format(cores), cmaxlines)
-  cmaxlines <- gsubf("__USE_OMP__", ifelse(cores > 1, 1, 0), cmaxlines)
+  clines <- gsubf("__CORES__", format(cores), clines)
+  clines <- gsubf("__USE_OMP__", ifelse(cores > 1, 1, 0), clines)
   
   # Set #define on whether to precompute transition probabilities 
   precompute_probas <- ctrl[["precompute_probas"]]
   if ( precompute_probas == "auto" ) { 
     precompute_probas <- ns^ifelse(use_8_nb, 8, 4) < prod(dim(init))
   }
-  cmaxlines <- gsubf("__PRECOMP_PROBA_VALUE__", boolstr(precompute_probas), cmaxlines)
+  clines <- gsubf("__PRECOMP_PROBA_VALUE__", boolstr(precompute_probas), clines)
   
   # Make hash of file and replace function name 
   # We make the hash depend on the model too, just in case the user changes models, but
   # the rest is different. Unlikely, but who knows.
-  hash <- digest::digest(list(cmaxlines, ctrl[["cores"]]), algo = "md5")
-  cmaxlines <- gsub("__FPREFIX__", hash, cmaxlines)
+  hash <- digest::digest(list(clines, ctrl[["cores"]]), algo = "md5")
+  clines <- gsub("__FPREFIX__", hash, clines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
   
   # Make the table with all combinations of qs 
   if ( precompute_probas ) { 
     max_nb <- ifelse(use_8_nb, 8, 4)
-    all_qs <- generate_all_qs(max_nb, ns, filter = wrap)
+    # filter = 1 when wrap = TRUE -> keep multiple of neighbors
+    all_qs <- generate_all_qs(max_nb, ns, filter = wrap, line_cap = 0)
   } else { 
     # This is a dummy matrix just to make sure we pass something to the c++ function.
     all_qs <- matrix(0, nrow = 1, ncol = ns)
   }
   
   # Replace size in compiled code
-  cmaxlines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), cmaxlines)
+  clines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), clines)
+  
+  # If we need to write the file somewhere, do it 
+  if ( ! is.null(ctrl[["write_source"]]) ) { 
+    writeLines(clines, ctrl[["write_source"]])
+  }
   
   # Source cpp if needed 
   if ( ! exists(fname) || ctrl[["force_compilation"]] ) { 
     
     # We compile from the file, so that lines can be put in a debug run
-    funs <- sourceCpp(code = paste(cmaxlines, collapse = "\n"), 
+    funs <- sourceCpp(code = paste(clines, collapse = "\n"), 
                       verbose = ctrl[["verbose_compilation"]], 
                       cleanupCacheDir = FALSE, 
                       rebuild = TRUE, # always force rebuild has we have our own cache
@@ -120,4 +142,16 @@ camodel_compiled_engine_wrap <- local({
 }
   
 }) # end of local() block
+
+
+# Functions to write to c++ arrays
+write_cpp_array_1d <- function(v) { 
+  paste0("{", paste(v, collapse = ", "), "}")
+}
+
+# Functions to write to c++ arrays
+write_cpp_array_2d <- function(m) { 
+  m <- matrix(as.integer(m), nrow = nrow(m), ncol = ncol(m))
+  write_cpp_array_1d(apply(m, 1, write_cpp_array_1d))
+}
 

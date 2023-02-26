@@ -28,7 +28,7 @@
 #'   
 #'   The \code{pvec} will be normalized to sum to one, emitting a warning if this 
 #'     produces a meaningful change in covers. 
-#'
+#'   
 #'@export
 generate_initmat <- function(mod, pvec, nr, nc = nr) { 
   
@@ -60,23 +60,27 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   m <- matrix(sample(mod[["states"]],
                      replace = TRUE, prob = pvec, size = nr*nc), 
               nrow = nr, ncol = nc)
-  
-  m <- factor(m, levels = mod[["states"]])
-  dim(m) <- c(nr, nc)
-  
-  # Set class
-  m <- as.camodel_initmat(m)
+  # Adjust and set class
+  m <- as.camodel_initmat(m, levels = mod[["states"]])
   
   return(m)
 }
 
 # Set the correct class attributes to an initmat
-as.camodel_initmat <- function(m) { 
+as.camodel_initmat <- function(m, levels) { 
   if ( ! is.matrix(m) ) { 
     stop("This object cannot be converted into a camodel_initmat object")
   }
-  class(m) <- c("camodel_initmat", "factor", "matrix")
-  m
+  ml <- m
+  
+  # If not a factor, convert to it -> this will create levels based on m
+  if ( ! is.factor(m) ) { 
+    ml <- factor(m, levels = levels)
+    dim(ml) <- dim(m)
+  }
+  
+  class(ml) <- c("camodel_initmat", "factor", "matrix")
+  ml
 }
 
 #' @title Running a cellular automata
@@ -227,6 +231,16 @@ run_camodel <- function(mod, initmat, times,
   if ( ! all(levels(initmat) %in% states) ) { 
     stop("States in the initial matrix do not match the model states")
   }
+  
+  # Make sure the levels of the init landscape are all there, and in the right order, 
+  # as from now on we are going to use their integer representation
+  if ( length(levels(initmat)) != length(states) || 
+       ! all( levels(initmat) == states ) ) { 
+    finitmat <- levels(initmat)[as.integer(initmat)]
+    dim(finitmat) <- dim(initmat)
+    initmat <- as.camodel_initmat(finitmat, levels = states)
+  }
+  
   # Read parameters
   control <- load_control_list(control, max(times))
   
@@ -256,9 +270,6 @@ run_camodel <- function(mod, initmat, times,
     cur_line <- 1
     
     cover_callback <- function(t, ps, n) { 
-      if ( cur_line > nrow(global_covers) ) { 
-        browser()
-      }
       global_covers[cur_line, ] <<- c(t, ps / n)
       cur_line <<- cur_line + 1  
     }
@@ -356,14 +367,27 @@ run_camodel <- function(mod, initmat, times,
     as.matrix(tab)
   })
   
+  # Convert list of absorbing states to internal representation (with integer)
+  absorb_states <- which(states %in% mod[["absorbing_states"]]) - 1
+  
+  # Construct the matrix of from/to states 
+  transition_mat <- matrix(FALSE, nrow = ns, ncol = ns)
+  colnames(transition_mat) <- rownames(transition_mat) <- states
+  for (i  in seq_along(mod[["transitions"]]) ) { 
+    transition_mat[ mod[["transitions"]][[i]][["from"]], 
+                    mod[["transitions"]][[i]][["to"]] ] <- TRUE
+  }
+  
   # Adjust the control list to add some components
   control_list <- c(control, 
-                    mod[c("wrap", "continuous", 
+                    mod[c("wrap", "continuous",  
                           "neighbors", "xpoints", "fixed_neighborhood")], 
                     betas, 
                     list(init     = initmat, 
                          times    = times, 
                          nstates  = ns, 
+                         absorb_states = absorb_states, 
+                         transition_mat = transition_mat, 
                          console_callback       = console_callback, 
                          cover_callback         = cover_callback, 
                          snapshot_callback      = snapshot_callback, 
@@ -419,6 +443,7 @@ load_control_list <- function(l, tmax) {
     precompute_probas = "auto", 
     verbose_compilation = FALSE, 
     force_compilation = FALSE, 
+    write_source = NULL, 
     cores = 1, 
     fixed_neighborhood = FALSE 
   )

@@ -238,6 +238,8 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   const arma::Col<double> times = ctrl["times"]; 
   const double delta_t         = ctrl["delta_t"]; 
   
+  const arma::Mat<ushort> transition_mat = ctrl["transition_mat"]; 
+  
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"]; 
   
@@ -353,6 +355,10 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             // Init probability
             ptrans(to) = 0; 
             
+            if ( transition_mat(from, to) == 0 ) { 
+              continue; 
+            }
+            
             // constant component
             for ( arma::uword k=0; k<beta_0_index.n_rows; k++ ) { 
               ptrans(to) += 
@@ -457,6 +463,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
     
     current_t += delta_t; 
     iter++; 
+    R_CheckUserInterrupt();
   }
   
 }

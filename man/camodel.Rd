@@ -12,7 +12,7 @@ camodel(
   continuous = FALSE,
   parms = list(),
   all_states = NULL,
-  check_model = TRUE,
+  check_model = "quick",
   verbose = FALSE,
   epsilon = sqrt(.Machine[["double.eps"]]),
   fixed_neighborhood = FALSE
@@ -38,10 +38,11 @@ or von-Neumann neghborhood, or 8 for a Moore neighborhood)}
 it will be guessed from the transition rules, but it is a good idea pass it here 
 to make sure the model definition is correct.}
 
-\item{check_model}{A quick check of the model definition is done to make sure there 
+\item{check_model}{A check of the model definition is done to make sure there 
 are no issues (e.g. probabilities outside the [1,0] interval, or an unsupported 
-model definition). Setting this argument to \code{FALSE} skips this checks, which is 
-a bit faster.}
+model definition). A quick check that should catch most problems is performed if
+check_model is "quick", an extensive check that tests all neighborhood 
+configurations is done with "full", and no check is performed with "none".}
 
 \item{verbose}{whether information should be printed when parsing the model
 definition.}
@@ -96,7 +97,7 @@ coefficients on the fly by picking values from the \code{parms} list.
 \code{camodel()} will run a few checks on your model definition to make sure 
 transition probabilities do not go above one or below zero, and that the transition 
 probabilities fit the formula above. These checks should catch most errors, but are 
-not infaillible. They can be disabled using \code{check_model = TRUE}.
+not infaillible. They can be disabled using \code{check_model = "none"}.
 
 When using compiled code used to run the model, very small coefficients in the formula
 above are rounded down to zero. This may be an issue if your transition 

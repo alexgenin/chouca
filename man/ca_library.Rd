@@ -40,6 +40,9 @@ This function gives access to different stochastic cellular automata models. You
     \item \code{"aridvege"} A model of arid vegetation, in which facilitation between
       neighboring plants occur, along with grazing. The original model is to be 
       found in Kéfi et al. (2007), with extensions in Schneider et al. (2016)
+     
+    \item \code{"aridvege-danet"} An extension of the previous model to two species 
+      with assymetric facilitation (Danet et al. 2021)
     
     \item \code{"coralreef"} A model of coral reef with local feedbacks of corals and 
       macroalgae (Génin, in prep)
@@ -61,20 +64,23 @@ run_camodel(forestgap_model, im, times = seq(0,100))
 
 }
 \references{
-Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics with Gap
- Expansion: Total Gap Area and Gap Size Distribution.” Journal of Theoretical Biology 
- 180 (3): 229–46.
-
+Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021. 
+ "Indirect Facilitation Drives Species Composition and Stability in Drylands."
+ Theoretical Ecology 14 (2): 189–203. doi: 10.1007/s12080-020-00489-0.
+ 
  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
  disturbance dynamics: signatures of oceanographic forcing from local interactions. The
  American Naturalist, 161, 889–904. doi: 10.1086/375300
 
- Kéfi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
- Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. “Spatial Vegetation 
- Patterns and Imminent Desertification in Mediterranean Arid Ecosystems.” 
+ Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
+ Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation 
+ Patterns and Imminent Desertification in Mediterranean Arid Ecosystems." 
  Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
  
- Schneider, Florian D., and Sonia Kefi. 2016. “Spatially Heterogeneous Pressure Raises
- Risk of Catastrophic Shifts.” Theoretical Ecology 9 (2): 207-17. 
+ Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
+ Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology 
+ 180 (3): 229–46.
+ Schneider, Florian D., and Sonia Kefi. 2016. "Spatially Heterogeneous Pressure Raises
+ Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17. 
  doi: 10.1007/s12080-015-0289-1.
 }
