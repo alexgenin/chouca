@@ -476,9 +476,9 @@ static inline void compute_rate(double tprob_line[ns],
     double total = 0.0; 
     
     // Check if we will ever transition into the state 
-    // if ( ! transition_matrix[from][to] ) { 
-      // continue; 
-    // }
+    if ( ! transition_matrix[from][to] ) { 
+      continue; 
+    }
     
     // constant component
     for ( uword k=0; k<beta_0_nrow; k++ ) { 
