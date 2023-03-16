@@ -13,13 +13,13 @@ if ( ! ( exists("EXTENDED_TESTS") && EXTENDED_TESTS ) ) {
   # during a test and getting a false positive. These tests are primarily 
   # here to make sure there is no bad interaction on CRAN with other packages and on 
   # other systems.
-  nr <- 20
-  nc <- 30
+  nr <- 64
+  nc <- 32
   tolerance <- 5e-2
 } else { 
   # Long testing. 
   # We use a large matrix size and a smaller tolerance, to make tests more conservative. 
-  nr <- 48
+  nr <- 128
   nc <- 64
   tolerance <- 1e-2
 }

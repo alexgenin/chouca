@@ -93,10 +93,21 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   # Subset matrices where coefficients are zero 
   notzero <- function(X) abs(X) > epsilon
   beta_0   <- beta_0[notzero(beta_0[ ,"coef"]),   , drop = FALSE]
-  beta_q   <- beta_q[notzero(beta_q[ ,"coef"]),   , drop = FALSE]
   beta_pp  <- beta_pp[notzero(beta_pp[ ,"coef"]), , drop = FALSE]
   beta_pq  <- beta_pq[notzero(beta_pq[ ,"coef"]), , drop = FALSE]
   beta_qq  <- beta_qq[notzero(beta_qq[ ,"coef"]), , drop = FALSE]
+  
+  
+  # For beta_q, we do not subset things that are zero, because this allows doing 
+  # pointer arithmetic to directly fetch the corresponding value in the table, without 
+  # having to 'scan' for values.
+  beta_q   <- plyr::ddply(beta_q, ~ state_1, function(df) { 
+    if ( any(notzero(df[ ,"coef"])) ) { 
+      df
+    } else { 
+      df[FALSE, ] # return zero-line df
+    }
+  })
   
   # When we use the same state on both side, we put all the exponents in 
   # expo_1, and set expo_2 to zero. This is clearer and probably faster. 

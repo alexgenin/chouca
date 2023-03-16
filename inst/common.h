@@ -1,4 +1,16 @@
 
+// Depth of the fromto_array at which to pick the start/end of coefficient 
+constexpr uword _beta_0_start  = 0; 
+constexpr uword _beta_0_end    = 1; 
+constexpr uword _beta_q_start  = 2; 
+constexpr uword _beta_q_end    = 3; 
+constexpr uword _beta_pp_start = 4; 
+constexpr uword _beta_pp_end   = 5; 
+constexpr uword _beta_qq_start = 6; 
+constexpr uword _beta_qq_end   = 7; 
+constexpr uword _beta_pq_start = 8; 
+constexpr uword _beta_pq_end   = 9; 
+
 /* This is xoshiro256+ 
  * https://prng.di.unimi.it/xoshiro256plus.c 
  */ 
@@ -137,6 +149,8 @@ inline void init_local_densities(uchar qs[nr][nc][ns],
       }
     }
   }
+  
+  
   
 }
 
@@ -284,8 +298,7 @@ inline void initialize_prob_line(arma::uword prob_lines[nr][nc],
   
 }
 
-// Adjust the local densities of the neighboring cells of a cell along with the lines 
-// of the precomputations. 
+// Adjust the local densities of the neighboring cells of a cell that changed state
 inline void adjust_local_density(uchar qs[nr][nc][ns], 
                                  const uword i, 
                                  const uword j, 
@@ -351,11 +364,11 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
       }
       if ( i > 0 && j < (nc-1) ) { 
         qs[i-1][j+1][to]++; // upright
-        qs[i-1][j+1][from]++; 
+        qs[i-1][j+1][from]--; 
       }
       if ( i < (nr-1) && j > 0 ) { 
-        qs[i+1][j-1][from]++; // downleft
-        qs[i+1][j-1][to]--; 
+        qs[i+1][j-1][to]++; // downleft
+        qs[i+1][j-1][from]--; 
       }
       if ( i < (nr-1) && j < (nc-1) ) { 
         qs[i+1][j+1][to]++; // downright
@@ -472,90 +485,150 @@ static inline void compute_rate(double tprob_line[ns],
                                 const arma::uword & from, 
                                 const double delta_t) { 
   
+  // Init
+  for ( ushort k=0; k<ns; k++ ) { 
+    tprob_line[k] = 0.0; 
+  }  
+  
   for ( ushort to=0; to<ns; to++ ) { 
-    double total = 0.0; 
     
     // Check if we will ever transition into the state 
     if ( ! transition_matrix[from][to] ) { 
+      tprob_line[to] = 0.0; 
       continue; 
     }
     
+    // double total = 0.0; 
+    double total2 = 0.0; 
+    signed short kstart, kend; 
+    
     // constant component
-    for ( uword k=0; k<beta_0_nrow; k++ ) { 
-      total += 
-        ( beta_0_index(k, _from) == from ) * 
-        ( beta_0_index(k, _to) == to) * 
-        beta_0_vals(k); 
+    kstart = betas_index[_beta_0_start][from][to]; 
+    kend   = betas_index[_beta_0_end][from][to]; 
+    for ( uword k=kstart; k<=kend; k++ ) { 
+      total2 += coef_tab_dbls(k); 
     }
     
-    // f(q) component
-    for ( uword k=0; k<beta_q_nrow; k++ ) { 
-      
-      // Lookup which point in the qs function we need to use for the 
-      // current neighbor situation.
-      uword qthis = qs[beta_q_index(k, _state_1)] * qpointn;
-      
-      total += 
-        ( beta_q_index(k, _from) == from ) * 
-        ( beta_q_index(k, _to) == to) * 
-        // Given the observed local abundance of this state, which line in 
-        // beta_q should be retained ? 
-        ( beta_q_index(k, _qs) == qthis ) * 
-        beta_q_vals(k); 
+    // constant component
+    // for ( uword k=0; k<beta_0_nrow; k++ ) { 
+    //   total += 
+    //     ( beta_0_ints(k, _from) == from ) * 
+    //     ( beta_0_ints(k, _to) == to) * 
+    //     beta_0_dbls(k); 
+    // }
+    
+    
+    
+    // q component
+    kstart = betas_index[_beta_q_start][from][to]; 
+    if ( kstart >= 0 ) { 
+      // qthis holds the current point at which to extract the value of the coefficient 
+      // for q
+      uword qthis = qs[coef_tab_ints(kstart, _state_1)] * qpointn;
+      // for ( uword k=kstart; k<coef_tab_nrow; k++ ) { 
+      //   if ( coef_tab_ints(k, _q) == qthis ) { 
+      //     Rcpp::Rcout << "picking row " << k << "\n"; 
+      //   }
+      // }
+      // Rcpp::Rcout << "from: " << from << " to: " << to << 
+        // " picking row: " << kstart + qthis << "\n"; 
+      total2 += coef_tab_dbls(kstart + qthis); 
+    }
+    
+    // q component
+//     for ( uword k=0; k<beta_q_nrow; k++ ) { 
+//       
+//       uword qthis = qs[beta_q_ints(k, _state_1)] * qpointn;
+//       // Lookup which point in the qs function we need to use for the 
+//       // current neighbor situation.
+//       total2 +=
+//         ( beta_q_ints(k, _from) == from ) * 
+//         ( beta_q_ints(k, _to) == to) * 
+//         // Given the observed local abundance of this state, which line in 
+//         // beta_q should be retained ? 
+//         ( beta_q_ints(k, _qs) == qthis ) * 
+//         beta_q_dbls(k); 
+//       
+//     }
+    
+    
+    
+    // pp
+    kstart = betas_index[_beta_pp_start][from][to]; 
+    kend   = betas_index[_beta_pp_end][from][to]; 
+    for ( uword k=kstart; k<=kend; k++ ) { 
+      double p1 = ps[coef_tab_ints(k, _state_1)] / ncells; 
+      double p2 = ps[coef_tab_ints(k, _state_2)] / ncells; 
+      total2 += coef_tab_dbls(k) * 
+        fintpow(p1, coef_tab_ints(k, _expo_1)) * 
+        fintpow(p2, coef_tab_ints(k, _expo_2)); 
     }
     
     // pp
-    for ( uword k=0; k<beta_pp_nrow; k++ ) { 
-      double p1 = ps[beta_pp_index(k, _state_1)] / ncells; 
-      double p2 = ps[beta_pp_index(k, _state_2)] / ncells; 
-      
-      total += 
-        ( beta_pp_index(k, _from) == from ) * 
-        ( beta_pp_index(k, _to) == to) * 
-        beta_pp_vals(k, _coef) * fintpow(p1, beta_pp_index(k, _expo_1)) * 
-          fintpow(p2, beta_pp_index(k, _expo_2));
+//     for ( uword k=0; k<beta_pp_nrow; k++ ) { 
+//       double p1 = ps[beta_pp_ints(k, _state_1)] / ncells; 
+//       double p2 = ps[beta_pp_ints(k, _state_2)] / ncells; 
+//       
+//       total += 
+//         ( beta_pp_ints(k, _from) == from ) * 
+//         ( beta_pp_ints(k, _to) == to ) * 
+//         beta_pp_dbls(k, _coef) * fintpow(p1, beta_pp_ints(k, _expo_1)) * 
+//           fintpow(p2, beta_pp_ints(k, _expo_2));
+//     }
+    
+    // qq
+    kstart = betas_index[_beta_qq_start][from][to]; 
+    kend   = betas_index[_beta_qq_end][from][to]; 
+    for ( uword k=kstart; k<=kend; k++ ) { 
+      double q1 = (double) qs[coef_tab_ints(k, _state_1)] / total_nb;
+      double q2 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb; 
+      total2 += coef_tab_dbls(k) * 
+        fintpow(q1, coef_tab_ints(k, _expo_1)) * 
+        fintpow(q2, coef_tab_ints(k, _expo_2)); 
     }
     
     // qq
-    for ( uword k=0; k<beta_qq_nrow; k++ ) { 
-      double q1 = (double) qs[beta_qq_index(k, _state_1)] / total_nb;
-      double q2 = (double) qs[beta_qq_index(k, _state_2)] / total_nb; 
-      
-      total += 
-        ( beta_qq_index(k, _from) == from ) * 
-        ( beta_qq_index(k, _to) == to) * 
-        beta_qq_vals(k, _coef) * fintpow(q1, beta_qq_index(k, _expo_1)) * 
-          fintpow(q2, beta_qq_index(k, _expo_2));
+//     for ( uword k=0; k<beta_qq_nrow; k++ ) { 
+//       double q1 = (double) qs[beta_qq_ints(k, _state_1)] / total_nb;
+//       double q2 = (double) qs[beta_qq_ints(k, _state_2)] / total_nb; 
+//       
+//       total += 
+//         ( beta_qq_ints(k, _from) == from ) * 
+//         ( beta_qq_ints(k, _to) == to ) * 
+//         beta_qq_dbls(k, _coef) * fintpow(q1, beta_qq_ints(k, _expo_1)) * 
+//           fintpow(q2, beta_qq_ints(k, _expo_2));
+//     }
+    
+    // pq
+    kstart = betas_index[_beta_pq_start][from][to]; 
+    kend   = betas_index[_beta_pq_end][from][to]; 
+    for ( uword k=kstart; k<=kend; k++ ) { 
+      double p1 = ps[coef_tab_ints(k, _state_1)] / ncells; 
+      double q1 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb; 
+      total2 += coef_tab_dbls(k) * 
+        fintpow(p1, coef_tab_ints(k, _expo_1)) * 
+        fintpow(q1, coef_tab_ints(k, _expo_2)); 
     }
     
     // pq
-    // Rcpp::Rcout << beta_pq_vals << "\n";
-    // Rcpp::Rcout << beta_pq_index << "\n";
-    for ( uword k=0; k<beta_pq_nrow; k++ ) { 
-      double p1 = ps[beta_pq_index(k, _state_1)] / ncells; 
-      double q1 = (double) qs[beta_pq_index(k, _state_2)] / total_nb;
-      
-      // Rcpp::Rcout << "k: " << k << "\n"; 
-      // Rcpp::Rcout << "beta_pq_nrow: " << beta_pq_nrow << "\n"; 
-      // Rcpp::Rcout << "beta_pq_ix_ncol: " << beta_pq_index.n_cols << "\n"; 
-      // Rcpp::Rcout << "beta_pq_vals_ncol: " << beta_pq_vals.n_cols << "\n"; 
-      // Rcpp::Rcout << "_expo_1: " << _expo_1 << "\n"; 
-      // Rcpp::Rcout << "_expo_2: " << _expo_2 << "\n"; 
-      // Rcpp::Rcout << "_to: " << _to << "\n"; 
-      // Rcpp::Rcout << "_from: " << _from << "\n"; 
-      // Rcpp::Rcout << beta_pq_vals << "\n"; 
-      
-      total += 
-        ( beta_pq_index(k, _from) == from ) * 
-        ( beta_pq_index(k, _to) == to) * 
-        beta_pq_vals(k, _coef) * 
-          fintpow(p1, beta_pq_index(k, _expo_1)) * 
-          fintpow(q1, beta_pq_index(k, _expo_2));
-    }
+//     for ( uword k=0; k<beta_pq_nrow; k++ ) { 
+//       double p1 = ps[beta_pq_ints(k, _state_1)] / ncells; 
+//       double q1 = (double) qs[beta_pq_ints(k, _state_2)] / total_nb;
+//       
+//       total += 
+//         ( beta_pq_ints(k, _from) == from ) * 
+//         ( beta_pq_ints(k, _to) == to ) * 
+//         beta_pq_dbls(k, _coef) * 
+//           fintpow(p1, beta_pq_ints(k, _expo_1)) * 
+//           fintpow(q1, beta_pq_ints(k, _expo_2));
+//     }
     
-    tprob_line[to] = total; 
+    // assert(total2 == total);
+    // Rcpp::Rcout << "total2: " << total2 << " total: " << total << " kstart: " << kstart << " kend: " << kend << "\n"; 
+    
+    tprob_line[to] = total2; 
   }
-
+  
   
   // tprobs holds the rate at which things transition, we need to transform it if we 
   // are working with a continuous-time SCA
@@ -578,15 +651,14 @@ static inline void compute_rate(double tprob_line[ns],
       tprob_line[k] = ( 1 - exp( - rate * delta_t ) ) * ( rate / sum_rates ); 
     }
     
-    
     // Now tprobs holds the probabilities of switching for a continuous SCA. If we 
     // were working with a discrete SCA, there would be nothing to do here. 
   }
   
   // Cap probabilities to values above zero 
-  // for ( ushort k=0; k<ns; k++ ) { 
-    // tprob_line[k] = tprob_line[k] < 0 ? 0 : tprob_line[k]; 
-  // }
+  for ( ushort k=0; k<ns; k++ ) { 
+    tprob_line[k] = tprob_line[k] < 0 ? 0 : tprob_line[k]; 
+  }
   
   // Compute cumsum of probabilities
   for ( ushort k=1; k<ns; k++ ) { 

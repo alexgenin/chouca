@@ -20,11 +20,11 @@ camodel_compiled_engine_wrap <- local({
     tabix <- tabix[ ,intersect(colnames(tabix), c("from", "to", "state_1", "state_2",
                                                   "qs", "expo_1", "expo_2")), 
                    drop = FALSE]
-    ctrl[[paste0(tab, "_index")]] <- intmat(tabix)
+    ctrl[[paste0(tab, "_ints")]] <- intmat(tabix) 
     
     tabfl <- ctrl[[tab]] 
     tabfl <- tabfl[ ,intersect(colnames(tabfl), "coef"), drop = FALSE]
-    ctrl[[paste0(tab, "_vals")]] <- tabfl
+    ctrl[[paste0(tab, "_dbls")]] <- tabfl 
   }
   
   # Unwrap elements of the ctrl list that we need here 
@@ -84,6 +84,57 @@ camodel_compiled_engine_wrap <- local({
   tmat_array <- write_cpp_array_2d(ctrl[["transition_mat"]])
   clines <- gsubf("__TMATRIX_ARRAY__", tmat_array, clines)
   
+  # Write indices over which to iterate for each transition. These small matrices 
+  # contains where to jump in the big table for each transition 
+  tables <- c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")
+  
+  coef_table <- plyr::ldply(tables, function(tab) { 
+    if ( nrow(ctrl[[tab]]) > 0 ) { 
+      data.frame(table = tab, ctrl[[tab]])
+    } else { 
+      data.frame(table = character(0), ctrl[[tab]])
+    }
+  })
+  
+  fromto_array <- array(nrow(coef_table)+1, dim = list(ns, ns, 2 * length(tables)))
+  for ( i in seq_along(tables) ) { 
+    for ( from in seq(0, ns-1) ) { 
+      for ( to in seq(0, ns-1) ) { 
+        this_tab <- tables[i]
+        which_rows <- which(this_tab == coef_table[ ,"table"] & 
+                              coef_table[ ,"from"] == from & 
+                              coef_table[ ,"to"] == to)
+        
+        if ( length(which_rows) > 0 ) { 
+          # Note the +/- 1 to take into account c/R indexing differences
+          fromto_array[from+1, to+1, 1 + 2*(i-1) ] <- min(which_rows) - 1
+          fromto_array[from+1, to+1, 1 + 2*(i-1)+1 ] <- max(which_rows) - 1 
+        } else { 
+          fromto_array[from+1, to+1, 1 + 2*(i-1) ] <- -1
+          fromto_array[from+1, to+1, 1 + 2*(i-1)+1 ] <- -2
+        }
+      }
+    }
+  }
+  
+  # Trim coef table and write it to c++
+  coef_tab_ints <- as.matrix(coef_table[ ,c("from", "to", "state_1", "state_2", 
+                                            "expo_1", "expo_2", "qs")]) 
+  coef_tab_ints[is.na(coef_tab_ints)] <- 99
+  coef_tab_dbls <- as.matrix(coef_table[ ,"coef", drop = FALSE])
+  ctrl[["coef_tab_dbls"]] <- coef_tab_dbls
+  ctrl[["coef_tab_ints"]] <- coef_tab_ints
+  clines <- gsubf("__COEF_TAB_NROW__", nrow(coef_tab_ints), clines)
+  
+  # TODO: DEBUG
+#   coef_tab_ints <- cbind(coef_tab_ints, 
+#                          seq(0, 1, l = ctrl[["xpoints"]])[coef_tab_ints[ ,"qs"]+1])
+#   browser()
+  
+  # Write it as c++ array 
+  fromto_array_str <- write_cpp_array_3d(fromto_array)
+  clines <- gsubf("__FROMTO_ARRAY__", fromto_array_str, clines)
+  
   # Decide whether we fixed the number of neighbors or not 
   clines <- gsubf("__FIXED_NEIGHBOR_NUMBER__", 
                      ifelse(fixed_neighborhood, "true", "false"), 
@@ -94,7 +145,7 @@ camodel_compiled_engine_wrap <- local({
   clines <- gsubf("__CORES__", format(cores), clines)
   clines <- gsubf("__USE_OMP__", ifelse(cores > 1, 1, 0), clines)
   
-  # Set #define on whether to precompute transition probabilities 
+  # Set #define on whether to precompute transition probabilities or not
   precompute_probas <- ctrl[["precompute_probas"]]
   if ( precompute_probas == "auto" ) { 
     precompute_probas <- ns^ifelse(use_8_nb, 8, 4) < prod(dim(init))
@@ -153,5 +204,9 @@ write_cpp_array_1d <- function(v) {
 write_cpp_array_2d <- function(m) { 
   m <- matrix(as.integer(m), nrow = nrow(m), ncol = ncol(m))
   write_cpp_array_1d(apply(m, 1, write_cpp_array_1d))
+}
+
+write_cpp_array_3d <- function(m) { 
+  write_cpp_array_1d(apply(m, 3, write_cpp_array_2d))
 }
 

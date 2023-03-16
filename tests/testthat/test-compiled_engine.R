@@ -14,23 +14,23 @@ initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
 test_that("Compiled model produces OK results regardless of proba precomputation", { 
   
   iters <- seq(0, 32)
-  # iters <- 1
+  
   control <- list(save_covers_every = 1, 
                   console_output_every = 0, 
                   engine = "compiled", 
+                  force_compilation = TRUE, 
                   precompute_probas = TRUE)
-  set.seed(123)
+  
   o <- run_camodel(mod, initmm, iters, control = control)
   
-  set.seed(123)
   o2 <- run_camodel(mod, initmm, iters, 
                     control = { control[["precompute_probas"]] <- FALSE; control })
   
-  # par(mfrow = c(1, 2))
+  par(mfrow = c(1, 2))
   ts1 <- o[["output"]][["covers"]]
-  # matplot(ts1[ ,1], ts1[ ,-1], type = "l")
+  matplot(ts1[ ,1], ts1[ ,-1], type = "l")
   ts2 <- o2[["output"]][["covers"]]
-  # matplot(ts2[ ,1], ts2[ ,-1], type = "l")
+  matplot(ts2[ ,1], ts2[ ,-1], type = "l")
   
   # This should give exactly the same result 
   expect_true({ 
@@ -42,18 +42,16 @@ test_that("Compiled model produces OK results regardless of proba precomputation
   # Make sure it works also if we do not wraparound
   mod <- update(mod, wrap = FALSE)
 
-  set.seed(123)
   o <- run_camodel(mod, initmm, iters, control = control)
-  set.seed(123)
   o2 <- run_camodel(mod, initmm, iters, 
                     control = { control[["precompute_probas"]] <- FALSE; control })
-
-  # par(mfrow = c(1, 2))
+  
+  par(mfrow = c(1, 2))
   ts1 <- o[["output"]][["covers"]]
   matplot(ts1[ ,1], ts1[ ,-1], type = "l")
   ts2 <- o2[["output"]][["covers"]]
   matplot(ts2[ ,1], ts2[ ,-1], type = "l")
-
+  
   # This should give exactly the same result 
   expect_true({ 
     all( abs(ts1 - ts2) < 1e-8 )

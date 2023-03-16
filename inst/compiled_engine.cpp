@@ -61,6 +61,9 @@ constexpr uchar n_absorbing_states = 0;
 
 // Transition matrix (true when transition can be done, false when not)
 constexpr bool transition_matrix[ns][ns] = __TMATRIX_ARRAY__; 
+// 5*2 because we have 5 packed tables of coefficients, each of which needing 2 
+// (where to start, and where to stop for this transition)
+constexpr sword betas_index[5*2][ns][ns] = __FROMTO_ARRAY__;  
 
 // Whether we want to precompute probabilities or not 
 #define PRECOMPUTE_TRANS_PROBAS __PRECOMP_PROBA_VALUE__
@@ -68,18 +71,25 @@ constexpr bool transition_matrix[ns][ns] = __TMATRIX_ARRAY__;
 // The maximum number of neighbors
 constexpr arma::uword max_nb = use_8_nb ? 8 : 4; 
 
+// Declare rows of coef_tab
+constexpr arma::uword coef_tab_nrow = __COEF_TAB_NROW__; 
+
 // Declare the betas arrays as static here. Number of columns/rows is known at 
 // compile time. 
-static arma::Mat<ushort> beta_0_index(  beta_0_nrow,  2); 
-static arma::Mat<double> beta_0_vals(   beta_0_nrow,  1); 
-static arma::Mat<ushort> beta_q_index(  beta_q_nrow,  4); 
-static arma::Mat<double> beta_q_vals(   beta_q_nrow,  1);  
-static arma::Mat<ushort> beta_pp_index( beta_pp_nrow, 6); 
-static arma::Mat<double> beta_pp_vals(  beta_pp_nrow, 1); 
-static arma::Mat<ushort> beta_pq_index( beta_pq_nrow, 6); 
-static arma::Mat<double> beta_pq_vals(  beta_pq_nrow, 1); 
-static arma::Mat<ushort> beta_qq_index( beta_qq_nrow, 6);
-static arma::Mat<double> beta_qq_vals(  beta_qq_nrow, 1); 
+static arma::Mat<ushort> beta_0_ints(  beta_0_nrow,  2); 
+static arma::Mat<double> beta_0_dbls(   beta_0_nrow,  1); 
+static arma::Mat<ushort> beta_q_ints(  beta_q_nrow,  4); 
+static arma::Mat<double> beta_q_dbls(   beta_q_nrow,  1);  
+static arma::Mat<ushort> beta_pp_ints( beta_pp_nrow, 6); 
+static arma::Mat<double> beta_pp_dbls(  beta_pp_nrow, 1); 
+static arma::Mat<ushort> beta_pq_ints( beta_pq_nrow, 6); 
+static arma::Mat<double> beta_pq_dbls(  beta_pq_nrow, 1); 
+static arma::Mat<ushort> beta_qq_ints( beta_qq_nrow, 6);
+static arma::Mat<double> beta_qq_dbls(  beta_qq_nrow, 1); 
+
+// Coef table
+static arma::Mat<ushort> coef_tab_ints(  coef_tab_nrow, 6); 
+static arma::Mat<double> coef_tab_dbls(  coef_tab_nrow, 1); 
 
 // Include functions and type declarations
 #include "__COMMON_HEADER__"
@@ -144,16 +154,19 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   Rcpp::Function custom_callback = ctrl["custom_callback"]; 
   
   // Extract things from list. These arrays are declared as static above
-  beta_0_index  = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_0_index"] );
-  beta_0_vals   = Rcpp::as< arma::Mat<double> >( ctrl["beta_0_vals"] );
-  beta_q_index  = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_q_index"] );
-  beta_q_vals   = Rcpp::as< arma::Mat<double> >( ctrl["beta_q_vals"] );
-  beta_pp_index = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_pp_index"] );
-  beta_pp_vals  = Rcpp::as< arma::Mat<double> >( ctrl["beta_pp_vals"] );
-  beta_pq_index = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_pq_index"] );
-  beta_pq_vals  = Rcpp::as< arma::Mat<double> >( ctrl["beta_pq_vals"] );
-  beta_qq_index = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_qq_index"] );
-  beta_qq_vals  = Rcpp::as< arma::Mat<double> >( ctrl["beta_qq_vals"] );
+  coef_tab_ints = Rcpp::as< arma::Mat<ushort> > ( ctrl["coef_tab_ints"] );
+  coef_tab_dbls = Rcpp::as< arma::Mat<double> > ( ctrl["coef_tab_dbls"] );
+  
+  beta_0_ints  = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_0_ints"] );
+  beta_0_dbls   = Rcpp::as< arma::Mat<double> >( ctrl["beta_0_dbls"] );
+  beta_q_ints  = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_q_ints"] );
+  beta_q_dbls   = Rcpp::as< arma::Mat<double> >( ctrl["beta_q_dbls"] );
+  beta_pp_ints = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_pp_ints"] );
+  beta_pp_dbls  = Rcpp::as< arma::Mat<double> >( ctrl["beta_pp_dbls"] );
+  beta_pq_ints = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_pq_ints"] );
+  beta_pq_dbls  = Rcpp::as< arma::Mat<double> >( ctrl["beta_pq_dbls"] );
+  beta_qq_ints = Rcpp::as< arma::Mat<ushort> >( ctrl["beta_qq_ints"] );
+  beta_qq_dbls  = Rcpp::as< arma::Mat<double> >( ctrl["beta_qq_dbls"] );
   
   // Copy some things as c arrays. Convert
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up 
@@ -302,10 +315,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
               // Factor to convert the number of neighbors into the point at which the 
               // dependency on q is sampled.
               uword qpointn_factorf = (xpoints - 1) / qs_total; 
+              for ( ushort k=0; k<ns; k++ ) { 
+                if ( old_qs[i][j][k] == 255 ) { 
+                  Rcpp::Rcout << "i: " << i << " j: " << j << "\n"; 
+                  return; 
+                }
+              }
               
               // Compute probability transitions 
               for ( ushort to=0; to<ns; to++ ) { 
-                
                 // Init probability
                 compute_rate(ptrans, 
                              old_qs[i][j],    // qs
@@ -323,6 +341,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else 
               double rn = randunif(0); 
 #endif
+              // for ( ushort to=0; to<ns; to++ ) { 
+                // Rcpp::Rcout << "ptrans[" << (int) to << "]" << ptrans[to] << "\n"; 
+              // }
               
               // Check if we actually transition.  
               // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
@@ -379,10 +400,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   delete [] old_mat; 
   delete [] new_mat; 
 #if PRECOMPUTE_TRANS_PROBAS
+  delete [] all_qs; 
+  delete [] tprobs; 
   delete [] old_pline; 
   delete [] new_pline; 
-  delete [] tprobs; 
-  delete [] all_qs; 
 #else
   delete [] old_qs; 
   delete [] new_qs; 
