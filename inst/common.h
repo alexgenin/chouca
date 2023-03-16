@@ -505,7 +505,7 @@ static inline void compute_rate(double tprob_line[ns],
     // constant component
     kstart = betas_index[_beta_0_start][from][to]; 
     kend   = betas_index[_beta_0_end][from][to]; 
-    for ( uword k=kstart; k<=kend; k++ ) { 
+    for ( sword k=kstart; k<=kend; k++ ) { 
       total2 += coef_tab_dbls(k); 
     }
     
@@ -556,7 +556,7 @@ static inline void compute_rate(double tprob_line[ns],
     // pp
     kstart = betas_index[_beta_pp_start][from][to]; 
     kend   = betas_index[_beta_pp_end][from][to]; 
-    for ( uword k=kstart; k<=kend; k++ ) { 
+    for ( sword k=kstart; k<=kend; k++ ) { 
       double p1 = ps[coef_tab_ints(k, _state_1)] / ncells; 
       double p2 = ps[coef_tab_ints(k, _state_2)] / ncells; 
       total2 += coef_tab_dbls(k) * 
@@ -579,7 +579,7 @@ static inline void compute_rate(double tprob_line[ns],
     // qq
     kstart = betas_index[_beta_qq_start][from][to]; 
     kend   = betas_index[_beta_qq_end][from][to]; 
-    for ( uword k=kstart; k<=kend; k++ ) { 
+    for ( sword k=kstart; k<=kend; k++ ) { 
       double q1 = (double) qs[coef_tab_ints(k, _state_1)] / total_nb;
       double q2 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb; 
       total2 += coef_tab_dbls(k) * 
@@ -602,7 +602,7 @@ static inline void compute_rate(double tprob_line[ns],
     // pq
     kstart = betas_index[_beta_pq_start][from][to]; 
     kend   = betas_index[_beta_pq_end][from][to]; 
-    for ( uword k=kstart; k<=kend; k++ ) { 
+    for ( sword k=kstart; k<=kend; k++ ) { 
       double p1 = ps[coef_tab_ints(k, _state_1)] / ncells; 
       double q1 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb; 
       total2 += coef_tab_dbls(k) * 
