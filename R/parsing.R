@@ -8,15 +8,17 @@
 #' @description  High-level definition of a probabilistic cellular automaton
 #' 
 #' @param ... a number of transition descriptions, as built by the
-#'   \code{\link{transition}} function (see Details)
+#'   \code{\link{transition}} function (see Details and Examples)
 #' 
 #' @param neighbors The number of neighbors to use in the cellular automaton (4 for 4-way 
-#'   or von-Neumann neghborhood, or 8 for a Moore neighborhood)
+#'   or von-Neumann neghborhood, or 8 for an 8-way or Moore neighborhood)
 #' 
-#' @param wrap Whether the 2D grid should wrap around at the edges
+#' @param wrap If \code{TRUE}, then the 2D grid on which the model is run wraps around 
+#'   at the edges (the top/leftmost cells will be considered neighbors of the 
+#'   bottom/rightmost cells)
 #' 
-#' @param continuous Whether this model definition should be treated as a continuous 
-#'   (TRUE) or discrete (FALSE) stochastic cellular automaton
+#' @param continuous If \code{TRUE}, the model definition should be treated as a 
+#'   continuous stochastic cellular automaton
 #' 
 #' @param parms a named list of parameters, which should be all numeric, single values
 #' 
@@ -28,10 +30,11 @@
 #'   definition. 
 #' 
 #' @param check_model A check of the model definition is done to make sure there 
-#'   are no issues (e.g. probabilities outside the [1,0] interval, or an unsupported 
-#'   model definition). A quick check that should catch most problems is performed if
-#'   check_model is "quick", an extensive check that tests all neighborhood 
-#'   configurations is done with "full", and no check is performed with "none".
+#'   are no issues with it (e.g. probabilities outside the [1,0] interval, or an 
+#'   unsupported model definition). A quick check that should catch most problems is
+#'   performed if check_model is "quick", an extensive check that tests all 
+#'   neighborhood configurations is done with "full", and no check is performed with 
+#'   "none".
 #' 
 #' @param epsilon A small value under which coefficient values are considered to be 
 #'   equal to zero
@@ -39,7 +42,8 @@
 #' @param fixed_neighborhood When not using wrapping around the edges, the number of 
 #'   neighbors per cell is variable, which can slow down the simulation. Set this 
 #'   option to \code{TRUE} to consider that the number of neighbors is always four or 
-#'   eight, regardless of the position of the cell in the landscape. 
+#'   eight, regardless of the position of the cell in the landscape, at the cost of 
+#'   approximate dynamics on the edge of the landscape.
 #' 
 #' @details
 #' 
@@ -49,39 +53,36 @@
 #' probability (as a one-sided formula involving constants and special values p, q, 
 #' etc.). 
 #' 
-#' \code{transition()} takes three arguments: the state from which the transition is 
-#' defined, the state to which the transition goes, and a transition probability, defined
-#' as a one-sided formula. This formula can include numerical constants, parameters 
-#' defined in the named list \code{parms}, and any combination of p['a'] and q['b'], 
-#' which respectively represent the proportion of cells in a landscape in state 'a', and 
-#' the proportion of neighbors of a given cell in state 'b' ('a', and 'b' being, of 
-#' course, any of the possible states defined in the model). See section Examples for 
-#' examples of model implementations. 
+#' \code{transition()} calls takes three arguments: the state from which the transition 
+#' is defined, the state to which the transition goes, and a transition probability, 
+#' defined as a one-sided formula. This formula can include numerical constants, 
+#' parameters defined in the named list \code{parms}, and any combination of p['a'] 
+#' and q['b'], which respectively represent the proportion of cells in a landscape in 
+#' state 'a', and the proportion of neighbors of a given cell in state 'b' ('a', and 
+#' 'b' being, of course, any of the possible states defined in the model). See 
+#' section Examples for examples of model implementations. 
 #' 
-#' It is important to remember that \code{chouca} only supports models where the 
-#' transition probabilities are polynomials of p and q with maximum degree 2. In other
-#' words, for a model with n states, the transition probabilities must be of the form: 
+#' It is important to remember when using this function that \code{chouca} only 
+#' supports models where the probabilities follow the following functional form: 
 #' 
-#' P = \eqn{a_0 + \sum_{k=1}^{n} b_k p_{k} + c_k p^2_{k} + d_k q_{k} + e_k q^2_{k} }
+#' P = \deqn{\beta_0 + \sum_{k=1}^S f(q_k) + \sum{k=1}^S \beta^p_k p_k + \beta^{pq}_1 p^2q^2 \dots \beta^{pq}_I p^5q^5 + \beta^{pp}_J p^2p^2 \dots \beta^{pp}_J p^5p^5 + + \beta^{qq}_K q^2q^2 \dots \beta^{qq}_K q^5q^5}
 #' 
 #' where p_{k} and q_{k} are the proportions of cells in state k in the landscape, and 
-#' in the cell neighborhood, respectively. \eqn{a_0}, along with the coeffients 
-#' \eqn{b_k}, \eqn{c_k}, \eqn{d_k} and \eqn{e_k} must be all constants. However, they 
-#' can themselve depend on values defined in the named list \code{parms}. This 
-#' allows defining the model in terms of literal constants, and compute internal
-#' coefficients on the fly by picking values from the \code{parms} list. 
+#' in the cell neighborhood, respectively, and the various \eqn{\beta} coefficient 
+#' are estimated by \code{chouca} internally. When \code{check_model} is "quick" or 
+#' "full", a check is performed to make sure the functional form above is able to 
+#' accurately represent probabilities of transitions in the model, with "full" enabling 
+#' more extensive tesing, and "none" removing it entirely.  
 #' 
-#' \code{camodel()} will run a few checks on your model definition to make sure 
-#' transition probabilities do not go above one or below zero, and that the transition 
-#' probabilities fit the formula above. These checks should catch most errors, but are 
-#' not infaillible. They can be disabled using \code{check_model = "none"}.
+#' When using chouca, very small coefficients in the formula above may be rounded down 
+#' to zero. This may be an issue if your transition probabilities are very low: in 
+#' this case, consider reducing \code{epsilon} to a smaller value. 
 #' 
-#' When using compiled code used to run the model, very small coefficients in the formula
-#' above are rounded down to zero. This may be an issue if your transition 
-#' probabilities are very low: in this case, consider reducing \code{epsilon} to a value
-#' closer to zero.
+#' To run a model once it is defined, the function \code{\link{run_camodel}} can be 
+#' used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial 
+#' landscape for a simulation can be created using \code{\link{generate_initmat}}. 
 #' 
-#' To run a model once it is defined, the function \code{\link{run_camodel}} can be used.
+#' @seealso run_camodel, generate_initmat, run_meanfield
 #' 
 #' @examples 
 #' 
@@ -155,8 +156,12 @@ camodel <- function(...,
     stop("no parameters must be named 'q' or 'p', these are reserved to refer to densities")
   }
   
+  if ( is.logical(check_model) && isFALSE(check_model) ) { 
+    check_model <- "none"
+  }
+  
   if ( ! check_model %in% c("none", "full", "quick") ) { 
-    stop("'check_model' must be 'none', 'quick' or 'full'")
+    stop("'check_model' must be one of 'none', 'quick' or 'full'")
   }
   
   # Read all possible states 

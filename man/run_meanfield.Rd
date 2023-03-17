@@ -33,8 +33,8 @@ The mean field approximation to a cellular automaton simply describes the dynami
    between them, then the following system of equation is used to describe the 
    variations of the proportions of cells in each state: 
  
- \deqn{\frac{da}{dt} = p_b P(b to a) - p_a P(a to b)}{ da/dt = p[b] P(b to a) - p[a] P(a to b)}
- \deqn{\frac{db}{dt} = p_a P(a to b) - p_b P(b to a)}{ db/dt = p[a] P(a to b) - p[b] P(b to a)}
+ \deqn{\frac{da}{dt} = p_b P(b \to a) - p_a P(a \to b)}{ da/dt = p[b] P(b to a) - p[a] P(a to b)}
+ \deqn{\frac{db}{dt} = p_a P(a \to b) - p_b P(b \to a)}{ db/dt = p[a] P(a to b) - p[b] P(b to a)}
  
  Running mean-field approximations is useful to understand general dynamics in the 
    absence of neighborhood interactions between cells, or simply to obtain a 

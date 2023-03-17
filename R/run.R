@@ -2,24 +2,26 @@
 # This file contains function that will initialize and run a model 
 #
 
-#' @title Generate an initial matrix for a chouca model 
+#' @title Generate an initial matrix for a \code{chouca} model 
 #' 
 #' @description Helper to create a initial landscape (matrix) with specified covers for 
 #'   a cellular automaton 
 #' 
-#' @param mod A stochastic cellular automaton model defined using \code{\link{camodel}}
+#' @param mod A stochastic cellular automaton model created by \code{\link{camodel}}
 #' 
-#' @param pvec The vector of covers of each state in the initial configuration. 
+#' @param pvec A numeric vector of covers for each state in the initial configuration. 
 #' 
 #' @param nr The number of rows of the output matrix 
 #' 
 #' @param nc The number of columns of the output matrix 
 #' 
 #' @details 
+#' 
 #'   This function is a helper to build a starting configuration (matrix) for a 
 #'     stochastic cellular automaton. Based on the definition of the model and the 
 #'     specified starting covers (in \code{pvec}). It will produce a landscape with 
-#'     expected global cover of each state equal to the covers in \code{pvec}.
+#'     expected global cover of each state equal to the covers in \code{pvec}, and a 
+#'     completely random spatial structure. 
 #'   
 #'   The length of the \code{pvec} vector must match the number of possible cell states 
 #'     in the model. If present, the names of \code{pvec} must match the states
@@ -33,7 +35,7 @@
 generate_initmat <- function(mod, pvec, nr, nc = nr) { 
   
   if ( any(is.na(pvec)) ) { 
-    stop("NA in pvec are unsupported")
+    stop("NAs in pvec are not supported")
   }
   
   ns <- mod[["nstates"]]
@@ -56,10 +58,11 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   }
   pvec <- pvec / spvec
   
-  # Generate the matrix 
+  # Generate the matrix
   m <- matrix(sample(mod[["states"]],
                      replace = TRUE, prob = pvec, size = nr*nc), 
               nrow = nr, ncol = nc)
+  
   # Adjust and set class
   m <- as.camodel_initmat(m, levels = mod[["states"]])
   
@@ -92,18 +95,19 @@ as.camodel_initmat <- function(m, levels) {
 #' @param initmat An initial matrix to use for the simulation, possibly created using 
 #'   \code{\link{generate_initmat}} 
 #' 
-#' @param times Time sequence for which output is wanted. Time will always start at zero
-#'   but output will only be saved at multiple of values in this vector. 
+#' @param times A numeric vector describing the time sequence for which output is 
+#'   wanted. Time will always start at zero but output will only be saved at the time 
+#'   steps specified in this vector.  
 #' 
-#' @param control a named list with settings to alter how the simulation is run (see 
+#' @param control a named list with settings to alter the way the simulation is run (see 
 #'   full list of settings in 'Details' section)
 #' 
 #' @seealso camodel, generate_initmat, trace_plotter, landscape_plotter
 #' 
 #' @details 
 #' 
-#' \code{run_camodel()} is the workhorse function in \code{chouca} to run a pre-defined
-#'  cellular automaton. It loads the model definition, and runs the simulation for a 
+#' \code{run_camodel()} is the workhorse functionto run a pre-defined cellular 
+#'  automaton. It loads the model definition, and runs the simulation for a 
 #'  pre-defined number of iterations. It will run the simulation and output the results 
 #'  at the time steps specified by the \code{times} argument, starting from the initial 
 #'  landscape \code{initmat} (a matrix typically created by 
@@ -116,25 +120,27 @@ as.camodel_initmat <- function(m, levels) {
 #'    
 #'    \item \code{save_covers_every} By default, global covers are saved for each time step 
 #'      specified in \code{times}. Setting this argument to values higher than one will 
-#'      skip some time steps. For example, setting it to 2 will make \code{run_camodel} 
-#'      save covers only every two values specified in \code{times}. Set to 0 to turn off
-#'      the saving of covers. 
+#'      skip some time steps (thinning). For example, setting it to 2 will make
+#'      \code{run_camodel} save covers only every two values specified in \code{times}.
+#'      Set to 0 to skip saving covers. 
 #'    
-#'    \item \code{save_snapshots_every} Similar to covers, landscape snapshots can be 
-#'      saved every set number of values in \code{times}. By default, only the initial
-#'      and final landscape are saved. Set to one to save the landscape for each value 
-#'      specified in \code{times}. Higher values will skip elements in \code{times} by 
-#'      the set number. Set to zero to turn off the saving of snapshots.
-#'     
-#'    \item \code{console_output_every} Sets the number of iterations between which 
+#'    \item \code{save_snapshots_every} In the same way as covers, landscape snapshots 
+#'      can be saved every set number of values in \code{times}. By default, only the
+#'      initial and final landscape are saved. Set to one to save the landscape for each
+#'      value specified in \code{times}. Higher values will skip elements in \code{times} 
+#'      by the set number. Set to zero to turn off the saving of snapshots.
+#'    
+#'    \item \code{console_output_every} Set the number of iterations between which 
 #'      progress report is printed on the console. Set to zero to turn off progress 
 #'      report. Default is to print progress every ten iterations.
 #'    
 #'    \item \code{custom_output_fun} A custom function can be passed using this 
 #'      argument to compute something on the landscape as the simulation is being run. 
-#'      This function can return anything, but needs to have two arguments, the first 
+#'      This function can return anything, but needs to take two arguments, the first 
 #'      one being the current time in the simulation (single numeric value), and the 
-#'      other one the current landscape (a matrix). 
+#'      other one the current landscape (a matrix). This can be used to plot the 
+#'      simulation results as it is being run, see \code{\link{landscape_plotter}} and  
+#'      \code{\link{trace_plotter}}. 
 #'    
 #'    \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
 #'      it will be called for every values in the \code{times} vector. Increase this 
@@ -148,26 +154,27 @@ as.camodel_initmat <- function(m, levels) {
 #'      in 4 'sub-iterations', and probabilities of transitions are divided by 4 at 
 #'      each of those sub-iterations. 
 #'    
-#'    \item \code{engine} The engine to use to run the simulations. Accepted values 
-#'      are 'cpp' to use the C++ engine, or 'compiled', to compile the model code on the
-#'      fly. Default is to use the C++ engine. Note that the 'compiled' engine uses its 
-#'      own random number generator, and for this reason may produce results that are
-#'      different from the C++ engine.
+#'    \item \code{engine} The engine used to run the simulations. Accepted values 
+#'      are 'cpp' to use the C++ engine, or 'compiled', to emit and compile the model 
+#'      code on the fly. Default is to use the C++ engine. Note that the 'compiled' 
+#'      engine uses its own random number generator, and for this reason may produce 
+#'      simulations that are different from the C++ engine.
 #'    
 #'    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
 #'      precompute probabilities of transitions for all possible combinations of 
 #'      neighborhood. When working with a model with a low number of states, this 
-#'      can increase simulation speed dramatically. Default is to do it when the 
-#'      possible total number of neighborhood combinations is below the number of cells 
-#'      in the landscape (so that it is effectively less work to pre-compute transition 
-#'      probabilities than to compute them at each iteration). 
+#'      can increase simulation speed dramatically. By default, a heuristic is used 
+#'      to decide whether to enable precomputation or not. 
 #'    
 #'    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
 #'      Rcpp messages when compiling the model. Default is \code{FALSE}. 
-#' 
+#'   
 #'    \item \code{force_compilation} (Compiled engine only)  \code{chouca} implements a
 #'      cache system so that models with similar structure are not recompiled. Set this
 #'      argument to \code{TRUE} to force compilation every time the model is run. 
+#'   
+#'    \item \code{write_source} (Compiled engine only) A file name to which the C++ code 
+#'      used to run the model will be written (mostly for debugging purposes).
 #'    
 #'    \item \code{cores} (Compiled engine only) The number of threads to use to run the 
 #'      model. This provides a moderate speedup in most cases, and is sometimes 
@@ -334,7 +341,9 @@ run_camodel <- function(mod, initmat, times,
       fmat <- states[mat+1]
       dim(fmat) <- dim(mat)
       this_output <- list(control[["custom_output_fun"]](t, fmat))
-      custom_output <<- append(custom_output, this_output)
+      if ( ! is.null(this_output) ) { 
+        custom_output <<- append(custom_output, this_output)
+      }
     }
   }
   

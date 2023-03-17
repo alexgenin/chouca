@@ -11,16 +11,6 @@
 
 #define USE_OMP __USE_OMP__
 
-// Define some column names for clarity
-#define _from 0
-#define _to 1
-#define _state_1 2
-#define _state_2 3
-#define _expo_1 4
-#define _expo_2 5
-#define _qs 3 // only in beta_q, so no overlap with _state_2 above
-#define _coef 0
-
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
@@ -315,12 +305,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
               // Factor to convert the number of neighbors into the point at which the 
               // dependency on q is sampled.
               uword qpointn_factorf = (xpoints - 1) / qs_total; 
-              for ( ushort k=0; k<ns; k++ ) { 
-                if ( old_qs[i][j][k] == 255 ) { 
-                  Rcpp::Rcout << "i: " << i << " j: " << j << "\n"; 
-                  return; 
-                }
-              }
               
               // Compute probability transitions 
               for ( ushort to=0; to<ns; to++ ) { 
