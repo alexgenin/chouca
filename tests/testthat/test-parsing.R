@@ -87,6 +87,27 @@ expect_error({
                  neighbors = 4)
 })
 
+# Using all model checking options
+mod <- ca_library("aridvege")
+expect_true({ 
+  a <- update(mod, check_model = FALSE)
+  all(is.na(a[["max_error"]]))
+})
+
+expect_true({ 
+  a <- update(mod, check_model = "none")
+  all(is.na(a[["max_error"]]))
+})
+
+expect_true({ 
+  a <- update(mod, check_model = "full")
+  all(!is.na(a[["max_error"]]))
+})
+
+expect_true({ 
+  a <- update(mod, check_model = "quick")
+  all(!is.na(a[["max_error"]]))
+})
 
 # Make a quick run, extract the first step and make sure it matches what we expect 
 mod <- ca_library("forestgap")

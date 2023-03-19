@@ -3,16 +3,14 @@
 # 
 
 
-test_that("Custom callbacks work", { 
+test_that("Trace plotting works", { 
   
   nrows <- ncols <- 16
   niters <- 64
   
-  
-  
-  # Test compiled engine against cpp engine. Here it works because the model is deterministic
-  # so the values are exactly equal. We only check that spatial autocorrelations are 
-  # equal. 
+  # Test compiled engine against cpp engine. Here it works because the model is
+  # deterministic so the values are exactly equal. We only check that spatial
+  # autocorrelations are equal. 
   mod <- ca_library("rockpaperscissor", neighbors = 8, wrap = TRUE)
   initmm <- generate_initmat(mod, rep(1/3, 3), nrows, ncols)
   
@@ -37,5 +35,68 @@ test_that("Custom callbacks work", {
   out_compiled <- plyr::rbind.fill(out_compiled)
   
   expect_true( all( abs(out_cpp - out_compiled) < 1e-10 ) )
+  
+})
+
+test_that("Landscape plotting works", { 
+  
+  
+  mod <- ca_library("aridvege", neighbors = 4, wrap = TRUE)
+  initmm <- generate_initmat(mod, c(0, 0.5, 0.5), 32, 32)
+  
+  
+  
+  control <- list(console_output_every = 0, 
+                  custom_output_every = 1, 
+                  custom_output_fun = trace_plotter(mod, initmm, 
+                                                    lty = 1, 
+                                                    fps_cap = 5, 
+                                                    max_samples = 2), 
+  #                 custom_output_fun = landscape_plotter(mod, fps_cap = 5), 
+                  engine = "cpp")
+  
+  aa <- run_camodel(mod, initmm, times = seq(1, 4), control = control)
+  
+  # Make sure custom output is printed 
+  expect_true({ any(
+    grepl("aa[[\"output\"]][[\"custom\"]]", 
+          capture.output(summary(aa)), 
+          fixed = TRUE)
+  )})
+  
+  expect_true({ 
+    length(aa[["output"]][["custom"]]) == 4
+  })
+  
+  expect_true({ 
+    all(sapply(aa[["output"]][["custom"]], is.null))
+  })
+  
+  
+  
+  control <- list(console_output_every = 0, 
+                  custom_output_every = 1, 
+                  custom_output_fun = landscape_plotter(mod, 
+                                                        col = c("red", "blue", "green"), 
+                                                        transpose = TRUE, 
+                                                        fps_cap = 5), 
+                  engine = "compiled")
+  
+  aa <- run_camodel(mod, initmm, times = seq(1, 4), control = control)
+  
+  # Make sure custom output is printed 
+  expect_true({ any(
+    grepl("aa[[\"output\"]][[\"custom\"]]", 
+          capture.output(summary(aa)), 
+          fixed = TRUE)
+  )})
+  
+  expect_true({ 
+    length(aa[["output"]][["custom"]]) == 4
+  })
+  
+  expect_true({ 
+    all(sapply(aa[["output"]][["custom"]], is.null))
+  })
   
 })
