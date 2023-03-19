@@ -39,7 +39,7 @@ arma::umat generate_all_qs(arma::uword nb,
   constexpr uword FILTER_OK_NEIGHBOR_SUM = 2; 
   
   // Max number of lines to store by default
-  arma::uword out_nrows = intpow(nb+1, ns); 
+  arma::sword out_nrows = intpow(nb+1, ns); 
   out_nrows = filter == FILTER_MULTIPLE_NEIGHB ? out_nrows / nb : out_nrows; 
   // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics)
   out_nrows = filter == FILTER_OK_NEIGHBOR_SUM ? 

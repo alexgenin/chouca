@@ -213,20 +213,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   memcpy(new_qs, old_qs, sizeof(uchar)*nr*nc*ns); 
 #endif
   
-  // Initialize random number generator 
-  // Initialize rng state using armadillo random integer function
+  // Initialize random number generator. All values in s must be overwritten with 
+  // 64 bits. We use doubles, but use memcpy to overwrite the raw bits into s which 
+  // is defined as integers (uint64_t)
   for ( uword i=0; i<4; i++ ) { 
     for ( uword thread=0; thread<cores; thread++ ) { 
-      s[thread][i] = randi<long>(); 
+      // randu returns 64-bit double precision numbers
+      double rn = arma::randn<double>(); 
+      memcpy(&s[thread][i], &rn, sizeof(double)); 
     }
-  }
-  
-  // The first number returned by the RNG is garbage, probably because randi returns 
-  // something too short for s (i.e. not 64 bits long if I got it right).
-  // TODO: find a way to feed 64 bits integers to xoshiro
-  //   -> we could feed it 64/8 = 8 chars taken from randi(). 
-  for ( uword k=0; k<cores; k++ ) { 
-    randunif(k); 
   }
   
   // Allocate some things we will reuse later. We always need to define this when using 
