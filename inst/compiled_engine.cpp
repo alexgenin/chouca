@@ -229,9 +229,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
     randunif(k); 
   }
   
-  // Allocate some things we will reuse later. We always need to define this as 
-  // otherwise the omp pragma will complain it's undefined.
+  // Allocate some things we will reuse later. We always need to define this when using 
+  // multiple cores as otherwise the omp pragma will complain it's undefined when 
+  // using multiple threads. 
+#if ( ! PRECOMPUTE_TRANS_PROBAS ) || USE_OMP  
   double ptrans[ns]; 
+#endif
   
   double current_t = 0.0; 
   double last_t = times(times.n_elem-1); 
