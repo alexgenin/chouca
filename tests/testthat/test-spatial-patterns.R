@@ -4,7 +4,7 @@
 
 test_that("autocorrelation in spatial patterns make sense", { 
   # We need raw_moran from spatialwarnings
-  if ( requireNamespace("spatialwarnings") ) { 
+  if ( requireNamespace("spatialwarnings", quietly = TRUE) ) { 
     
     nr <- 256
     nc <- 256

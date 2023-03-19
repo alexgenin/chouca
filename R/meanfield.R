@@ -63,7 +63,7 @@
 #'@export
 run_meanfield <- function(mod, init, times, ...) { 
   
-  if ( ! requireNamespace("deSolve") ) { 
+  if ( ! requireNamespace("deSolve", quietly = TRUE) ) { 
     stop("Mean-field simulations require package 'deSolve', please install it using  install.packages(\"deSolve\")")
   }
   

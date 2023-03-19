@@ -38,7 +38,7 @@ print.ca_model <- function(x, ...) {
 
 #'@export 
 plot.ca_model <- function(x, y, ...) { 
-  if ( requireNamespace("igraph") ) { 
+  if ( requireNamespace("igraph", quietly = TRUE) ) { 
     gr <- igraph::as.igraph(x)
     plot(gr, edge.label = igraph::E(gr)$name, 
 #          layout = igraph::layout_with_kk, 
