@@ -49,6 +49,12 @@ test_that("fixed neighborhood works", {
                  wrap = FALSE, 
                  neighbors = 4, 
                  continuous = FALSE)
+  modfnb <- camodel(transition(from = "a", to = "b", ~ q["b"]), 
+                 wrap = FALSE, 
+                 neighbors = 4, 
+                 continuous = FALSE, 
+                 fixed_neighborhood = TRUE)
+  
   initmm <- generate_initmat(mod, c(.25, .75), 2, 2)
   initmm[] <- c("a", "b", "b", "a")
   ctrl <- list(console_output_every = 0, 
@@ -60,8 +66,7 @@ test_that("fixed neighborhood works", {
     mat_final <- a[["output"]][["snapshots"]][[1]]
     is_b_varnb <- mat_final[1,1] == "b" # should always be b
     
-    ctrl[["fixed_neighborhood"]] <- TRUE
-    a <- run_camodel(mod, initmm, 1, control = ctrl)
+    a <- run_camodel(modfnb, initmm, 1, control = ctrl)
     mat_final <- a[["output"]][["snapshots"]][[1]]
     is_b_fixednb <- mat_final[1,1] == "b"
     

@@ -180,17 +180,6 @@ as.camodel_initmat <- function(m, levels) {
 #'      model. This provides a moderate speedup in most cases, and is sometimes 
 #'      counter-productive on small landscapes. 
 #'    
-#'    \item \code{fixed_neighborhood} When a model is run on a non-toric landscape, i.e. 
-#'      when the cells on each border of the landscape are not neighborhood of each other, 
-#'      the number of neighborhood configurations increases dramatically. This is 
-#'      because cells do not have a fixed number of neighbors of 4 or 8, but anywhere
-#'      between 2 and 8 as some are in the corners or edges of the landscape. This is a 
-#'      problem when pre-computing probabilities, as the number of neighborhood 
-#'      configurations increases dramatically. Setting this option to \code{TRUE} 
-#'      simplifies this by considering that all cells always have 4 or 8 neighbors, even 
-#'      in non-toric landscapes, at the cost of some inaccuracy at the edge of the
-#'      landscape. 
-#'    
 #' }
 #' 
 #' @return A \code{ca_model_result} objects, which is a list with the following 
@@ -453,8 +442,7 @@ load_control_list <- function(l, tmax) {
     verbose_compilation = FALSE, 
     force_compilation = FALSE, 
     write_source = NULL, 
-    cores = 1, 
-    fixed_neighborhood = FALSE 
+    cores = 1
   )
   
   for ( nm in names(l) ) { 
@@ -499,10 +487,6 @@ load_control_list <- function(l, tmax) {
   
   if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 
     stop(sprintf("Engine must be one of 'cpp', 'compiled' or 'r'"))
-  }
-  
-  if ( ! is.logical(control_list[["fixed_neighborhood"]]) ) { 
-    stop("'fixed_neighborhood' option must be TRUE or FALSE")
   }
   
   if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 
