@@ -233,7 +233,7 @@ ca_library <- function(model,
   }
   
   
-  # Genin's coral reef model (2022?) 
+  # Genin's coral reef model (2023?) 
   # 
   if ( model == "coralreef" || model == "coral-reef" || model == "coral reef") { 
     if ( is.null(parms) ) { 

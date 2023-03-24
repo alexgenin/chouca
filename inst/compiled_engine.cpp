@@ -1,6 +1,6 @@
 // 
-// This is the source code for the 'compiled' chouca engine. Its fields will be replaced and 
-// compiled to run a PCA model. 
+// This is the source code for the 'compiled' chouca engine. Its fields will be 
+// replaced and the code compiled to run an SCA model. 
 // 
 // 
 
@@ -370,10 +370,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       memcpy(old_qs,  new_qs,  sizeof(uchar)*nr*nc*ns); 
 #endif
       
-      // Rcpp::Rcout << "substep: " << s << "\n"; 
     } // end of substep loop
     
-    // Rcpp::Rcout << " cur_t: " << current_t << " del_t: "<< delta_t << " max_t: " << last_t << "\n"; 
     current_t += delta_t; 
     iter++; 
   }
