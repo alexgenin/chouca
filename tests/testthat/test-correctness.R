@@ -2,6 +2,7 @@
 # Various tests of model correctness
 # 
 
+context("Test correctness of results")
 
 test_that("pq coefficients work", { 
   

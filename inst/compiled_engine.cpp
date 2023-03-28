@@ -323,9 +323,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else 
               double rn = randunif(0); 
 #endif
-              // for ( ushort to=0; to<ns; to++ ) { 
-                // Rcpp::Rcout << "ptrans[" << (int) to << "]" << ptrans[to] << "\n"; 
-              // }
               
               // Check if we actually transition.  
               // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
