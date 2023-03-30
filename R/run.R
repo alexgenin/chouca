@@ -30,7 +30,9 @@
 #'   
 #'   The \code{pvec} will be normalized to sum to one, emitting a warning if this 
 #'     produces a meaningful change in covers. 
-#'   
+#' 
+#' @seealso as.camodel_initmat
+#' 
 #'@export
 generate_initmat <- function(mod, pvec, nr, nc = nr) { 
   
@@ -69,12 +71,57 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   return(m)
 }
 
-# Set the correct class attributes to an initmat
-as.camodel_initmat <- function(m, levels) { 
+#'@title Convert a matrix to a CA model landscape 
+#'
+#'@description Convert a matrix to a CA model landscape for later use with
+#'  \link{run_camodel} or \link{run_meanfield}.
+#'
+#'@param m The input matrix (numeric, character or factor) 
+#'
+#'@param levels The levels to use in the resulting landscape. If \code{NULL}, the unique
+#'  values of the input matrix are used as levels. Set this manually if you want the 
+#'  resulting landscape to have extra levels that are not present in the original matrix.
+#'
+#'@seealso generate_initmat, run_camodel, run_meanfield
+#' 
+#'@examples 
+#' 
+#' # Simple conversion of a matrix with regular patterns
+#' x <- seq(0, 2 * pi, l = 256) 
+#' z <- outer(x, x, function(x, y) as.numeric(sin(10*x) + cos(10*y) > 0.8))
+#' mat <- as.camodel_initmat(z)
+#' summary(mat)
+#' image(mat)
+#' 
+#' # This is a character matrix. We need to convert it to use it as input to 
+#' # run_camodel()
+#' size <- 64
+#' m <- matrix(ifelse(runif(size^2) < .5, "TREE", "EMPTY"), nrow = size, ncol = size)
+#' m <- as.camodel_initmat(m)
+#' summary(m) # this is a landscape object 
+#' image(m)
+#' 
+#' # Start a simulation using this matrix 
+#' mod <- ca_library("forestgap")
+#' out <- run_camodel(mod, m, seq(0, 256))
+#' plot(out)
+#' 
+#' 
+#'@export
+as.camodel_initmat <- function(m, levels = NULL) { 
+  
+  if ( inherits(m, "camodel_initmat") ) { 
+    return(m)
+  }
+  
   if ( ! is.matrix(m) ) { 
     stop("This object cannot be converted into a camodel_initmat object")
   }
   ml <- m
+  
+  if ( is.null(levels) ) { 
+    levels <- unique(as.vector(m))
+  }
   
   # If not a factor, convert to it -> this will create levels based on m
   if ( ! is.factor(m) ) { 

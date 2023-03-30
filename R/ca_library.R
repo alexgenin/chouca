@@ -104,7 +104,7 @@ ca_library <- function(model,
   if ( model == "forestgap" || model == "forest-gap") { 
     if ( is.null(parms) ) { 
       parms <- list(d = 0.125, 
-                    delta = 0.5, 
+                    delta = 0.05, 
                     alpha = 0.2)
     }
     

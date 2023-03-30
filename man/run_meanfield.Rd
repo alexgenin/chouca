@@ -37,10 +37,10 @@ The mean field approximation to a cellular automaton simply describes the dynami
  \deqn{\frac{db}{dt} = p_a P(a \to b) - p_b P(b \to a)}{ db/dt = p[a] P(a to b) - p[b] P(b to a)}
  
  Running mean-field approximations is useful to understand general dynamics in the 
-   absence of neighborhood interactions between cells, or simply to obtain a 
-   coarse, but fast simulation of the model. 
+   absence of neighborhood interactions between cells, or simply to obtain an 
+   approximate, but fast simulation of the model. 
  
- This function use the directly the expressions of the probabilities, so all models 
+ This function uses directly the expressions of the probabilities, so all models 
    are supported, regardless of whether or not they report errors in the computation 
    of probabilities.
 }
