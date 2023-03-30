@@ -20,3 +20,4 @@
 ^\.git.*$
 ^\.github$
 ^guide$
+^report/.*$
