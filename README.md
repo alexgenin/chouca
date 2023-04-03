@@ -66,6 +66,14 @@ toric space (that wraps around the edges):
   )
 ```
 
+## Installation 
+
+`chouca` can be installed with the package devtools directly from github
+
+```r
+devtools::install_github("alexgenin/chouca")
+```
+
 ## Motivation and objectives
 
 Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
