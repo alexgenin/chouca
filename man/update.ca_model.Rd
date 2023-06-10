@@ -17,7 +17,7 @@
 )
 }
 \arguments{
-\item{object}{The SCA object (returned by \link{\code{ca_model()}})}
+\item{object}{The SCA object (returned by \code{\link{camodel()}})}
 
 \item{parms}{a named list of parameters, which should be all numeric, 
 single values}
@@ -48,6 +48,8 @@ neighborhood configurations is done with "full", and no check is performed with
 
 \item{verbose}{whether information should be printed when parsing the model
 definition.}
+
+\item{...}{extra arguments are ignored}
 }
 \description{
 Update the definition of a stochastic cellular automaton 

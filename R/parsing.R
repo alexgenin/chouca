@@ -304,7 +304,7 @@ pack_table_fromto <- function(tr, table) {
 #'   (SCA), using new parameters, type of wrapping, or any other parameters 
 #'   entering in the definition of the model.
 #'
-#' @param object The SCA object (returned by \link{\code{ca_model()}}) 
+#' @param object The SCA object (returned by \code{\link{camodel()}}) 
 #' 
 #' @param parms a named list of parameters, which should be all numeric, 
 #'   single values
@@ -335,14 +335,16 @@ pack_table_fromto <- function(tr, table) {
 #' 
 #' @param verbose whether information should be printed when parsing the model
 #'   definition. 
-#'
-#'@details 
+#' 
+#' @param ... extra arguments are ignored 
+#' 
+#' @details 
 #'  This function allows you to update some aspects of a pre-defined celullar 
 #'    automaton, such as parameter values, the type of neighborhood, whether 
 #'    to wrap around the edge of space, etc. It is handy when running multiple 
 #'    simulations over a gradient of values a given parameter. 
 #'
-#'@seealso camodel, run_camodel
+#' @seealso camodel, run_camodel
 #'
 #'@examples 
 #' 

@@ -349,12 +349,12 @@ setup_par <- function(external) {
   }
   
   if ( external ) { 
-    dev.new(devtype)
+    grDevices::dev.new(devtype)
   }
   
   if ( is.na(devtype) ) { 
     stop("Could not detect OS type to set up graphics (please report a bug!)")
   }
   
-  par(mfrow = c(1, 1))
+  graphics::par(mfrow = c(1, 1))
 }
