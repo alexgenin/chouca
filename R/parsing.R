@@ -304,7 +304,7 @@ pack_table_fromto <- function(tr, table) {
 #'   (SCA), using new parameters, type of wrapping, or any other parameters 
 #'   entering in the definition of the model.
 #'
-#' @param object The SCA object (returned by \code{\link{camodel()}}) 
+#' @param object The SCA object (returned by \code{\link{camodel}}) 
 #' 
 #' @param parms a named list of parameters, which should be all numeric, 
 #'   single values

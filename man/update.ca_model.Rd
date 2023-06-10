@@ -17,7 +17,7 @@
 )
 }
 \arguments{
-\item{object}{The SCA object (returned by \code{\link{camodel()}})}
+\item{object}{The SCA object (returned by \code{\link{camodel}})}
 
 \item{parms}{a named list of parameters, which should be all numeric, 
 single values}
