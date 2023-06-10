@@ -3,7 +3,7 @@
 \name{camodel}
 \alias{camodel}
 \alias{transition}
-\title{Definition of a probabilistic cellular automaton}
+\title{Definition of a stochastic cellular automaton}
 \usage{
 camodel(
   ...,
@@ -67,7 +67,7 @@ of approximate dynamics on the edge of the landscape.}
 states (see Details section for more information).}
 }
 \description{
-High-level definition of a probabilistic cellular automaton
+High-level definition of a stochastic cellular automaton
 }
 \details{
 This function allows defining a stochastic cellular automaton model by its set of
@@ -163,5 +163,5 @@ mod <- camodel(
 
 }
 \seealso{
-run_camodel, generate_initmat, run_meanfield
+run_camodel, generate_initmat, run_meanfield, update.ca_model
 }

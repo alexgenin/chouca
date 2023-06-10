@@ -236,6 +236,7 @@ format.camodel_initmat <- function(x, nmax, ...) {
   return(xfmt)
 }
 
+
 # List the methods available for an S3 class
 list_methods <- function(class, 
                          exclude = c("print", "summary", "format")) { 

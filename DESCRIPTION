@@ -1,11 +1,11 @@
 Package: chouca
-Title: A probabilistic cellular automaton engine
+Title: A stochastic cellular automaton engine
 Version: 0.0.99
 Authors@R: 
     person("Alexandre", "Génin", , "a.a.h.genin@uu.nl", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3333-1338"))
 Maintainer: Alexandre Genin <a.a.h.genin@uu.nl>
-Description: An engine for probabilistic cellular automata. It provides a high-level 
+Description: An engine for stochastic cellular automata. It provides a high-level 
   interface to declare a model, which can then be run by various backends (Rcpp-based, 
   or using code compiled at runtime). 
 License: GPL (>= 3)

@@ -3,9 +3,9 @@
 # something that is acceptable for the CA engines. 
 # 
 
-#' @title Definition of a probabilistic cellular automaton 
+#' @title Definition of a stochastic cellular automaton 
 #'
-#' @description  High-level definition of a probabilistic cellular automaton
+#' @description  High-level definition of a stochastic cellular automaton
 #' 
 #' @param ... a number of transition descriptions, as built by the
 #'   \code{\link{transition}} function (see Details and Examples)
@@ -82,7 +82,7 @@
 #' used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial 
 #' landscape for a simulation can be created using \code{\link{generate_initmat}}. 
 #' 
-#' @seealso run_camodel, generate_initmat, run_meanfield
+#' @seealso run_camodel, generate_initmat, run_meanfield, update.ca_model
 #' 
 #' @examples 
 #' 
@@ -262,10 +262,10 @@ camodel <- function(...,
 #' @param from The state from which the transition is defined 
 #' 
 #' @param to The state to which the transition is defined 
-#'
+#' 
 #' @param prob a one-sided formula describing the probability of transition between the two 
 #'  states (see Details section for more information).
-#'
+#' 
 #'@export
 transition <- function(from, to, prob) { 
   if ( length(from) != 1 ) { 
@@ -298,6 +298,81 @@ pack_table_fromto <- function(tr, table) {
 
 # Update a ca_model with new arguments 
 # first argument needs to be 'object' to respect S3 method naming
+#' @title Update a cellular automaton 
+#'
+#' @description Update the definition of a stochastic cellular automaton 
+#'   (SCA), using new parameters, type of wrapping, or any other parameters 
+#'   entering in the definition of the model.
+#'
+#' @param object The SCA object (returned by \link{\code{ca_model()}}) 
+#' 
+#' @param parms a named list of parameters, which should be all numeric, 
+#'   single values
+#' 
+#' @param neighbors The number of neighbors to use in the cellular automaton 
+#'   (4 for 4-way or von-Neumann neghborhood, or 8 for an 8-way or Moore 
+#'   neighborhood)
+#' 
+#' @param wrap If \code{TRUE}, then the 2D grid on which the model is run wraps 
+#'   around at the edges (the top/leftmost cells will be considered neighbors 
+#'   of the bottom/rightmost cells)
+#' 
+#' @param continuous If \code{TRUE}, the model definition should be treated as 
+#'   a continuous stochastic cellular automaton
+#' 
+#' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = TRUE},
+#'   the number of neighbors per cell is variable, which can slow down the simulation. 
+#'   Set this option to \code{TRUE} to consider that the number of neighbors is always 
+#'   four or eight, regardless of the position of the cell in the landscape, at the cost 
+#'   of approximate dynamics on the edge of the landscape.
+#' 
+#' @param check_model A check of the model definition is done to make sure there 
+#'   are no issues with it (e.g. probabilities outside the [1,0] interval, or an 
+#'   unsupported model definition). A quick check that should catch most problems is
+#'   performed if check_model is "quick", an extensive check that tests all 
+#'   neighborhood configurations is done with "full", and no check is performed with 
+#'   "none".
+#' 
+#' @param verbose whether information should be printed when parsing the model
+#'   definition. 
+#'
+#'@details 
+#'  This function allows you to update some aspects of a pre-defined celullar 
+#'    automaton, such as parameter values, the type of neighborhood, whether 
+#'    to wrap around the edge of space, etc. It is handy when running multiple 
+#'    simulations over a gradient of values a given parameter. 
+#'
+#'@seealso camodel, run_camodel
+#'
+#'@examples 
+#' 
+#' # Update the parameters of a model 
+#' mussels <- ca_library("musselbed")
+#' mussels[["parms"]] # old parameters 
+#' mussels_new <- update(mussels, parms = list(d = 0.2, delta = 0.1, r = 0.8))
+#' mussels_new[["parms"]] # updated parameters 
+#' 
+#' # Update the type of neighborhood, wrapping around the edges, and 
+#' # the parameters
+#' mussels_new <- update(mussels, 
+#'                       parms = list(d = 0.2, delta = 0.1, r = 0.8), 
+#'                       wrap = TRUE, 
+#'                       neighbors = 8)
+#' mussels_new 
+#' 
+#' # Run the model for different values of d, the death rate of mussels
+#' ds <- seq(0, 0.25, length.out = 12)
+#' initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nr = 64, nc = 64)
+#' results <- lapply(ds, function(this_dvalue) { 
+#'   musselmod <- update(mussels, parms = list(d = this_dvalue))
+#'   run <- run_camodel(musselmod, initmat, times = seq(0, 128))
+#'   data.frame(d = this_dvalue, 
+#'              as.data.frame(tail(run[["output"]][["covers"]], 1)))
+#' })
+#' results <- do.call(rbind, results)
+#' plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b", 
+#'      xlab = "d", ylab = "Mussel cover")
+#' 
 #'@export
 update.ca_model <- function(object, 
                             parms = NULL, 
@@ -323,6 +398,18 @@ update.ca_model <- function(object,
   }
   if ( is.null(fixed_neighborhood) ) { 
     fixed_neighborhood <- object[["fixed_neighborhood"]]
+  }
+  
+  if ( ! is.null(parms) ) { 
+    parms_orig <- object[["parms"]]
+    if ( is.null(names(parms)) || any( names(parms) == "" ) ) { 
+      stop("Not all elements are named in the parameter list")   
+    }
+    if ( ! all( names(parms) %in% names(parms_orig) ) ) { 
+      stop("New parameter names do not match original parameters")
+    }
+    parms_orig[names(parms)] <- parms
+    parms <- parms_orig
   }
   
   # Extract model parameters, and do the call

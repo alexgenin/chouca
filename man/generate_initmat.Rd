@@ -4,16 +4,16 @@
 \alias{generate_initmat}
 \title{Generate an initial matrix for a \code{chouca} model}
 \usage{
-generate_initmat(mod, pvec, nr, nc = nr)
+generate_initmat(mod, pvec, nrow, ncol = nrow)
 }
 \arguments{
 \item{mod}{A stochastic cellular automaton model created by \code{\link{camodel}}}
 
 \item{pvec}{A numeric vector of covers for each state in the initial configuration.}
 
-\item{nr}{The number of rows of the output matrix}
+\item{nrow}{The number of rows of the output matrix}
 
-\item{nc}{The number of columns of the output matrix}
+\item{ncol}{The number of columns of the output matrix}
 }
 \description{
 Helper to create a initial landscape (matrix) with specified covers for 

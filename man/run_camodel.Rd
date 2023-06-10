@@ -36,7 +36,7 @@ A \code{ca_model_result} objects, which is a list with the following
   
   \item \code{output} A named list containing the model outputs. The 'covers' 
     component contains a matrix with the first column containing the time step, and the 
-    other columns the proportions of cells in a given state. The 'snapshots' componentµ
+    other columns the proportions of cells in a given state. The 'snapshots' component
     contains the landscapes recorded as matrices, with a 't' attribute indicating 
     the corresponding time step of the model run. 
 }
@@ -61,17 +61,18 @@ The \code{control} list must have named elements, and allows altering the
      specified in \code{times}. Setting this argument to values higher than one will 
      skip some time steps (thinning). For example, setting it to 2 will make
      \code{run_camodel} save covers only every two values specified in \code{times}.
-     Set to 0 to skip saving covers. 
+     Set to 0 to skip saving covers. This value must be an integer. 
    
    \item \code{save_snapshots_every} In the same way as covers, landscape snapshots 
      can be saved every set number of values in \code{times}. By default, only the
      initial and final landscape are saved. Set to one to save the landscape for each
      value specified in \code{times}. Higher values will skip elements in \code{times} 
-     by the set number. Set to zero to turn off the saving of snapshots.
+     by the set number. Set to zero to turn off the saving of snapshots. This 
+     value must be an integer. 
    
    \item \code{console_output_every} Set the number of iterations between which 
      progress report is printed on the console. Set to zero to turn off progress 
-     report. Default is to print progress every ten iterations.
+     report. Default is to print progress four times during the simulation. 
    
    \item \code{custom_output_fun} A custom function can be passed using this 
      argument to compute something on the landscape as the simulation is being run. 
@@ -79,7 +80,7 @@ The \code{control} list must have named elements, and allows altering the
      one being the current time in the simulation (single numeric value), and the 
      other one the current landscape (a matrix). This can be used to plot the 
      simulation results as it is being run, see \code{\link{landscape_plotter}} and  
-     \code{\link{trace_plotter}}. 
+     \code{\link{trace_plotter}} for details. 
    
    \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
      it will be called for every values in the \code{times} vector. Increase this 
@@ -90,34 +91,38 @@ The \code{control} list must have named elements, and allows altering the
      in 'substeps', i.e. an iteration is divided in several substeps, and 
      the substeps are run subsequently with probabilities divided by this amount. For 
      example, a model run with 4 substeps means that each iteration will be divided 
-     in 4 'sub-iterations', and probabilities of transitions are divided by 4 at 
+     in 4 'sub-iterations', and probabilities of transitions are divided by 4 for 
      each of those sub-iterations. 
    
    \item \code{engine} The engine used to run the simulations. Accepted values 
      are 'cpp' to use the C++ engine, or 'compiled', to emit and compile the model 
      code on the fly. Default is to use the C++ engine. Note that the 'compiled' 
      engine uses its own random number generator, and for this reason may produce 
-     simulations that are different from the C++ engine.
+     simulations that are different from the C++ engine. 
    
    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
      precompute probabilities of transitions for all possible combinations of 
-     neighborhood. When working with a model with a low number of states, this 
-     can increase simulation speed dramatically. By default, a heuristic is used 
-     to decide whether to enable precomputation or not. 
+     neighborhood. When working with a model with a low number of states 
+     (typically 3 or 4), this can increase simulation speed dramatically. 
+     By default, a heuristic is used to decide whether to enable 
+     precomputation or not. 
    
    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
      Rcpp messages when compiling the model. Default is \code{FALSE}. 
   
-   \item \code{force_compilation} (Compiled engine only)  \code{chouca} implements a
-     cache system so that models with similar structure are not recompiled. Set this
+   \item \code{force_compilation} (Compiled engine only) \code{chouca} has a
+     cache system to avoid recompiling similar models. Set this
      argument to \code{TRUE} to force compilation every time the model is run. 
   
-   \item \code{write_source} (Compiled engine only) A file name to which the C++ code 
-     used to run the model will be written (mostly for debugging purposes).
+   \item \code{write_source} (Compiled engine only) A file name to which 
+     the C++ code used to run the model will be written (mostly for 
+     debugging purposes).
    
-   \item \code{cores} (Compiled engine only) The number of threads to use to run the 
-     model. This provides a moderate speedup in most cases, and is sometimes 
-     counter-productive on small landscapes. 
+   \item \code{cores} (Compiled engine only) The number of threads to use 
+     to run the model. This provides a moderate speedup in most cases, and 
+     is sometimes counter-productive on small landscapes. If you plan on 
+     running multiple simulations, you are probably better off parallelizing 
+     at a higher level. 
    
 }
 }

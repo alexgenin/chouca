@@ -4,13 +4,13 @@
 [![R-CMD-check](https://github.com/alexgenin/chouca/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/alexgenin/chouca/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-# Chouca: a fast engine for probabilistic cellular automata 
+# Chouca: a fast engine for stochastic cellular automata 
 
-[Probabilistic cellular automata](https://en.wikipedia.org/wiki/Stochastic_cellular_automaton) are a class of models that are based on a 2D grid of cells, each being in one of several discrete states. At each time step, those cells can 
+[stochastic cellular automata](https://en.wikipedia.org/wiki/Stochastic_cellular_automaton) are a class of models that are based on a 2D grid of cells, each being in one of several discrete states. At each time step, those cells can 
 transition from one state to another with a given probability. This probability typically
 depends on the neighbors of the cell and the global state of the landscape. 
 
-You probably already know Conway's game of life -- a probabilistic cellular automaton 
+You probably already know Conway's game of life -- a stochastic cellular automaton 
 is identical, except that cell transitions do not always occur when a rule is satisfied, 
 but with a given probability.
 
@@ -19,7 +19,7 @@ for your own work, expect breaking changes.
 
 ## What this package implements 
 
-This package is an *engine* for probabilistic cellular automata (PCA), although it can 
+This package is an *engine* for stochastic cellular automata (PCA), although it can 
 also run deterministic cellular automata. The objective is to provide a high-level, 
 declarative interface to a PCA model, and leave the implementation details to the 
 package. 
@@ -68,7 +68,7 @@ toric space (that wraps around the edges):
 
 ## Installation 
 
-`chouca` can be installed with the package devtools directly from github
+`chouca` can be installed with the package devtools directly from github: 
 
 ```r
 devtools::install_github("alexgenin/chouca")
@@ -76,7 +76,7 @@ devtools::install_github("alexgenin/chouca")
 
 ## Motivation and objectives
 
-Probabilistic cellular automata are widely used in ecology to describe the dynamics of 
+stochastic cellular automata are widely used in ecology to describe the dynamics of 
 organisms over space, and investigate how their interactions may affect the dynamic 
 of the system as a whole. However, implementing those models is often done using ad-hoc 
 R code, which is slow, error-prone, and does not encourage exploring different 

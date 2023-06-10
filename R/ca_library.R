@@ -3,7 +3,7 @@
 # This file contains models 
 # 
 
-#' @title Library of probabilistic cellular automata 
+#' @title Library of stochastic cellular automata 
 #'
 #' @description Get one of the PCA model included in \code{chouca}
 #' 

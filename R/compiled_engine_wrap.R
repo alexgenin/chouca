@@ -56,7 +56,6 @@ camodel_compiled_engine_wrap <- local({
   clines <- gsubf("__NS__", format(ns), clines)
   clines <- gsubf("__WRAP__", boolstr(wrap), clines)
   clines <- gsubf("__CONTINUOUS_SCA__", boolstr(continuous), clines)
-  clines <- gsubf("__DELTA_T__", ctrl[["delta_t"]], clines)
   clines <- gsubf("__USE_8_NB__", boolstr(use_8_nb), clines)
   clines <- gsubf("__SUBSTEPS__", format(ctrl[["substeps"]]), clines)
   clines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), clines)

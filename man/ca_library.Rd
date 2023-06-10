@@ -2,7 +2,7 @@
 % Please edit documentation in R/ca_library.R
 \name{ca_library}
 \alias{ca_library}
-\title{Library of probabilistic cellular automata}
+\title{Library of stochastic cellular automata}
 \usage{
 ca_library(model, parms = NULL, neighbors = NULL, wrap = TRUE)
 }

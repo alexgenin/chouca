@@ -1,5 +1,5 @@
 # 
-# This file contains function that will initialize and run a model 
+# This file contains functions that will initialize and run a model 
 #
 
 #' @title Generate an initial matrix for a \code{chouca} model 
@@ -11,9 +11,9 @@
 #' 
 #' @param pvec A numeric vector of covers for each state in the initial configuration. 
 #' 
-#' @param nr The number of rows of the output matrix 
+#' @param nrow The number of rows of the output matrix 
 #' 
-#' @param nc The number of columns of the output matrix 
+#' @param ncol The number of columns of the output matrix 
 #' 
 #' @details 
 #' 
@@ -34,7 +34,7 @@
 #' @seealso as.camodel_initmat
 #' 
 #'@export
-generate_initmat <- function(mod, pvec, nr, nc = nr) { 
+generate_initmat <- function(mod, pvec, nrow, ncol = nrow) { 
   
   if ( any(is.na(pvec)) ) { 
     stop("NAs in pvec are not supported")
@@ -62,8 +62,8 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   
   # Generate the matrix
   m <- matrix(sample(mod[["states"]],
-                     replace = TRUE, prob = pvec, size = nr*nc), 
-              nrow = nr, ncol = nc)
+                     replace = TRUE, prob = pvec, size = nrow * ncol), 
+              nrow = nrow, ncol = ncol)
   
   # Adjust and set class
   m <- as.camodel_initmat(m, levels = mod[["states"]])
@@ -169,17 +169,18 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'      specified in \code{times}. Setting this argument to values higher than one will 
 #'      skip some time steps (thinning). For example, setting it to 2 will make
 #'      \code{run_camodel} save covers only every two values specified in \code{times}.
-#'      Set to 0 to skip saving covers. 
+#'      Set to 0 to skip saving covers. This value must be an integer. 
 #'    
 #'    \item \code{save_snapshots_every} In the same way as covers, landscape snapshots 
 #'      can be saved every set number of values in \code{times}. By default, only the
 #'      initial and final landscape are saved. Set to one to save the landscape for each
 #'      value specified in \code{times}. Higher values will skip elements in \code{times} 
-#'      by the set number. Set to zero to turn off the saving of snapshots.
+#'      by the set number. Set to zero to turn off the saving of snapshots. This 
+#'      value must be an integer. 
 #'    
 #'    \item \code{console_output_every} Set the number of iterations between which 
 #'      progress report is printed on the console. Set to zero to turn off progress 
-#'      report. Default is to print progress every ten iterations.
+#'      report. Default is to print progress four times during the simulation. 
 #'    
 #'    \item \code{custom_output_fun} A custom function can be passed using this 
 #'      argument to compute something on the landscape as the simulation is being run. 
@@ -187,7 +188,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'      one being the current time in the simulation (single numeric value), and the 
 #'      other one the current landscape (a matrix). This can be used to plot the 
 #'      simulation results as it is being run, see \code{\link{landscape_plotter}} and  
-#'      \code{\link{trace_plotter}}. 
+#'      \code{\link{trace_plotter}} for details. 
 #'    
 #'    \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
 #'      it will be called for every values in the \code{times} vector. Increase this 
@@ -198,34 +199,38 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'      in 'substeps', i.e. an iteration is divided in several substeps, and 
 #'      the substeps are run subsequently with probabilities divided by this amount. For 
 #'      example, a model run with 4 substeps means that each iteration will be divided 
-#'      in 4 'sub-iterations', and probabilities of transitions are divided by 4 at 
+#'      in 4 'sub-iterations', and probabilities of transitions are divided by 4 for 
 #'      each of those sub-iterations. 
 #'    
 #'    \item \code{engine} The engine used to run the simulations. Accepted values 
 #'      are 'cpp' to use the C++ engine, or 'compiled', to emit and compile the model 
 #'      code on the fly. Default is to use the C++ engine. Note that the 'compiled' 
 #'      engine uses its own random number generator, and for this reason may produce 
-#'      simulations that are different from the C++ engine.
+#'      simulations that are different from the C++ engine. 
 #'    
 #'    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
 #'      precompute probabilities of transitions for all possible combinations of 
-#'      neighborhood. When working with a model with a low number of states, this 
-#'      can increase simulation speed dramatically. By default, a heuristic is used 
-#'      to decide whether to enable precomputation or not. 
+#'      neighborhood. When working with a model with a low number of states 
+#'      (typically 3 or 4), this can increase simulation speed dramatically. 
+#'      By default, a heuristic is used to decide whether to enable 
+#'      precomputation or not. 
 #'    
 #'    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
 #'      Rcpp messages when compiling the model. Default is \code{FALSE}. 
 #'   
-#'    \item \code{force_compilation} (Compiled engine only)  \code{chouca} implements a
-#'      cache system so that models with similar structure are not recompiled. Set this
+#'    \item \code{force_compilation} (Compiled engine only) \code{chouca} has a
+#'      cache system to avoid recompiling similar models. Set this
 #'      argument to \code{TRUE} to force compilation every time the model is run. 
 #'   
-#'    \item \code{write_source} (Compiled engine only) A file name to which the C++ code 
-#'      used to run the model will be written (mostly for debugging purposes).
+#'    \item \code{write_source} (Compiled engine only) A file name to which 
+#'      the C++ code used to run the model will be written (mostly for 
+#'      debugging purposes).
 #'    
-#'    \item \code{cores} (Compiled engine only) The number of threads to use to run the 
-#'      model. This provides a moderate speedup in most cases, and is sometimes 
-#'      counter-productive on small landscapes. 
+#'    \item \code{cores} (Compiled engine only) The number of threads to use 
+#'      to run the model. This provides a moderate speedup in most cases, and 
+#'      is sometimes counter-productive on small landscapes. If you plan on 
+#'      running multiple simulations, you are probably better off parallelizing 
+#'      at a higher level. 
 #'    
 #' }
 #' 
@@ -245,7 +250,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'   
 #'   \item \code{output} A named list containing the model outputs. The 'covers' 
 #'     component contains a matrix with the first column containing the time step, and the 
-#'     other columns the proportions of cells in a given state. The 'snapshots' componentµ
+#'     other columns the proportions of cells in a given state. The 'snapshots' component
 #'     contains the landscapes recorded as matrices, with a 't' attribute indicating 
 #'     the corresponding time step of the model run. 
 #' }
@@ -275,6 +280,11 @@ run_camodel <- function(mod, initmat, times,
     stop("States in the initial matrix do not match the model states")
   }
   
+  if ( ! all(round(times) == times) && all(times >= 0) ) { 
+    stop("Time steps must be non-negative integers")
+  }
+  times <- as.integer(round(times))
+  
   # Make sure the levels of the init landscape are all there, and in the right order, 
   # as from now on we are going to use their integer representation
   if ( length(levels(initmat)) != length(states) || 
@@ -286,13 +296,7 @@ run_camodel <- function(mod, initmat, times,
   
   # Read parameters
   control <- load_control_list(control, max(times))
-  
-  # Check that delta_t is correct 
-  if ( abs(control[["delta_t"]] - 1) > 1e-8 && ! mod[["continuous"]] ) { 
-    warning("delta_t can only be equal to 1 when working with discrete SCA.")
-    control[["delta_t"]] <- 1L
-  }
-  
+    
   # NOTE: callbacks defined below will modify things in the current environment, so that 
   # this function returns the output of the simulation. 
   
@@ -343,7 +347,7 @@ run_camodel <- function(mod, initmat, times,
     first_time <- last_time
     last_iter <- 0
     tmax <- max(times) 
-    niter <- floor( max(times) / control[["delta_t"]] + 1 )
+    niter <- max(times) 
     
     console_callback <- function(iter, ps, n) { 
       new_time <- proc.time()["elapsed"]
@@ -472,16 +476,17 @@ run_camodel <- function(mod, initmat, times,
 
 
 load_control_list <- function(l, tmax) { 
-  #TODO: make sure all elements of l are named 
-  #TODO: update doc with new options
+  
+  if ( length(l) > 0 && ( is.null(names(l)) || any( names(l) == "" ) ) ) { 
+    stop("Some elements of the control list are not named")
+  }
   
   control_list <- list(
     save_covers_every = 1, 
     save_snapshots_every = NULL, 
-    console_output_every = 10, 
+    console_output_every = NULL, 
     custom_output_every = NULL, 
     custom_output_fun = NULL, 
-    delta_t = 1, 
     substeps = 1, 
     engine = "cpp", 
     # Compiled engine options
@@ -502,6 +507,14 @@ load_control_list <- function(l, tmax) {
   
   if ( is.null(control_list[["save_snapshots_every"]]) ) { 
     control_list[["save_snapshots_every"]] <- tmax
+  }
+  
+  if ( is.null(control_list[["console_output_every"]]) ) { 
+    if ( max(tmax) > 4 ) { 
+      control_list[["console_output_every"]] <- ceiling(tmax/4)
+    } else { 
+      control_list[["console_output_every"]] <- 0
+    }
   }
   
   # If we passed a custom function, but did not specify the number of times we want to 
@@ -527,13 +540,8 @@ load_control_list <- function(l, tmax) {
   check_length1_integer(control_list[["substeps"]], "substeps", 1)
   check_length1_integer(control_list[["cores"]], "cores", 1)
   
-  if ( ! length(control_list[["delta_t"]]) == 1 && 
-       is.numeric(control_list[["delta_t"]]) ) { 
-    stop("delta_t must be a single numeric value")
-  }
-  
   if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 
-    stop(sprintf("Engine must be one of 'cpp', 'compiled' or 'r'"))
+    stop(sprintf("Engine must be either 'cpp' or 'compiled'"))
   }
   
   if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 
@@ -552,6 +560,11 @@ load_control_list <- function(l, tmax) {
   if ( control_list[["custom_output_every"]] > 0 && 
        ! is.function(control_list[["custom_output_fun"]]) ) { 
     stop("Custom output was turned on but no custom function was given")
+  }
+  
+  if ( control_list[["custom_output_every"]] == 0 && 
+       is.function(control_list[["custom_output_fun"]]) ) { 
+    warning("A custom output function was provided, but it will not be used")
   }
   
   control_list
