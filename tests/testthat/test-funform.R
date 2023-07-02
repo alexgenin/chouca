@@ -19,7 +19,6 @@ mkmod <- function(tr) {
   camodel(tr, 
           wrap = TRUE, 
           neighbors = 4, 
-          continuous = FALSE, 
           check_model = "full")
 }
 

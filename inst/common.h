@@ -492,8 +492,7 @@ static inline void compute_rate(double tprob_line[ns],
                                 const uword ps[ns], 
                                 const arma::uword & qpointn, 
                                 const arma::uword & total_nb, 
-                                const arma::uword & from, 
-                                const double delta_t) { 
+                                const arma::uword & from) { 
   
   // Init
   for ( ushort k=0; k<ns; k++ ) { 
@@ -571,32 +570,6 @@ static inline void compute_rate(double tprob_line[ns],
     }
     
     tprob_line[to] = total; 
-  }
-  
-  
-  // tprobs holds the rate at which things transition, we need to transform it if we 
-  // are working with a continuous-time SCA
-  // P(i -> j) = ( 1 - exp( - rate * delta_t ) ) * ( rate / sum(rates) ) 
-  // NOTE: This is "wrong", it only works asymptotically as delta_t -> 0. 
-  // We need to compute the probability that after xx time units 
-  // have passed, the chain is in a given state. We need to simulate the switches 
-  // between time steps. 
-  if ( continuous_sca ) { 
-    
-    double sum_rates = 0; 
-    for ( ushort k=0; k<ns; k++ ) { 
-      sum_rates += tprob_line[k]; 
-    }
-    
-    for ( ushort k=0; k<ns; k++ ) { 
-      double rate = tprob_line[k]; 
-      // Rcpp::Rcout << "from: " << from << " to: " << (int) k << ": " << tprob_line[k] << 
-        // " sum: " << sum_rates << " delta_t: " << delta_t << "\n"; 
-      tprob_line[k] = ( 1 - exp( - rate * delta_t ) ) * ( rate / sum_rates ); 
-    }
-    
-    // Now tprobs holds the probabilities of switching for a continuous SCA. If we 
-    // were working with a discrete SCA, there would be nothing to do here. 
   }
   
   // Compute cumsum of probabilities

@@ -2,6 +2,8 @@
 
 S3method(image,ca_model_result)
 S3method(image,camodel_initmat)
+S3method(levels,ca_model)
+S3method(levels,ca_model_result)
 S3method(plot,ca_model)
 S3method(plot,ca_model_result)
 S3method(print,ca_model)

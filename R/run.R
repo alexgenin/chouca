@@ -1,24 +1,25 @@
 # 
-# This file contains function that will initialize and run a model 
+# This file contains functions that will initialize and run a model 
 #
 
 #' @title Generate an initial matrix for a \code{chouca} model 
 #' 
-#' @description Helper to create a initial landscape (matrix) with specified covers for 
-#'   a cellular automaton 
+#' @description Helper function to create a spatially-random initial landscape (matrix) 
+#'   with specified covers for a cellular automaton 
 #' 
 #' @param mod A stochastic cellular automaton model created by \code{\link{camodel}}
 #' 
-#' @param pvec A numeric vector of covers for each state in the initial configuration. 
+#' @param pvec A numeric vector of covers for each state in the initial configuration, 
+#'   possibly with named elements. 
 #' 
-#' @param nr The number of rows of the output matrix 
+#' @param nrow The number of rows of the output matrix 
 #' 
-#' @param nc The number of columns of the output matrix 
+#' @param ncol The number of columns of the output matrix 
 #' 
 #' @details 
 #' 
 #'   This function is a helper to build a starting configuration (matrix) for a 
-#'     stochastic cellular automaton. Based on the definition of the model and the 
+#'     stochastic cellular automaton based on the definition of the model and the 
 #'     specified starting covers (in \code{pvec}). It will produce a landscape with 
 #'     expected global cover of each state equal to the covers in \code{pvec}, and a 
 #'     completely random spatial structure. 
@@ -26,15 +27,40 @@
 #'   The length of the \code{pvec} vector must match the number of possible cell states 
 #'     in the model. If present, the names of \code{pvec} must match the states
 #'     defined in the model. In this case, they will be used to determine which state 
-#'     gets which starting cover. 
+#'     gets which starting cover instead of the order of the values. 
 #'   
 #'   The \code{pvec} will be normalized to sum to one, emitting a warning if this 
 #'     produces a meaningful change in covers. 
 #' 
+#'   If you already have a matrix you want to use as a starting configuration, we 
+#'     recommend you to use \code{\link{as.camodel_initmat}} to convert it to an 
+#'     object that \code{\link{run_camodel}} can use. 
+#' 
 #' @seealso as.camodel_initmat
 #' 
+#' @examples 
+#' 
+#' # Run the Game of Life starting from a random grid
+#' game_of_life <- ca_library("gameoflife")
+#' grid <- generate_initmat(game_of_life, c(LIVE = .1, DEAD = .9), nr = 64)
+#' out <- run_camodel(game_of_life, grid, times = seq(0, 128)) 
+#' image(out) # final configuration
+#' 
+#' # Logistic growth of plants
+#' mod <- camodel(
+#'   transition(from = "empty", to = "plant", ~ r * p["plant"]), 
+#'   transition(from = "plant", to = "empty", ~ m), 
+#'   parms = list(r = 1, m = .03), 
+#'   wrap = TRUE, 
+#'   neighbors = 8
+#' )
+#' grid <- generate_initmat(mod, c(empty = .99, plant = .01), nr = 128) 
+#' image(grid) # initial state
+#' out <- run_camodel(mod, grid, times = seq(0, 30)) 
+#' image(out) # final state
+#' plot(out) # 
 #'@export
-generate_initmat <- function(mod, pvec, nr, nc = nr) { 
+generate_initmat <- function(mod, pvec, nrow, ncol = nrow) { 
   
   if ( any(is.na(pvec)) ) { 
     stop("NAs in pvec are not supported")
@@ -62,8 +88,8 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
   
   # Generate the matrix
   m <- matrix(sample(mod[["states"]],
-                     replace = TRUE, prob = pvec, size = nr*nc), 
-              nrow = nr, ncol = nc)
+                     replace = TRUE, prob = pvec, size = nrow * ncol), 
+              nrow = nrow, ncol = ncol)
   
   # Adjust and set class
   m <- as.camodel_initmat(m, levels = mod[["states"]])
@@ -93,6 +119,8 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #' summary(mat)
 #' image(mat)
 #' 
+#' \dontrun{ 
+#' 
 #' # This is a character matrix. We need to convert it to use it as input to 
 #' # run_camodel()
 #' size <- 64
@@ -106,7 +134,26 @@ generate_initmat <- function(mod, pvec, nr, nc = nr) {
 #' out <- run_camodel(mod, m, seq(0, 256))
 #' plot(out)
 #' 
+#' # Run a glider in the game of life 
+#' mod <- ca_library("gameoflife") 
+#' init <- matrix(c(0, 0, 1, 0, 0, 0, 0,
+#'                  0, 0, 0, 1, 0, 0, 0,
+#'                  0, 1, 1, 1, 0, 0, 0,
+#'                  0, 0, 0, 0, 0, 0, 0,
+#'                  0, 0, 0, 0, 0, 0, 0,
+#'                  0, 0, 0, 0, 0, 0, 0), 
+#'                 nrow = 6, ncol = 7, byrow = TRUE) 
+#' init[] <- ifelse(init == 1, "LIVE", "DEAD")
+#' # image() does not work on init here without conversion by as.camodel_initmat
+#' init <- as.camodel_initmat(init)
+#' image(init) 
 #' 
+#' # Run the model and display simulation output as it is running
+#' ctrl <- list(custom_output_fun = landscape_plotter(mod, fps_cap = 5), 
+#'              custom_output_every = 1)
+#' out <- run_camodel(mod, init, times = seq(0, 32), control = ctrl)
+#' 
+#' }
 #'@export
 as.camodel_initmat <- function(m, levels = NULL) { 
   
@@ -133,7 +180,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
   ml
 }
 
-#' @title Running a cellular automata
+#' @title Run a cellular automata
 #' 
 #' @description Run a pre-defined stochastic cellular automaton
 #' 
@@ -149,16 +196,14 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #' @param control a named list with settings to alter the way the simulation is run (see 
 #'   full list of settings in 'Details' section)
 #' 
-#' @seealso camodel, generate_initmat, trace_plotter, landscape_plotter
+#' @seealso camodel, generate_initmat, trace_plotter, landscape_plotter, run_meanfield
 #' 
 #' @details 
 #' 
-#' \code{run_camodel()} is the workhorse functionto run a pre-defined cellular 
-#'  automaton. It loads the model definition, and runs the simulation for a 
-#'  pre-defined number of iterations. It will run the simulation and output the results 
-#'  at the time steps specified by the \code{times} argument, starting from the initial 
-#'  landscape \code{initmat} (a matrix typically created by 
-#'  \code{\link{generate_initmat}}).
+#' \code{run_camodel()} is the workhorse function to run cellular automata. It runs the
+#'  simulation and outputs the results at the time steps specified by the \code{times}
+#'  argument, starting from the initial landscape \code{initmat} (a matrix typically 
+#'  created by \code{\link{generate_initmat}}).
 #' 
 #' The \code{control} list must have named elements, and allows altering the 
 #'   way the simulation is run. Possible options are the following: 
@@ -169,17 +214,18 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'      specified in \code{times}. Setting this argument to values higher than one will 
 #'      skip some time steps (thinning). For example, setting it to 2 will make
 #'      \code{run_camodel} save covers only every two values specified in \code{times}.
-#'      Set to 0 to skip saving covers. 
+#'      Set to 0 to skip saving covers. This value must be an integer. 
 #'    
 #'    \item \code{save_snapshots_every} In the same way as covers, landscape snapshots 
 #'      can be saved every set number of values in \code{times}. By default, only the
 #'      initial and final landscape are saved. Set to one to save the landscape for each
 #'      value specified in \code{times}. Higher values will skip elements in \code{times} 
-#'      by the set number. Set to zero to turn off the saving of snapshots.
+#'      by the set number. Set to zero to turn off the saving of snapshots. This 
+#'      value must be an integer. 
 #'    
 #'    \item \code{console_output_every} Set the number of iterations between which 
 #'      progress report is printed on the console. Set to zero to turn off progress 
-#'      report. Default is to print progress every ten iterations.
+#'      report. The default option is to print progress five times during the simulation. 
 #'    
 #'    \item \code{custom_output_fun} A custom function can be passed using this 
 #'      argument to compute something on the landscape as the simulation is being run. 
@@ -187,45 +233,51 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'      one being the current time in the simulation (single numeric value), and the 
 #'      other one the current landscape (a matrix). This can be used to plot the 
 #'      simulation results as it is being run, see \code{\link{landscape_plotter}} and  
-#'      \code{\link{trace_plotter}}. 
+#'      \code{\link{trace_plotter}} for such use case. 
 #'    
 #'    \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
-#'      it will be called for every values in the \code{times} vector. Increase this 
-#'      value to skip some time points, in a similar way to covers and snapshots above. 
+#'      it will be called for every time step specified in the \code{times} vector. 
+#'      Increase this value to skip some time points, in a similar way to covers 
+#'      and snapshots above. 
 #'    
 #'    \item \code{substeps} Stochastic CA can run into issues where the probabilities 
 #'      of transitions are above one. A possible solution to this is to run the model 
 #'      in 'substeps', i.e. an iteration is divided in several substeps, and 
 #'      the substeps are run subsequently with probabilities divided by this amount. For 
 #'      example, a model run with 4 substeps means that each iteration will be divided 
-#'      in 4 'sub-iterations', and probabilities of transitions are divided by 4 at 
+#'      in 4 'sub-iterations', and probabilities of transitions are divided by 4 for 
 #'      each of those sub-iterations. 
 #'    
 #'    \item \code{engine} The engine used to run the simulations. Accepted values 
 #'      are 'cpp' to use the C++ engine, or 'compiled', to emit and compile the model 
 #'      code on the fly. Default is to use the C++ engine. Note that the 'compiled' 
 #'      engine uses its own random number generator, and for this reason may produce 
-#'      simulations that are different from the C++ engine.
+#'      simulations that are different from the C++ engine (it does respect the R seed 
+#'      however). 
 #'    
 #'    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
 #'      precompute probabilities of transitions for all possible combinations of 
-#'      neighborhood. When working with a model with a low number of states, this 
-#'      can increase simulation speed dramatically. By default, a heuristic is used 
-#'      to decide whether to enable precomputation or not. 
+#'      neighborhood. When working with a model with a low number of states 
+#'      (typically 3 or 4), this can increase simulation speed dramatically. 
+#'      By default, a heuristic is used to decide whether to enable 
+#'      precomputation or not. 
 #'    
 #'    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
 #'      Rcpp messages when compiling the model. Default is \code{FALSE}. 
 #'   
-#'    \item \code{force_compilation} (Compiled engine only)  \code{chouca} implements a
-#'      cache system so that models with similar structure are not recompiled. Set this
+#'    \item \code{force_compilation} (Compiled engine only) \code{chouca} has a
+#'      cache system to avoid recompiling similar models. Set this
 #'      argument to \code{TRUE} to force compilation every time the model is run. 
 #'   
-#'    \item \code{write_source} (Compiled engine only) A file name to which the C++ code 
-#'      used to run the model will be written (mostly for debugging purposes).
+#'    \item \code{write_source} (Compiled engine only) A file name to which 
+#'      the C++ code used to run the model will be written (mostly for 
+#'      debugging purposes).
 #'    
-#'    \item \code{cores} (Compiled engine only) The number of threads to use to run the 
-#'      model. This provides a moderate speedup in most cases, and is sometimes 
-#'      counter-productive on small landscapes. 
+#'    \item \code{cores} (Compiled engine only) The number of threads to use 
+#'      to run the model. This provides a moderate speedup in most cases, and 
+#'      is sometimes counter-productive on small landscapes. If you plan on 
+#'      running multiple simulations, you are probably better off parallelizing 
+#'      at a higher level. 
 #'    
 #' }
 #' 
@@ -245,7 +297,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'   
 #'   \item \code{output} A named list containing the model outputs. The 'covers' 
 #'     component contains a matrix with the first column containing the time step, and the 
-#'     other columns the proportions of cells in a given state. The 'snapshots' componentµ
+#'     other columns the proportions of cells in a given state. The 'snapshots' component
 #'     contains the landscapes recorded as matrices, with a 't' attribute indicating 
 #'     the corresponding time step of the model run. 
 #' }
@@ -253,17 +305,55 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #' @examples 
 #' 
 #' # Run a model with default parameters
-#' mod <- ca_library("forestgap")
-#' im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
-#' run_camodel(mod, im, times = seq(0, 100))
+#' mod <- ca_library("musselbed")
+#' im  <- generate_initmat(mod, c(0.4, 0.6, 0), nr = 100, nc = 50)
+#' out <- run_camodel(mod, im, times = seq(0, 100))
+#' plot(out) 
 #' 
-#' # Set some options and use the compiled engine
+#' \dontrun{
+#' 
+#' # Run the same model with the 'compiled' engine, and save snapshots
 #' ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
-#' run <- run_camodel(mod, im, times = seq(0, 200))
+#' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+#' plot(run)
+#' par(mfrow = c(1, 2))
+#' image(run, snapshot_time = 1)
+#' image(run, snapshot_time = 100)
 #' 
-#' covers <- run[["output"]][["covers"]]
-#' matplot(covers[ ,1], covers[ ,-1], type = "l")
+#' # Disable console output 
+#' ctrl <- list(console_output_every = 0)
+#' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+#' plot(run)
 #' 
+#' # Very verbose console output (display compilation information, etc.) 
+#' ctrl <- list(console_output_every = 1, 
+#'              verbose_compilation = TRUE, 
+#'              engine = "compiled", 
+#'              force_compilation = TRUE)
+#' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+#' 
+#' # Turn on or off the memoisation of transition probabilities (mind the speed 
+#' # difference)
+#' ctrl <- list(engine = "compiled", precompute_probas = FALSE)
+#' run <- run_camodel(mod, im, times = seq(0, 256), control = ctrl)
+#' ctrl2 <- list(engine = "compiled", precompute_probas = TRUE)
+#' run2 <- run_camodel(mod, im, times = seq(0, 256), control = ctrl2)
+#' 
+#' # Use a custom function to compute spatial statistics while the simulation is running 
+#' if ( requireNamespace("spatialwarnings", quietly = TRUE) ) { 
+#'  fun <- function(t, mat) { 
+#'    m_classif <- matrix(mat == "MUSSEL", nrow = nrow(mat), ncol = ncol(mat))
+#'    data.frame(t = t, aclag1 = spatialwarnings::raw_moran(m_classif), 
+#'               m = mean(m_classif))
+#'  }
+#'  ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
+#'  
+#'  run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
+#'  stats <- do.call(rbind, run[["output"]][["custom"]])
+#'  matplot(stats[ ,1], stats[ ,-1], ylab = "ac-lag1", xlab = "time", type = "l")
+#' }
+#' 
+#' }
 #'@export
 run_camodel <- function(mod, initmat, times, 
                         control = list()) { 
@@ -274,6 +364,11 @@ run_camodel <- function(mod, initmat, times,
   if ( ! all(levels(initmat) %in% states) ) { 
     stop("States in the initial matrix do not match the model states")
   }
+  
+  if ( ! all(round(times) == times) && all(times >= 0) ) { 
+    stop("Time steps must be non-negative integers")
+  }
+  times <- as.integer(round(times))
   
   # Make sure the levels of the init landscape are all there, and in the right order, 
   # as from now on we are going to use their integer representation
@@ -286,13 +381,7 @@ run_camodel <- function(mod, initmat, times,
   
   # Read parameters
   control <- load_control_list(control, max(times))
-  
-  # Check that delta_t is correct 
-  if ( abs(control[["delta_t"]] - 1) > 1e-8 && ! mod[["continuous"]] ) { 
-    warning("delta_t can only be equal to 1 when working with discrete SCA.")
-    control[["delta_t"]] <- 1L
-  }
-  
+    
   # NOTE: callbacks defined below will modify things in the current environment, so that 
   # this function returns the output of the simulation. 
   
@@ -300,9 +389,7 @@ run_camodel <- function(mod, initmat, times,
   cover_callback <- function(t, ps, n) { }  
   cover_callback_active <- is_positive(control[["save_covers_every"]])
   if ( cover_callback_active ) { 
-    n_exports <- ifelse(mod[["continuous"]], 
-                        length(times), 
-                        length(unique(floor((times)))))
+    n_exports <- length(unique(floor(times)))
     
     if ( control[["save_covers_every"]] > 1 ) { 
       n_exports <- 1 + n_exports %/% control[["save_covers_every"]]
@@ -343,7 +430,7 @@ run_camodel <- function(mod, initmat, times,
     first_time <- last_time
     last_iter <- 0
     tmax <- max(times) 
-    niter <- floor( max(times) / control[["delta_t"]] + 1 )
+    niter <- max(times) 
     
     console_callback <- function(iter, ps, n) { 
       new_time <- proc.time()["elapsed"]
@@ -425,7 +512,7 @@ run_camodel <- function(mod, initmat, times,
   
   # Adjust the control list to add some components
   control_list <- c(control, 
-                    mod[c("wrap", "continuous",  
+                    mod[c("wrap", 
                           "neighbors", "xpoints", "fixed_neighborhood")], 
                     betas, 
                     list(init     = initmat, 
@@ -472,16 +559,17 @@ run_camodel <- function(mod, initmat, times,
 
 
 load_control_list <- function(l, tmax) { 
-  #TODO: make sure all elements of l are named 
-  #TODO: update doc with new options
+  
+  if ( length(l) > 0 && ( is.null(names(l)) || any( names(l) == "" ) ) ) { 
+    stop("Some elements of the control list are not named")
+  }
   
   control_list <- list(
     save_covers_every = 1, 
     save_snapshots_every = NULL, 
-    console_output_every = 10, 
+    console_output_every = NULL, 
     custom_output_every = NULL, 
     custom_output_fun = NULL, 
-    delta_t = 1, 
     substeps = 1, 
     engine = "cpp", 
     # Compiled engine options
@@ -502,6 +590,14 @@ load_control_list <- function(l, tmax) {
   
   if ( is.null(control_list[["save_snapshots_every"]]) ) { 
     control_list[["save_snapshots_every"]] <- tmax
+  }
+  
+  if ( is.null(control_list[["console_output_every"]]) ) { 
+    if ( max(tmax) > 4 ) { 
+      control_list[["console_output_every"]] <- ceiling(tmax/4)
+    } else { 
+      control_list[["console_output_every"]] <- 0
+    }
   }
   
   # If we passed a custom function, but did not specify the number of times we want to 
@@ -527,13 +623,8 @@ load_control_list <- function(l, tmax) {
   check_length1_integer(control_list[["substeps"]], "substeps", 1)
   check_length1_integer(control_list[["cores"]], "cores", 1)
   
-  if ( ! length(control_list[["delta_t"]]) == 1 && 
-       is.numeric(control_list[["delta_t"]]) ) { 
-    stop("delta_t must be a single numeric value")
-  }
-  
   if ( ! control_list[["engine"]] %in% c("cpp", "compiled", "r") ) { 
-    stop(sprintf("Engine must be one of 'cpp', 'compiled' or 'r'"))
+    stop(sprintf("Engine must be either 'cpp' or 'compiled'"))
   }
   
   if ( ! is.logical(control_list[["verbose_compilation"]]) ) { 
@@ -552,6 +643,11 @@ load_control_list <- function(l, tmax) {
   if ( control_list[["custom_output_every"]] > 0 && 
        ! is.function(control_list[["custom_output_fun"]]) ) { 
     stop("Custom output was turned on but no custom function was given")
+  }
+  
+  if ( control_list[["custom_output_every"]] == 0 && 
+       is.function(control_list[["custom_output_fun"]]) ) { 
+    warning("A custom output function was provided, but it will not be used")
   }
   
   control_list

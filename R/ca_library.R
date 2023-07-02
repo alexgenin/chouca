@@ -3,7 +3,7 @@
 # This file contains models 
 # 
 
-#' @title Library of probabilistic cellular automata 
+#' @title Library of stochastic cellular automata 
 #'
 #' @description Get one of the PCA model included in \code{chouca}
 #' 
@@ -121,7 +121,6 @@ ca_library <- function(model,
       wrap = wrap, 
       parms = parms, 
       all_states = c("EMPTY", "TREE"), 
-      continuous = FALSE, 
       check_model = "quick"
     )
   
@@ -150,7 +149,6 @@ ca_library <- function(model,
       wrap = wrap, 
       parms = parms, 
       all_states = c("MUSSEL", "EMPTY", "DISTURB"), 
-      continuous = FALSE, 
       check_model = "quick"
     )
   }
@@ -191,7 +189,6 @@ ca_library <- function(model,
       wrap = wrap, 
       neighbors = neighbors, 
       all_states = c("DEGR", "EMPTY", "VEGE"),
-      continuous = FALSE, 
       check_model = "quick"
     )
     
@@ -226,7 +223,6 @@ ca_library <- function(model,
       transition(from = "0", to = "-", ~ d), 
       transition(from = "-", to = "0", ~ r + f * ( q["N"] + q["P"] ) ), 
       wrap = TRUE, 
-      continuous = FALSE, 
       parms = parms, 
       neighbors = 4
     )
@@ -267,7 +263,6 @@ ca_library <- function(model,
       wrap = wrap, 
       parms = parms, 
       all_states = c("BARE", "ALGAE", "CORAL"), 
-      continuous = FALSE, 
       check_model = "quick"
     )
   }
@@ -287,8 +282,7 @@ ca_library <- function(model,
       transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
       wrap = wrap, 
       neighbors = neighbors, 
-      all_states = c("DEAD", "LIVE"), 
-      continuous = FALSE
+      all_states = c("DEAD", "LIVE")
     )
   }
   
@@ -312,8 +306,7 @@ ca_library <- function(model,
       parms = parms, 
       wrap = wrap, 
       neighbors = neighbors, 
-      check_model = "quick", 
-      continuous = FALSE
+      check_model = "quick"
     )
     
   }

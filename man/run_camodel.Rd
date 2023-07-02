@@ -2,7 +2,7 @@
 % Please edit documentation in R/run.R
 \name{run_camodel}
 \alias{run_camodel}
-\title{Running a cellular automata}
+\title{Run a cellular automata}
 \usage{
 run_camodel(mod, initmat, times, control = list())
 }
@@ -36,7 +36,7 @@ A \code{ca_model_result} objects, which is a list with the following
   
   \item \code{output} A named list containing the model outputs. The 'covers' 
     component contains a matrix with the first column containing the time step, and the 
-    other columns the proportions of cells in a given state. The 'snapshots' componentµ
+    other columns the proportions of cells in a given state. The 'snapshots' component
     contains the landscapes recorded as matrices, with a 't' attribute indicating 
     the corresponding time step of the model run. 
 }
@@ -45,12 +45,10 @@ A \code{ca_model_result} objects, which is a list with the following
 Run a pre-defined stochastic cellular automaton
 }
 \details{
-\code{run_camodel()} is the workhorse functionto run a pre-defined cellular 
- automaton. It loads the model definition, and runs the simulation for a 
- pre-defined number of iterations. It will run the simulation and output the results 
- at the time steps specified by the \code{times} argument, starting from the initial 
- landscape \code{initmat} (a matrix typically created by 
- \code{\link{generate_initmat}}).
+\code{run_camodel()} is the workhorse function to run cellular automata. It runs the
+ simulation and outputs the results at the time steps specified by the \code{times}
+ argument, starting from the initial landscape \code{initmat} (a matrix typically 
+ created by \code{\link{generate_initmat}}).
 
 The \code{control} list must have named elements, and allows altering the 
   way the simulation is run. Possible options are the following: 
@@ -61,17 +59,18 @@ The \code{control} list must have named elements, and allows altering the
      specified in \code{times}. Setting this argument to values higher than one will 
      skip some time steps (thinning). For example, setting it to 2 will make
      \code{run_camodel} save covers only every two values specified in \code{times}.
-     Set to 0 to skip saving covers. 
+     Set to 0 to skip saving covers. This value must be an integer. 
    
    \item \code{save_snapshots_every} In the same way as covers, landscape snapshots 
      can be saved every set number of values in \code{times}. By default, only the
      initial and final landscape are saved. Set to one to save the landscape for each
      value specified in \code{times}. Higher values will skip elements in \code{times} 
-     by the set number. Set to zero to turn off the saving of snapshots.
+     by the set number. Set to zero to turn off the saving of snapshots. This 
+     value must be an integer. 
    
    \item \code{console_output_every} Set the number of iterations between which 
      progress report is printed on the console. Set to zero to turn off progress 
-     report. Default is to print progress every ten iterations.
+     report. The default option is to print progress five times during the simulation. 
    
    \item \code{custom_output_fun} A custom function can be passed using this 
      argument to compute something on the landscape as the simulation is being run. 
@@ -79,63 +78,107 @@ The \code{control} list must have named elements, and allows altering the
      one being the current time in the simulation (single numeric value), and the 
      other one the current landscape (a matrix). This can be used to plot the 
      simulation results as it is being run, see \code{\link{landscape_plotter}} and  
-     \code{\link{trace_plotter}}. 
+     \code{\link{trace_plotter}} for such use case. 
    
    \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
-     it will be called for every values in the \code{times} vector. Increase this 
-     value to skip some time points, in a similar way to covers and snapshots above. 
+     it will be called for every time step specified in the \code{times} vector. 
+     Increase this value to skip some time points, in a similar way to covers 
+     and snapshots above. 
    
    \item \code{substeps} Stochastic CA can run into issues where the probabilities 
      of transitions are above one. A possible solution to this is to run the model 
      in 'substeps', i.e. an iteration is divided in several substeps, and 
      the substeps are run subsequently with probabilities divided by this amount. For 
      example, a model run with 4 substeps means that each iteration will be divided 
-     in 4 'sub-iterations', and probabilities of transitions are divided by 4 at 
+     in 4 'sub-iterations', and probabilities of transitions are divided by 4 for 
      each of those sub-iterations. 
    
    \item \code{engine} The engine used to run the simulations. Accepted values 
      are 'cpp' to use the C++ engine, or 'compiled', to emit and compile the model 
      code on the fly. Default is to use the C++ engine. Note that the 'compiled' 
      engine uses its own random number generator, and for this reason may produce 
-     simulations that are different from the C++ engine.
+     simulations that are different from the C++ engine (it does respect the R seed 
+     however). 
    
    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
      precompute probabilities of transitions for all possible combinations of 
-     neighborhood. When working with a model with a low number of states, this 
-     can increase simulation speed dramatically. By default, a heuristic is used 
-     to decide whether to enable precomputation or not. 
+     neighborhood. When working with a model with a low number of states 
+     (typically 3 or 4), this can increase simulation speed dramatically. 
+     By default, a heuristic is used to decide whether to enable 
+     precomputation or not. 
    
    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print 
      Rcpp messages when compiling the model. Default is \code{FALSE}. 
   
-   \item \code{force_compilation} (Compiled engine only)  \code{chouca} implements a
-     cache system so that models with similar structure are not recompiled. Set this
+   \item \code{force_compilation} (Compiled engine only) \code{chouca} has a
+     cache system to avoid recompiling similar models. Set this
      argument to \code{TRUE} to force compilation every time the model is run. 
   
-   \item \code{write_source} (Compiled engine only) A file name to which the C++ code 
-     used to run the model will be written (mostly for debugging purposes).
+   \item \code{write_source} (Compiled engine only) A file name to which 
+     the C++ code used to run the model will be written (mostly for 
+     debugging purposes).
    
-   \item \code{cores} (Compiled engine only) The number of threads to use to run the 
-     model. This provides a moderate speedup in most cases, and is sometimes 
-     counter-productive on small landscapes. 
+   \item \code{cores} (Compiled engine only) The number of threads to use 
+     to run the model. This provides a moderate speedup in most cases, and 
+     is sometimes counter-productive on small landscapes. If you plan on 
+     running multiple simulations, you are probably better off parallelizing 
+     at a higher level. 
    
 }
 }
 \examples{
 
 # Run a model with default parameters
-mod <- ca_library("forestgap")
-im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
-run_camodel(mod, im, times = seq(0, 100))
+mod <- ca_library("musselbed")
+im  <- generate_initmat(mod, c(0.4, 0.6, 0), nr = 100, nc = 50)
+out <- run_camodel(mod, im, times = seq(0, 100))
+plot(out) 
 
-# Set some options and use the compiled engine
+\dontrun{
+
+# Run the same model with the 'compiled' engine, and save snapshots
 ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
-run <- run_camodel(mod, im, times = seq(0, 200))
+run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+plot(run)
+par(mfrow = c(1, 2))
+image(run, snapshot_time = 1)
+image(run, snapshot_time = 100)
 
-covers <- run[["output"]][["covers"]]
-matplot(covers[ ,1], covers[ ,-1], type = "l")
+# Disable console output 
+ctrl <- list(console_output_every = 0)
+run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+plot(run)
+
+# Very verbose console output (display compilation information, etc.) 
+ctrl <- list(console_output_every = 1, 
+             verbose_compilation = TRUE, 
+             engine = "compiled", 
+             force_compilation = TRUE)
+run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+
+# Turn on or off the memoisation of transition probabilities (mind the speed 
+# difference)
+ctrl <- list(engine = "compiled", precompute_probas = FALSE)
+run <- run_camodel(mod, im, times = seq(0, 256), control = ctrl)
+ctrl2 <- list(engine = "compiled", precompute_probas = TRUE)
+run2 <- run_camodel(mod, im, times = seq(0, 256), control = ctrl2)
+
+# Use a custom function to compute spatial statistics while the simulation is running 
+if ( requireNamespace("spatialwarnings", quietly = TRUE) ) { 
+ fun <- function(t, mat) { 
+   m_classif <- matrix(mat == "MUSSEL", nrow = nrow(mat), ncol = ncol(mat))
+   data.frame(t = t, aclag1 = spatialwarnings::raw_moran(m_classif), 
+              m = mean(m_classif))
+ }
+ ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
+ 
+ run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
+ stats <- do.call(rbind, run[["output"]][["custom"]])
+ matplot(stats[ ,1], stats[ ,-1], ylab = "ac-lag1", xlab = "time", type = "l")
+}
 
 }
+}
 \seealso{
-camodel, generate_initmat, trace_plotter, landscape_plotter
+camodel, generate_initmat, trace_plotter, landscape_plotter, run_meanfield
 }

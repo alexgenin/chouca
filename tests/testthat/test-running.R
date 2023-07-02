@@ -15,7 +15,7 @@ test_that("Test console output", {
     })
     
     expect_true({ 
-      grepl("iter = 3 ( 43 %", string[4], fixed = TRUE)
+      grepl("iter = 3 ( 50 %", string[4], fixed = TRUE)
     })
   }
   

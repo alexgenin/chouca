@@ -2,15 +2,12 @@
 # Various tests of model correctness
 # 
 
-context("Test correctness of results")
-
 test_that("pq coefficients work", { 
   
   # Debug model for pq
   mod <- camodel(transition(from = "a", to = "b", ~ 4 * (q["b"] * p["b"])), 
                  wrap = TRUE, 
-                 neighbors = 4, 
-                 continuous = FALSE)
+                 neighbors = 4)
   initmm <- generate_initmat(mod, c(.25, .75), 2, 2)
   initmm[] <- c("b", "b", "a", "a")
   
@@ -31,8 +28,7 @@ test_that("qq coefficients work", {
   # Debug model for pq
   mod <- camodel(transition(from = "a", to = "b", ~ 4 * (q["b"] * q["a"])), 
                  wrap = TRUE, 
-                 neighbors = 4, 
-                 continuous = FALSE)
+                 neighbors = 4)
   initmm <- generate_initmat(mod, c(.25, .75), 2, 2)
   initmm[] <- c("b", "b", "a", "a")
   
@@ -48,12 +44,10 @@ test_that("fixed neighborhood works", {
   
   mod <- camodel(transition(from = "a", to = "b", ~ q["b"]), 
                  wrap = FALSE, 
-                 neighbors = 4, 
-                 continuous = FALSE)
+                 neighbors = 4)
   modfnb <- camodel(transition(from = "a", to = "b", ~ q["b"]), 
                  wrap = FALSE, 
                  neighbors = 4, 
-                 continuous = FALSE, 
                  fixed_neighborhood = TRUE)
   
   initmm <- generate_initmat(mod, c(.25, .75), 2, 2)

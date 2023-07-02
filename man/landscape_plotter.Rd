@@ -10,6 +10,7 @@ landscape_plotter(
   fps_cap = 24,
   burn_in = 0,
   transpose = TRUE,
+  new_window = TRUE,
   ...
 )
 }
@@ -26,11 +27,14 @@ states in the model.}
 \item{transpose}{Set to \code{TRUE} to transpose the landscape matrix 
 before displaying it \code{\link[graphics]{image}}}
 
+\item{new_window}{Controls whether the plots are displayed in a new window, 
+or in the default device (typically the plot panel in Rstudio)}
+
 \item{...}{other arguments are passed to \code{\link[graphics]{image}}}
 }
 \description{
-This function creates another function that plot the model landscapes 
-  during the of simulation a stochastic cellular automaton.
+This function creates another function that plot the model 
+  landscape during the of simulation a stochastic cellular automaton.
 }
 \details{
 This function creates another function that is suitable for use with 
@@ -44,7 +48,7 @@ This function creates another function that is suitable for use with
   especially if the matrix is large, but if it is still too fast for your visualize 
   
   It is important to note that this function will probably massively slow down a 
-  simulation, so this function is mostly here for exploratory analyses, or just to 
+  simulation, so this is mostly for exploratory analyses, or just to 
   have a good look of what is happening in a model.
 }
 \examples{

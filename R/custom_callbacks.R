@@ -1,13 +1,13 @@
 # 
 # 
-# These functions are functions factory for custom callbacks
+# These functions are function factories for custom callbacks
 # 
 # 
 
 #' @title Plot simulation landscapes 
 #' 
-#' @description This function creates another function that plot the model landscapes 
-#'   during the of simulation a stochastic cellular automaton. 
+#' @description This function creates another function that plot the model 
+#'   landscape during the of simulation a stochastic cellular automaton. 
 #' 
 #' @param mod The model being used (created by \code{link{camodel}})
 #' 
@@ -20,6 +20,9 @@
 #' 
 #' @param transpose Set to \code{TRUE} to transpose the landscape matrix 
 #'   before displaying it \code{\link[graphics]{image}}
+#' 
+#' @param new_window Controls whether the plots are displayed in a new window, 
+#'   or in the default device (typically the plot panel in Rstudio)
 #' 
 #' @param ... other arguments are passed to \code{\link[graphics]{image}}
 #' 
@@ -34,11 +37,11 @@
 #'   
 #'   \code{\link[graphics]{image}} tends to be quite slow at displaying matrices, 
 #'   especially if the matrix is large, but if it is still too fast for your visualize 
-#    your results, you can cap the number of landscape displayed per seconds by setting 
+#    your results, you can cap the number of landscapes displayed per seconds by setting 
 #    the argument \code{fps_cap}. 
 #'   
 #'   It is important to note that this function will probably massively slow down a 
-#'   simulation, so this function is mostly here for exploratory analyses, or just to 
+#'   simulation, so this is mostly for exploratory analyses, or just to 
 #'   have a good look of what is happening in a model. 
 #' 
 #' @seealso trace_plotter, run_camodel
@@ -83,6 +86,7 @@ landscape_plotter <- function(mod,
                               fps_cap = 24, 
                               burn_in = 0, 
                               transpose = TRUE, 
+                              new_window = TRUE, 
                               ...) { 
   
   # col is nothing, set default
@@ -101,9 +105,8 @@ landscape_plotter <- function(mod,
                 "number of states in the model."))
   }
   
-  # We open a new graphic
-  
   last_call_time <- Sys.time()
+  has_set_par <- FALSE
   
   function(t, mat) { 
     
@@ -111,7 +114,12 @@ landscape_plotter <- function(mod,
     if ( t < burn_in ) { 
       return( NULL ) 
     }
-
+    
+    if ( ! has_set_par ) { 
+      setup_par(new_window)
+      has_set_par <<- TRUE
+    }
+    
     this_call_time <- Sys.time()
     dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
     
@@ -166,6 +174,9 @@ landscape_plotter <- function(mod,
 #' 
 #' @param burn_in A number of iterations to skip before plotting
 #' 
+#' @param new_window Controls whether the plots are displayed in a new window, 
+#'   or in the default device (typically the plot panel in Rstudio)
+#' 
 #' @param ... other arguments passed to \code{\link[graphics]{matplot}}, which is used to 
 #'   display the trends. 
 #' 
@@ -205,7 +216,7 @@ landscape_plotter <- function(mod,
 #'              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
 #' run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 #' 
-#' # Display statistics on autocorrelation on the fly in the arid 
+#' # Display statistics on autocorrelation on the fly for the arid 
 #' # vegetation model 
 #' if ( requireNamespace("spatialwarnings") ) { 
 #'   mod <- ca_library("aridvege")
@@ -227,6 +238,7 @@ trace_plotter <- function(mod, initmat,
                           max_samples = 256, 
                           fps_cap = 24, 
                           burn_in = 0, 
+                          new_window = TRUE, 
                           ...) { 
   
   if ( is.null(fun) ) { 
@@ -252,6 +264,7 @@ trace_plotter <- function(mod, initmat,
   backlog <- matrix(NA_real_, ncol = length(ex_res) + 1, nrow = max_samples)
   backlog_line <- 1
   states <- mod[["states"]]
+  has_set_par <- FALSE
   
   last_call_time <- Sys.time()
 
@@ -268,6 +281,11 @@ trace_plotter <- function(mod, initmat,
       return( NULL ) 
     }
     
+    if ( ! has_set_par ) { 
+      setup_par(new_window)
+      has_set_par <<- TRUE
+    }
+
     this_call_time <- Sys.time()
     dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
     
@@ -314,4 +332,27 @@ trace_plotter <- function(mod, initmat,
     return(NULL)
   }
   
+}
+
+
+setup_par <- function(external) { 
+  devtype <- NA
+  ostype <- tolower(Sys.info()["sysname"])
+  if ( grepl("^linux", ostype) || grepl("^solaris", ostype) ) { 
+    devtype <- "x11"
+  } else if ( grepl("^darwin", ostype) ) { 
+    devtype <- "quartz"
+  } else if (grepl("^win", ostype) ) { 
+    devtype <- "windows"
+  }
+  
+  if ( external ) { 
+    grDevices::dev.new(devtype)
+  }
+  
+  if ( is.na(devtype) ) { 
+    stop("Could not detect OS type to set up graphics (please report a bug!)")
+  }
+  
+  graphics::par(mfrow = c(1, 1))
 }

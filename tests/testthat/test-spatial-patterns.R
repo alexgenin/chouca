@@ -15,7 +15,6 @@ test_that("autocorrelation in spatial patterns make sense", {
                                transition(from = "b", to = "a", ~ 0.04), 
                                all_states = c("a", "b"), 
                                neighbors = 8, 
-                               continuous = FALSE, 
                                wrap = TRUE)
     im <- generate_initmat(mod_pos_autocor, c(0.5, 0.5), nr, nc)
     
@@ -41,8 +40,6 @@ test_that("autocorrelation in spatial patterns make sense", {
                                transition(from = "b", to = "a", ~ 0.01 * q["b"]), 
                                all_states = c("a", "b"), 
                                neighbors = 8, 
-                               continuous = FALSE, 
-
                                wrap = TRUE)
     
     run <- run_camodel(mod_neg_autocor, im, ts, control = ctrl)
@@ -64,7 +61,6 @@ test_that("autocorrelation in spatial patterns make sense", {
                                  transition(from = "b", to = "a", ~ 0.01), 
                                  all_states = c("a", "b"), 
                                  neighbors = 8, 
-                                 continuous = TRUE, 
                                  wrap = TRUE)
       
       all_autocors <- replicate(99, { 

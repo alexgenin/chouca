@@ -2,8 +2,6 @@
 # 
 # 
 
-context('Testing the mean field model')
-
 mod <- camodel(transition(from = "0", to = "+", ~ r * p["+"]), 
                 wrap = TRUE, 
                 parms = list(r = 0.1), 

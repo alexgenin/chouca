@@ -37,6 +37,7 @@ arma::vec quick_pred_cpp(const arma::vec coefs,
   const arma::uword n = ps.n_rows; 
   const arma::uword nvals = vals.n_rows; 
   arma::vec yp(n); 
+  yp.fill(0.0); 
   
   for ( arma::uword i=0; i<n; i++ ) { 
     for ( arma::uword k=0; k<nvals; k++ ) { 

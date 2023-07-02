@@ -12,6 +12,7 @@ trace_plotter(
   max_samples = 256,
   fps_cap = 24,
   burn_in = 0,
+  new_window = TRUE,
   ...
 )
 }
@@ -32,6 +33,9 @@ values returned by fun.}
 \item{fps_cap}{The maximum number of frame per seconds at which to plot the results}
 
 \item{burn_in}{A number of iterations to skip before plotting}
+
+\item{new_window}{Controls whether the plots are displayed in a new window, 
+or in the default device (typically the plot panel in Rstudio)}
 
 \item{...}{other arguments passed to \code{\link[graphics]{matplot}}, which is used to 
 display the trends.}
@@ -75,7 +79,7 @@ ctrl <- list(custom_output_every = 1,
              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
 run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 
-# Display statistics on autocorrelation on the fly in the arid 
+# Display statistics on autocorrelation on the fly for the arid 
 # vegetation model 
 if ( requireNamespace("spatialwarnings") ) { 
   mod <- ca_library("aridvege")

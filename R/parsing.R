@@ -3,41 +3,39 @@
 # something that is acceptable for the CA engines. 
 # 
 
-#' @title Definition of a probabilistic cellular automaton 
+#' @title Definition of a stochastic cellular automaton 
 #'
-#' @description  High-level definition of a probabilistic cellular automaton
+#' @description  High-level definition of a stochastic cellular automaton
 #' 
 #' @param ... a number of transition descriptions, as built by the
 #'   \code{\link{transition}} function (see Details and Examples)
 #' 
 #' @param neighbors The number of neighbors to use in the cellular automaton (4 for 4-way 
-#'   or von-Neumann neghborhood, or 8 for an 8-way or Moore neighborhood)
+#'   or von-Neumann neigborhood, or 8 for an 8-way or Moore neighborhood)
 #' 
 #' @param wrap If \code{TRUE}, then the 2D grid on which the model is run wraps around 
 #'   at the edges (the top/leftmost cells will be considered neighbors of the 
 #'   bottom/rightmost cells)
 #' 
-#' @param continuous If \code{TRUE}, the model definition should be treated as a 
-#'   continuous stochastic cellular automaton
-#' 
 #' @param parms a named list of parameters, which should be all numeric, single values
 #' 
-#' @param all_states the complete list of states (a character vector). If unspecified,
-#'   it will be guessed from the transition rules, but it is a good idea pass it here 
-#'   to make sure the model definition is correct. 
+#' @param all_states the complete set of states of the model (a character vector). If
+#'   unspecified, it will be guessed from the transition rules, but it is a good idea 
+#'   to pass it here to make sure the model definition is correct. 
 #' 
 #' @param verbose whether information should be printed when parsing the model
 #'   definition. 
 #' 
 #' @param check_model A check of the model definition is done to make sure there 
-#'   are no issues with it (e.g. probabilities outside the [1,0] interval, or an 
+#'   are no issues with it (e.g. probabilities outside the [0,1] interval, or an 
 #'   unsupported model definition). A quick check that should catch most problems is
-#'   performed if check_model is "quick", an extensive check that tests all 
+#'   performed if check_model is "quick", an extensive check that tests all possible 
 #'   neighborhood configurations is done with "full", and no check is performed with 
 #'   "none".
 #' 
-#' @param epsilon A small value under which coefficient values are considered to be 
-#'   equal to zero
+#' @param epsilon A small value under which the internal model coefficients values are
+#'   considered to be equal to zero. The default value should work well here, except 
+#'   if you run models that have extremely small transition probabilities (<1e-8).
 #' 
 #' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = TRUE},
 #'   the number of neighbors per cell is variable, which can slow down the simulation. 
@@ -63,26 +61,54 @@
 #' section Examples for examples of model implementations. 
 #' 
 #' It is important to remember when using this function that \code{chouca} only 
-#' supports models where the probabilities follow the following functional form: 
+#' supports models where the probabilities depend on constant parameters, the global 
+#' proportion of each state in the landscape, and the local proportion of cells around 
+#' a given cell. 
 #' 
-#' P = \deqn{\beta_0 + \sum_{k=1}^S f(q_k) + \sum{k=1}^S \beta^p_k p_k + \beta^{pq}_1 p^2q^2 \dots \beta^{pq}_I p^5q^5 + \beta^{pp}_J p^2p^2 \dots \beta^{pp}_J p^5p^5 + + \beta^{qq}_K q^2q^2 \dots \beta^{qq}_K q^5q^5}
+#' \deqn{
+#'   \beta_0 + \\
+#'   \sum_{k=1}^S f(q_k) + \\
+#'   \sum_{k = 1}^S \beta^p_k p_k + \\
+#'   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \gamma_{k,l,a,b} p_k^a p_l^b + \\
+#'   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \delta_{k,l,a,b} p_k^a q_l^b + \\
+#'   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \epsilon_{k,l,a,b} p_k^a q_l^b
+#' }
 #' 
-#' where p_{k} and q_{k} are the proportions of cells in state k in the landscape, and 
-#' in the cell neighborhood, respectively, and the various \eqn{\beta} coefficient 
-#' are estimated by \code{chouca} internally. When \code{check_model} is "quick" or 
-#' "full", a check is performed to make sure the functional form above is able to 
-#' accurately represent probabilities of transitions in the model, with "full" enabling 
-#' more extensive tesing, and "none" removing it entirely.  
+#' where \eqn{p_k} and \eqn{q_k} are the proportions of cells in state k in the 
+#' landscape, and in the cell neighborhood, respectively, and the various \eqn{\beta},
+#' \eqn{gamma}, \eqn{delta} and \eqn{epsilon} are constant coefficients. 
+#' \eqn{D} above sets the maximum degree of the internal form, and is set by default 
+#' to 5. You can override it by setting its value using 
+#' \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher 
+#' values typically make the packages slow and/or lead to numerical instabilities. 
 #' 
-#' When using chouca, very small coefficients in the formula above may be rounded down 
-#' to zero. This may be an issue if your transition probabilities are very low: in 
-#' this case, consider reducing \code{epsilon} to a smaller value. 
+#' \eqn{f} above can be any function, so \code{chouca} effectively supports any type 
+#' of transition rule involving the neighborhood of a cell, including some 'threshold' 
+#' rules that involve one state (and only one). For example, a rule such as "more than 
+#' 5 neighbors in a given state makes a cell switch from state A to B" is OK, but 
+#' combining states may not be supported, such as "more than 5
+#' neighbors in state A *and* 2 in state B means a cell switches from A to B". When in 
+#' doubt, just write your model, and \code{chouca} will tell you if it cannot run it 
+#' accurately. 
+#' 
+#' This model check is controlled by \code{check_model}. When set to "quick" or "full", 
+#' a check is performed to make sure the functional form above is able to accurately
+#' represent probabilities of transitions in the model, with "full" enabling more 
+#' extensive tesing, and "none" removing it entirely. When using chouca, very small
+#' coefficients in the formula above may be rounded down to zero. This may be an issue 
+#' if your transition probabilities are very low: in this case, consider reducing
+#' \code{epsilon} to a smaller value. 
 #' 
 #' To run a model once it is defined, the function \code{\link{run_camodel}} can be 
 #' used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial 
 #' landscape for a simulation can be created using \code{\link{generate_initmat}}. 
 #' 
-#' @seealso run_camodel, generate_initmat, run_meanfield
+#' You can update a model definition with new parameters (all of them or a subset) 
+#' using the \code{\link[=update.ca_model]{update}} method. The model graph can be 
+#' displayed using the \code{plot} method (this requires igraph).
+#' 
+#' @seealso run_camodel, run_meanfield, generate_initmat, run_meanfield, 
+#'   update.ca_model, ca_library
 #' 
 #' @examples 
 #' 
@@ -99,9 +125,11 @@
 #'                alpha = 0.2), 
 #'   all_states = c("EMPTY", "TREE"), 
 #'   neighbors = 4, 
-#'   wrap = TRUE, 
-#'   continuous = FALSE
+#'   wrap = TRUE
 #' )
+#' 
+#' # Display it as a graph
+#' plot(kubo) 
 #' 
 #' # A fun plant model 
 #' mod <- camodel(
@@ -110,9 +138,9 @@
 #'   all_states = c("empty", "plant"), 
 #'   wrap = TRUE, 
 #'   neighbors = 4, 
-#'   continuous = FALSE, 
 #'   parms = list(death = 0.2496)
 #' )
+#' 
 #' 
 #' # Conway's Game of Life 
 #' mod <- camodel( 
@@ -120,26 +148,47 @@
 #'   transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
 #'   wrap = TRUE, 
 #'   neighbors = 8, 
-#'   continuous = FALSE, 
 #'   all_states = c("DEAD", "LIVE")
 #' )
 #' 
 #' # A spiral-generating rock-paper-scissor model
 #' mod <- camodel(
-#'   transition(from = "r", to = "p", ~ prob * ( q["p"] > (1/8)*2) ), 
-#'   transition(from = "p", to = "c", ~ prob * ( q["c"] > (1/8)*2) ), 
-#'   transition(from = "c", to = "r", ~ prob * ( q["r"] > (1/8)*2) ), 
+#'   transition(from = "r", to = "p", ~ q["p"] > 0.25 ), 
+#'   transition(from = "p", to = "c", ~ q["c"] > 0.25 ), 
+#'   transition(from = "c", to = "r", ~ q["r"] > 0.25 ), 
 #'   parms = list(prob = 1), 
 #'   wrap = TRUE, 
-#'   continuous = FALSE, 
 #'   neighbors = 8
 #' )
+#' 
+#' # Display the model as a graph 
+#' plot(mod)
+#' 
+#' # Running the above model (see also the help files for the relevant functions) 
+#' init <- generate_initmat(mod, c(r = 1/3, p = 1/3, c = 1/3), nrow = 128) 
+#' out <- run_camodel(mod, init, times = seq(0, 128))
+#' plot(out) 
+#' 
+#' # Update a model definition using update()
+#' mod <- camodel(
+#'   transition("plant", "empty", ~ m), 
+#'   transition("empty", "plant", ~ r * q["plant"] * ( 1 - q["plant"] ) ), 
+#'   all_states = c("empty", "plant"), 
+#'   wrap = TRUE, 
+#'   neighbors = 4, 
+#'   parms = list(m = 0.35, r = 0.4)
+#' )
+#' 
+#' mod_updated <- update(mod, parms = list(m = 0.05, r = 1)) 
+#' init <- generate_initmat(mod_updated, c(plant = 0.8, empty = 0.2), nr = 128)
+#' out <- run_camodel(mod_updated, init, times = seq(0, 128))
+#' plot(out) 
+#' image(out)
 #' 
 #'@export
 camodel <- function(..., 
                     neighbors, 
                     wrap, 
-                    continuous = FALSE, 
                     parms = list(), 
                     all_states = NULL, 
                     check_model = "quick", 
@@ -246,7 +295,6 @@ camodel <- function(...,
                 absorbing_states = absorb_states, 
                 wrap = wrap, 
                 neighbors = neighbors, 
-                continuous = continuous, 
                 epsilon = epsilon, 
                 xpoints = xpoints, 
                 max_error = max_error, 
@@ -262,10 +310,10 @@ camodel <- function(...,
 #' @param from The state from which the transition is defined 
 #' 
 #' @param to The state to which the transition is defined 
-#'
+#' 
 #' @param prob a one-sided formula describing the probability of transition between the two 
 #'  states (see Details section for more information).
-#'
+#' 
 #'@export
 transition <- function(from, to, prob) { 
   if ( length(from) != 1 ) { 
@@ -298,12 +346,97 @@ pack_table_fromto <- function(tr, table) {
 
 # Update a ca_model with new arguments 
 # first argument needs to be 'object' to respect S3 method naming
+# 
+#' @title Update a cellular automaton 
+#'
+#' @description Update the definition of a stochastic cellular automaton 
+#'   (SCA), using new parameters, type of wrapping, or any other parameter 
+#'   entering in the definition of the model.
+#'
+#' @param object The SCA object (returned by \code{\link{camodel}}) 
+#' 
+#' @param parms a named list of parameters, which should be all numeric, 
+#'   single values. If this list contains only a subset of model parameters, the 
+#'   old parameter values will be reused for those not provided. 
+#' 
+#' @param neighbors The number of neighbors to use in the cellular automaton 
+#'   ('4' for 4-way or von-Neumann neghborhood, or '8' for an 8-way or Moore 
+#'   neighborhood)
+#' 
+#' @param wrap If \code{TRUE}, then the 2D grid on which the model is run wraps 
+#'   around at the edges (the top/leftmost cells will be considered neighbors 
+#'   of the bottom/rightmost cells)
+#' 
+#' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = TRUE},
+#'   the number of neighbors per cell is variable, which can slow down the simulation. 
+#'   Set this option to \code{TRUE} to consider that the number of neighbors is always 
+#'   four or eight, regardless of the position of the cell in the landscape, at the cost 
+#'   of approximate dynamics on the edge of the landscape.
+#' 
+#' @param check_model A check of the model definition is done to make sure there 
+#'   are no issues with it (e.g. probabilities outside the [1,0] interval, or an 
+#'   unsupported model definition). A quick check that should catch most problems is
+#'   performed if check_model is "quick", an extensive check that tests all 
+#'   neighborhood configurations is done with "full", and no check is performed with 
+#'   "none".
+#' 
+#' @param verbose whether information should be printed when parsing the model
+#'   definition. 
+#' 
+#' @param ... extra arguments are ignored 
+#' 
+#' @details 
+#' 
+#'  This function updates some aspects of a pre-defined stochastic celullar 
+#'    automaton, such as parameter values, the type of neighborhood, whether 
+#'    to wrap around the edge of space, etc. It is handy when running multiple 
+#'    simulations, and only a few aspects of the model needs to be changed, such as 
+#'    parameter values. Note that this function cannot add or remove states to a model.
+#'  
+#'  Note that the \code{parms} list may only specify a subset of the model parameters 
+#'    to update. In this case, old parameter values not specified in the call to 
+#'    \code{update} will be re-used. 
+#'
+#' @seealso camodel, run_camodel
+#'
+#'@examples 
+#' 
+#' \dontrun{ 
+#' 
+#' # Update the parameters of a model 
+#' mussels <- ca_library("musselbed")
+#' mussels[["parms"]] # old parameters 
+#' mussels_new <- update(mussels, parms = list(d = 0.2, delta = 0.1, r = 0.8))
+#' mussels_new[["parms"]] # updated parameters 
+#' 
+#' # Update the type of neighborhood, wrapping around the edges, and 
+#' # the parameters
+#' mussels_new <- update(mussels, 
+#'                       parms = list(d = 0.2, delta = 0.1, r = 0.8), 
+#'                       wrap = TRUE, 
+#'                       neighbors = 8)
+#' mussels_new 
+#' 
+#' # Run the model for different values of d, the death rate of mussels
+#' ds <- seq(0, 0.25, length.out = 12)
+#' initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nr = 64, nc = 64)
+#' results <- lapply(ds, function(this_dvalue) { 
+#'   musselmod <- update(mussels, parms = list(d = this_dvalue))
+#'   run <- run_camodel(musselmod, initmat, times = seq(0, 128))
+#'   data.frame(d = this_dvalue, 
+#'              as.data.frame(tail(run[["output"]][["covers"]], 1)))
+#' })
+#' results <- do.call(rbind, results)
+#' plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b", 
+#'      xlab = "d", ylab = "Mussel cover")
+#' 
+#' }
+#' 
 #'@export
 update.ca_model <- function(object, 
                             parms = NULL, 
                             neighbors = NULL, 
                             wrap = NULL, 
-                            continuous = NULL, 
                             fixed_neighborhood = NULL, 
                             check_model = "quick", 
                             verbose = FALSE, 
@@ -318,11 +451,20 @@ update.ca_model <- function(object,
   if ( is.null(parms) ) { 
     parms <- object[["parms"]]
   }
-  if ( is.null(continuous) ) { 
-    continuous <- object[["continuous"]]
-  }
   if ( is.null(fixed_neighborhood) ) { 
     fixed_neighborhood <- object[["fixed_neighborhood"]]
+  }
+  
+  if ( ! is.null(parms) ) { 
+    parms_orig <- object[["parms"]]
+    if ( is.null(names(parms)) || any( names(parms) == "" ) ) { 
+      stop("Not all elements are named in the parameter list")   
+    }
+    if ( ! all( names(parms) %in% names(parms_orig) ) ) { 
+      stop("New parameter names do not match original parameters")
+    }
+    parms_orig[names(parms)] <- parms
+    parms <- parms_orig
   }
   
   # Extract model parameters, and do the call
@@ -330,7 +472,6 @@ update.ca_model <- function(object,
                neighbors = neighbors, 
                wrap = wrap, 
                fixed_neighborhood = fixed_neighborhood, 
-               continuous = continuous, 
                parms = list(parms), 
                all_states = list(object[["states"]]), 
                check_model = check_model, 
