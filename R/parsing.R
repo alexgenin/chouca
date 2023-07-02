@@ -346,11 +346,10 @@ pack_table_fromto <- function(tr, table) {
 
 # Update a ca_model with new arguments 
 # first argument needs to be 'object' to respect S3 method naming
-# 
 #' @title Update a cellular automaton 
 #'
 #' @description Update the definition of a stochastic cellular automaton 
-#'   (SCA), using new parameters, type of wrapping, or any other parameter 
+#'   (SCA), using new parameters, type of wrapping, or any other parameters 
 #'   entering in the definition of the model.
 #'
 #' @param object The SCA object (returned by \code{\link{camodel}}) 
@@ -386,7 +385,6 @@ pack_table_fromto <- function(tr, table) {
 #' @param ... extra arguments are ignored 
 #' 
 #' @details 
-#' 
 #'  This function updates some aspects of a pre-defined stochastic celullar 
 #'    automaton, such as parameter values, the type of neighborhood, whether 
 #'    to wrap around the edge of space, etc. It is handy when running multiple 
