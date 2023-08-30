@@ -9,7 +9,6 @@
   parms = NULL,
   neighbors = NULL,
   wrap = NULL,
-  continuous = NULL,
   fixed_neighborhood = NULL,
   check_model = "quick",
   verbose = FALSE,
@@ -20,18 +19,16 @@
 \item{object}{The SCA object (returned by \code{\link{camodel}})}
 
 \item{parms}{a named list of parameters, which should be all numeric, 
-single values}
+single values. If this list contains only a subset of model parameters, the 
+old parameter values will be reused for those not provided.}
 
 \item{neighbors}{The number of neighbors to use in the cellular automaton 
-(4 for 4-way or von-Neumann neghborhood, or 8 for an 8-way or Moore 
+('4' for 4-way or von-Neumann neghborhood, or '8' for an 8-way or Moore 
 neighborhood)}
 
 \item{wrap}{If \code{TRUE}, then the 2D grid on which the model is run wraps 
 around at the edges (the top/leftmost cells will be considered neighbors 
 of the bottom/rightmost cells)}
-
-\item{continuous}{If \code{TRUE}, the model definition should be treated as 
-a continuous stochastic cellular automaton}
 
 \item{fixed_neighborhood}{When not using wrapping around the edges (\code{wrap = TRUE},
 the number of neighbors per cell is variable, which can slow down the simulation. 
@@ -57,12 +54,19 @@ Update the definition of a stochastic cellular automaton
   entering in the definition of the model.
 }
 \details{
-This function allows you to update some aspects of a pre-defined celullar 
+This function updates some aspects of a pre-defined stochastic celullar 
    automaton, such as parameter values, the type of neighborhood, whether 
    to wrap around the edge of space, etc. It is handy when running multiple 
-   simulations over a gradient of values a given parameter.
+   simulations, and only a few aspects of the model needs to be changed, such as 
+   parameter values. Note that this function cannot add or remove states to a model.
+ 
+ Note that the \code{parms} list may only specify a subset of the model parameters 
+   to update. In this case, old parameter values not specified in the call to 
+   \code{update} will be re-used.
 }
 \examples{
+
+\dontrun{ 
 
 # Update the parameters of a model 
 mussels <- ca_library("musselbed")
@@ -90,6 +94,8 @@ results <- lapply(ds, function(this_dvalue) {
 results <- do.call(rbind, results)
 plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b", 
      xlab = "d", ylab = "Mussel cover")
+
+}
 
 }
 \seealso{

@@ -24,8 +24,11 @@ Imports:
     stats
 Suggests: 
     covr,
-    testthat (>= 3.0.0), 
-    spatialwarnings, 
-    deSolve, 
-    igraph
+    testthat (>= 3.0.0),
+    spatialwarnings,
+    deSolve,
+    igraph,
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
+VignetteBuilder: knitr

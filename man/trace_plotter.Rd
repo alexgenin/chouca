@@ -79,7 +79,7 @@ ctrl <- list(custom_output_every = 1,
              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
 run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 
-# Display statistics on autocorrelation on the fly in the arid 
+# Display statistics on autocorrelation on the fly for the arid 
 # vegetation model 
 if ( requireNamespace("spatialwarnings") ) { 
   mod <- ca_library("aridvege")

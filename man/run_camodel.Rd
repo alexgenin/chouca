@@ -2,7 +2,7 @@
 % Please edit documentation in R/run.R
 \name{run_camodel}
 \alias{run_camodel}
-\title{Running a cellular automata}
+\title{Run a cellular automata}
 \usage{
 run_camodel(mod, initmat, times, control = list())
 }
@@ -45,12 +45,10 @@ A \code{ca_model_result} objects, which is a list with the following
 Run a pre-defined stochastic cellular automaton
 }
 \details{
-\code{run_camodel()} is the workhorse functionto run a pre-defined cellular 
- automaton. It loads the model definition, and runs the simulation for a 
- pre-defined number of iterations. It will run the simulation and output the results 
- at the time steps specified by the \code{times} argument, starting from the initial 
- landscape \code{initmat} (a matrix typically created by 
- \code{\link{generate_initmat}}).
+\code{run_camodel()} is the workhorse function to run cellular automata. It runs the
+ simulation and outputs the results at the time steps specified by the \code{times}
+ argument, starting from the initial landscape \code{initmat} (a matrix typically 
+ created by \code{\link{generate_initmat}}).
 
 The \code{control} list must have named elements, and allows altering the 
   way the simulation is run. Possible options are the following: 
@@ -72,7 +70,7 @@ The \code{control} list must have named elements, and allows altering the
    
    \item \code{console_output_every} Set the number of iterations between which 
      progress report is printed on the console. Set to zero to turn off progress 
-     report. Default is to print progress four times during the simulation. 
+     report. The default option is to print progress five times during the simulation. 
    
    \item \code{custom_output_fun} A custom function can be passed using this 
      argument to compute something on the landscape as the simulation is being run. 
@@ -80,11 +78,12 @@ The \code{control} list must have named elements, and allows altering the
      one being the current time in the simulation (single numeric value), and the 
      other one the current landscape (a matrix). This can be used to plot the 
      simulation results as it is being run, see \code{\link{landscape_plotter}} and  
-     \code{\link{trace_plotter}} for details. 
+     \code{\link{trace_plotter}} for such use case. 
    
    \item \code{custom_output_every} If \code{custom_output_fun} is specified, then 
-     it will be called for every values in the \code{times} vector. Increase this 
-     value to skip some time points, in a similar way to covers and snapshots above. 
+     it will be called for every time step specified in the \code{times} vector. 
+     Increase this value to skip some time points, in a similar way to covers 
+     and snapshots above. 
    
    \item \code{substeps} Stochastic CA can run into issues where the probabilities 
      of transitions are above one. A possible solution to this is to run the model 
@@ -98,7 +97,8 @@ The \code{control} list must have named elements, and allows altering the
      are 'cpp' to use the C++ engine, or 'compiled', to emit and compile the model 
      code on the fly. Default is to use the C++ engine. Note that the 'compiled' 
      engine uses its own random number generator, and for this reason may produce 
-     simulations that are different from the C++ engine. 
+     simulations that are different from the C++ engine (it does respect the R seed 
+     however). 
    
    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to 
      precompute probabilities of transitions for all possible combinations of 
@@ -129,18 +129,56 @@ The \code{control} list must have named elements, and allows altering the
 \examples{
 
 # Run a model with default parameters
-mod <- ca_library("forestgap")
-im  <- generate_initmat(mod, c(0.4, 0.6), nr = 100, nc = 50)
-run_camodel(mod, im, times = seq(0, 100))
+mod <- ca_library("musselbed")
+im  <- generate_initmat(mod, c(0.4, 0.6, 0), nr = 100, nc = 50)
+out <- run_camodel(mod, im, times = seq(0, 100))
+plot(out) 
 
-# Set some options and use the compiled engine
+\dontrun{
+
+# Run the same model with the 'compiled' engine, and save snapshots
 ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
-run <- run_camodel(mod, im, times = seq(0, 200))
+run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+plot(run)
+par(mfrow = c(1, 2))
+image(run, snapshot_time = 1)
+image(run, snapshot_time = 100)
 
-covers <- run[["output"]][["covers"]]
-matplot(covers[ ,1], covers[ ,-1], type = "l")
+# Disable console output 
+ctrl <- list(console_output_every = 0)
+run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+plot(run)
+
+# Very verbose console output (display compilation information, etc.) 
+ctrl <- list(console_output_every = 1, 
+             verbose_compilation = TRUE, 
+             engine = "compiled", 
+             force_compilation = TRUE)
+run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
+
+# Turn on or off the memoisation of transition probabilities (mind the speed 
+# difference)
+ctrl <- list(engine = "compiled", precompute_probas = FALSE)
+run <- run_camodel(mod, im, times = seq(0, 256), control = ctrl)
+ctrl2 <- list(engine = "compiled", precompute_probas = TRUE)
+run2 <- run_camodel(mod, im, times = seq(0, 256), control = ctrl2)
+
+# Use a custom function to compute spatial statistics while the simulation is running 
+if ( requireNamespace("spatialwarnings", quietly = TRUE) ) { 
+ fun <- function(t, mat) { 
+   m_classif <- matrix(mat == "MUSSEL", nrow = nrow(mat), ncol = ncol(mat))
+   data.frame(t = t, aclag1 = spatialwarnings::raw_moran(m_classif), 
+              m = mean(m_classif))
+ }
+ ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
+ 
+ run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
+ stats <- do.call(rbind, run[["output"]][["custom"]])
+ matplot(stats[ ,1], stats[ ,-1], ylab = "ac-lag1", xlab = "time", type = "l")
+}
 
 }
+}
 \seealso{
-camodel, generate_initmat, trace_plotter, landscape_plotter
+camodel, generate_initmat, trace_plotter, landscape_plotter, run_meanfield
 }

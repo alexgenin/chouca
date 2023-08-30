@@ -105,12 +105,11 @@ inline void get_local_densities(arma::Col<arma::uword>& qs,
 // the R-way (1-indexing)
 // [[Rcpp::export]]
 arma::Col<arma::uword> local_dens(const arma::Mat<unsigned short> m,
-    const arma::uword nstates,
-    const arma::uword i,
-    const arma::uword j,
-    const bool wrap,
-    const bool use_8_nb)
-{
+                                  const arma::uword nstates,
+                                  const arma::uword i,
+                                  const arma::uword j,
+                                  const bool wrap,
+                                  const bool use_8_nb) {
     arma::Col<arma::uword> newq(nstates);
     newq.fill(0);
     // m, i and j must be adjusted to take into account the way things are stored in R
@@ -120,11 +119,10 @@ arma::Col<arma::uword> local_dens(const arma::Mat<unsigned short> m,
 }
 
 inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
-    const arma::Mat<unsigned short>& m,
-    const arma::uword j,
-    const bool wrap,
-    const bool use_8_nb)
-{
+                                       const arma::Mat<unsigned short>& m,
+                                       const arma::uword j,
+                                       const bool wrap,
+                                       const bool use_8_nb) {
 
     qs.fill(0);
     arma::uword nc = m.n_cols;
@@ -208,11 +206,10 @@ inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
 // a matrix. j must be indexed the R-way (1-indexing)
 //[[Rcpp::export]]
 arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m,
-    const arma::uword nstates,
-    const arma::uword j,
-    const bool wrap,
-    const bool use_8_nb)
-{
+                                      const arma::uword nstates,
+                                      const arma::uword j,
+                                      const bool wrap,
+                                      const bool use_8_nb) {
     arma::Mat<arma::uword> newq(m.n_rows, nstates);
     newq.fill(0);
     // m, i and j must be adjusted to take into account the way things are stored in R
@@ -225,8 +222,7 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m,
 // This file contains the main c++ engine to run CAs
 //
 // [[Rcpp::export]]
-void camodel_cpp_engine(const Rcpp::List ctrl)
-{
+void camodel_cpp_engine(const Rcpp::List ctrl) {
 
     // Unpack control list
     const bool wrap = ctrl["wrap"];
@@ -398,6 +394,10 @@ void camodel_cpp_engine(const Rcpp::List ctrl)
 
                             ptrans(to) += (beta_pq_index(k, _from) == from) * (beta_pq_index(k, _to) == to) * beta_pq_vals(k, _coef) * pow(p1, beta_pq_index(k, _expo_1)) * pow(q1, beta_pq_index(k, _expo_2));
                         }
+
+                        ptrans(to) = ptrans(to) < 0.0 ? 0.0 : ptrans(to);
+                        ptrans(to) = ptrans(to) > 1.0 ? 1.0 : ptrans(to);
+
                     }
 
                     // Check if we actually transition. We scan all states and switch to the

@@ -26,6 +26,8 @@ mat <- as.camodel_initmat(z)
 summary(mat)
 image(mat)
 
+\dontrun{ 
+
 # This is a character matrix. We need to convert it to use it as input to 
 # run_camodel()
 size <- 64
@@ -39,7 +41,26 @@ mod <- ca_library("forestgap")
 out <- run_camodel(mod, m, seq(0, 256))
 plot(out)
 
+# Run a glider in the game of life 
+mod <- ca_library("gameoflife") 
+init <- matrix(c(0, 0, 1, 0, 0, 0, 0,
+                 0, 0, 0, 1, 0, 0, 0,
+                 0, 1, 1, 1, 0, 0, 0,
+                 0, 0, 0, 0, 0, 0, 0,
+                 0, 0, 0, 0, 0, 0, 0,
+                 0, 0, 0, 0, 0, 0, 0), 
+                nrow = 6, ncol = 7, byrow = TRUE) 
+init[] <- ifelse(init == 1, "LIVE", "DEAD")
+# image() does not work on init here without conversion by as.camodel_initmat
+init <- as.camodel_initmat(init)
+image(init) 
 
+# Run the model and display simulation output as it is running
+ctrl <- list(custom_output_fun = landscape_plotter(mod, fps_cap = 5), 
+             custom_output_every = 1)
+out <- run_camodel(mod, init, times = seq(0, 32), control = ctrl)
+
+}
 }
 \seealso{
 generate_initmat, run_camodel, run_meanfield

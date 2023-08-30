@@ -23,7 +23,6 @@ print.ca_model <- function(x, ...) {
   cat0("")
   cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
   cat0("Wrap: ", x[["wrap"]])
-  cat0("Continuous: ", x[["continuous"]])
   
   cat0("Max error: ", format(max(x[["max_error"]])), " (", 
        ifelse(max(x[["max_error"]]) < ERROR_ABS_MAX, 
@@ -147,6 +146,18 @@ plot.ca_model_result <- function(x,
                    lty = 1,
                    col = colors)
   
+}
+
+
+# Define levels() methods to access states
+#'@export
+levels.ca_model <- function(x) { 
+  x[["states"]]
+}
+
+#'@export
+levels.ca_model_result <- function(x) { 
+  levels.ca_model(x[["mod"]][["states"]])
 }
 
 

@@ -9,19 +9,20 @@ generate_initmat(mod, pvec, nrow, ncol = nrow)
 \arguments{
 \item{mod}{A stochastic cellular automaton model created by \code{\link{camodel}}}
 
-\item{pvec}{A numeric vector of covers for each state in the initial configuration.}
+\item{pvec}{A numeric vector of covers for each state in the initial configuration, 
+possibly with named elements.}
 
 \item{nrow}{The number of rows of the output matrix}
 
 \item{ncol}{The number of columns of the output matrix}
 }
 \description{
-Helper to create a initial landscape (matrix) with specified covers for 
-  a cellular automaton
+Helper function to create a spatially-random initial landscape (matrix) 
+  with specified covers for a cellular automaton
 }
 \details{
 This function is a helper to build a starting configuration (matrix) for a 
-    stochastic cellular automaton. Based on the definition of the model and the 
+    stochastic cellular automaton based on the definition of the model and the 
     specified starting covers (in \code{pvec}). It will produce a landscape with 
     expected global cover of each state equal to the covers in \code{pvec}, and a 
     completely random spatial structure. 
@@ -29,10 +30,36 @@ This function is a helper to build a starting configuration (matrix) for a
   The length of the \code{pvec} vector must match the number of possible cell states 
     in the model. If present, the names of \code{pvec} must match the states
     defined in the model. In this case, they will be used to determine which state 
-    gets which starting cover. 
+    gets which starting cover instead of the order of the values. 
   
   The \code{pvec} will be normalized to sum to one, emitting a warning if this 
-    produces a meaningful change in covers.
+    produces a meaningful change in covers. 
+
+  If you already have a matrix you want to use as a starting configuration, we 
+    recommend you to use \code{\link{as.camodel_initmat}} to convert it to an 
+    object that \code{\link{run_camodel}} can use.
+}
+\examples{
+
+# Run the Game of Life starting from a random grid
+game_of_life <- ca_library("gameoflife")
+grid <- generate_initmat(game_of_life, c(LIVE = .1, DEAD = .9), nr = 64)
+out <- run_camodel(game_of_life, grid, times = seq(0, 128)) 
+image(out) # final configuration
+
+# Logistic growth of plants
+mod <- camodel(
+  transition(from = "empty", to = "plant", ~ r * p["plant"]), 
+  transition(from = "plant", to = "empty", ~ m), 
+  parms = list(r = 1, m = .03), 
+  wrap = TRUE, 
+  neighbors = 8
+)
+grid <- generate_initmat(mod, c(empty = .99, plant = .01), nr = 128) 
+image(grid) # initial state
+out <- run_camodel(mod, grid, times = seq(0, 30)) 
+image(out) # final state
+plot(out) # 
 }
 \seealso{
 as.camodel_initmat

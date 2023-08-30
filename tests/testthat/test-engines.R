@@ -36,7 +36,6 @@ models[[1]] <- list(model, imat)
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
                  parms = list(r = 0.1), 
-                 continuous = FALSE, 
                  wrap = TRUE, neighbors = 4)
 imat <- generate_initmat(model, c(0.2, 0.8), nr, nc)
 models[[2]] <- list(model, imat)
@@ -73,7 +72,7 @@ plyr::llply(models, function(modinfo) {
   
   # Check that we reproduce well the variance and mean of time series between the two 
   # engines. Somehow setti the seed does not 
-  engines_ts <- replicate(3, { 
+  engines_ts <- replicate(19, { 
     niter <- seq(0, 10)
     modcompiled <- run_camodel(mod, initmat, niter, control = { 
       control[["engine"]] <- "compiled" ; control

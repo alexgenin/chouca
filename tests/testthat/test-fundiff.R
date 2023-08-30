@@ -22,8 +22,7 @@ test_that("Behavior is OK compared to differential equation", {
   mod <- camodel(
     transition("0", "+", ~ 0.05 * p["+"] ), 
     wrap = TRUE, 
-    neighbors = 4, 
-    continuous = FALSE
+    neighbors = 4
   )
   initmm <- generate_initmat(mod, c(`0` = 1 - 0.001, `+` = 0.001), nr = 1024)
   run <- run_camodel(mod, initmm, times, 

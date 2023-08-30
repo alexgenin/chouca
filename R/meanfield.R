@@ -36,9 +36,9 @@
 #'    absence of neighborhood interactions between cells, or simply to obtain an 
 #'    approximate, but fast simulation of the model. 
 #'  
-#'  This function uses directly the expressions of the probabilities, so all models 
-#'    are supported, regardless of whether or not they report errors in the computation 
-#'    of probabilities. 
+#'  Note that this function uses directly the expressions of the probabilities, so any 
+#'    cellular automaton is supported, regardless of whether or not it can be simulated 
+#'    exactly by \code{\link{run_camodel}}.
 #'  
 #'@examples   
 #'  

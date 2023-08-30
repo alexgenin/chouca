@@ -6,7 +6,7 @@
 
 # Chouca: a fast engine for stochastic cellular automata 
 
-[stochastic cellular automata](https://en.wikipedia.org/wiki/Stochastic_cellular_automaton) are a class of models that are based on a 2D grid of cells, each being in one of several discrete states. At each time step, those cells can 
+[Stochastic cellular automata](https://en.wikipedia.org/wiki/Stochastic_cellular_automaton) are a class of models that are based on a 2D grid of cells, each being in one of several discrete states. At each time step, those cells can 
 transition from one state to another with a given probability. This probability typically
 depends on the neighbors of the cell and the global state of the landscape. 
 
@@ -14,7 +14,7 @@ You probably already know Conway's game of life -- a stochastic cellular automat
 is identical, except that cell transitions do not always occur when a rule is satisfied, 
 but with a given probability.
 
-**`chouca`** is still in development, and interfaces are still unstable. If you use it 
+`chouca` is still in development, and interfaces are still unstable. If you use it 
 for your own work, expect breaking changes.
 
 ## What this package implements 
@@ -86,7 +86,8 @@ rather than debugging ugly code.
 
 `chouca` wants to be user-friendly, yet provide very good performance. Several backend are provided, the main one being in C++. `chouca` can also emit and compile the required 
 C++ code at runtime for a specific model (à la Stan). This allows making optimizations 
-that would be impossible otherwise, and improves performance typically 10-100 times.
+that would be impossible otherwise, and improves performance typically one or two 
+orders of magnitude. 
 
 Here are a few graphs that should help you judge what performance to expect from 
 `chouca`. These curves represent the average performance across a few models taken from 

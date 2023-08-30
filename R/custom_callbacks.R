@@ -105,8 +105,6 @@ landscape_plotter <- function(mod,
                 "number of states in the model."))
   }
   
-  # We open a new graphic
-  
   last_call_time <- Sys.time()
   has_set_par <- FALSE
   
@@ -121,7 +119,7 @@ landscape_plotter <- function(mod,
       setup_par(new_window)
       has_set_par <<- TRUE
     }
-
+    
     this_call_time <- Sys.time()
     dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
     
@@ -218,7 +216,7 @@ landscape_plotter <- function(mod,
 #'              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
 #' run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 #' 
-#' # Display statistics on autocorrelation on the fly in the arid 
+#' # Display statistics on autocorrelation on the fly for the arid 
 #' # vegetation model 
 #' if ( requireNamespace("spatialwarnings") ) { 
 #'   mod <- ca_library("aridvege")

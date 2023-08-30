@@ -6,3 +6,6 @@
 .kateproject.notes
 draft
 tools
+inst/doc
+/doc/
+/Meta/
