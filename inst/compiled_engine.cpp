@@ -25,7 +25,7 @@ constexpr uword nc = __NC__;
 constexpr uchar ns = __NS__;
 constexpr bool wrap = __WRAP__;
 constexpr bool use_8_nb = __USE_8_NB__;
-constexpr uchar n_nb = use_8_nb ? 8 : 4; 
+constexpr uchar n_nb = use_8_nb ? 8 : 4;
 constexpr bool fixed_nb = __FIXED_NEIGHBOR_NUMBER__;
 constexpr uword substeps = __SUBSTEPS__;
 constexpr uword xpoints = __XPOINTS__;
@@ -42,7 +42,7 @@ constexpr uword cores = __CORES__;
 constexpr bool transition_matrix[ns][ns] = __TMATRIX_ARRAY__;
 // 5*2 because we have 5 packed tables of coefficients, each of which needing 2
 // (where to start, and where to stop for this transition)
-constexpr sword betas_index[5 * 2][ns][ns] = __FROMTO_ARRAY__;
+constexpr sword betas_index[5 * 2][ns][ns] = __BETAS_INDEX__;
 
 // Whether we want to precompute probabilities or not
 #define PRECOMPUTE_TRANS_PROBAS __PRECOMP_PROBA_VALUE__
@@ -64,15 +64,15 @@ static arma::Mat<double> coef_tab_dbls(coef_tab_nrow, 1);
 inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns],
                                                const unsigned char all_qs[all_qs_nrow][ns + 1],
                                                const arma::uword ps[ns]) {
-  
-  // 
-  // This function depends on the matrix all_qs, which contains all possible 
-  // neighborhood configurations, with an added column at the end with the total 
-  // number of neighbors (a fixed number under some set of options, e.g. it is always 
-  // 4 or 8 when we use a toric space as all cells have the same number of neighbors). 
-  // 
-  // For example, all_qs looks like this for a model with 3 states and 4 maximum 
-  // neighbors: 
+
+  //
+  // This function depends on the matrix all_qs, which contains all possible
+  // neighborhood configurations, with an added column at the end with the total
+  // number of neighbors (a fixed number under some set of options, e.g. it is always
+  // 4 or 8 when we use a toric space as all cells have the same number of neighbors).
+  //
+  // For example, all_qs looks like this for a model with 3 states and 4 maximum
+  // neighbors:
   //       [,1] [,2] [,3] [,4]
   // [1,]    0    0    4    4
   // [2,]    0    1    3    4
@@ -83,36 +83,36 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
   // [7,]    1    0    3    4
   // [8,]    1    1    2    4
   // [9,]    1    2    1    4
-  // 
-  // For all rows of all_qs, i.e. for all possible neighbor configurations, 
-  // we need to compute at this iteration the probability of switching from one state to  
-  // another, which is stored in tprobs. Then once we know the neighbor configuration 
-  // of a cell, we just need to fetch it from tprobs instead of recomputing it from 
-  // scratch. 
-  // 
-  // Note that when the neighborhood of a cell changes, we know immediately where to 
-  // find the new neighborhood configuration all_qs. For example, if we go from the 
-  // neighborhood (1, 0, 3) to (0, 0, 4), we know we new neighborhood config is 6 rows 
-  // above in all_qs (and thus in tprobs). This is because in all_qs, 
-  // the neighborhood configurations have a specific ordering. See adjust_nb_plines() 
+  //
+  // For all rows of all_qs, i.e. for all possible neighbor configurations,
+  // we need to compute at this iteration the probability of switching from one state to
+  // another, which is stored in tprobs. Then once we know the neighbor configuration
+  // of a cell, we just need to fetch it from tprobs instead of recomputing it from
+  // scratch.
+  //
+  // Note that when the neighborhood of a cell changes, we know immediately where to
+  // find the new neighborhood configuration all_qs. For example, if we go from the
+  // neighborhood (1, 0, 3) to (0, 0, 4), we know we new neighborhood config is 6 rows
+  // above in all_qs (and thus in tprobs). This is because in all_qs,
+  // the neighborhood configurations have a specific ordering. See adjust_nb_plines()
   // in common.h for more details.
-  // 
+  //
   for (uword l = 0; l < all_qs_nrow; l++) {
 
     // Some combinations in all_qs will never be used because the number of
-    // neighbors does not sum up to something we will ever encounter. See all_qs above, 
-    // where some neighborhood configuration sum to 8 (last column), but we use a 
-    // 4-way neighborhood in that example.  
-    // Skip those. 
-    // 
-    // NOTE: Ideally we would remove those values, and keep only lines in all_qs that 
-    // sum to valid combinations. This would make all_qs not grow as fast with the number 
-    // of neighbors and state, thus enabling memoization for more complex models. 
-    // However, this complexifies a lot the way to keep 
-    // track of where to pick the transition probability for each neighbor combination. 
-    // I [Alex] worked out a math formula somewhere but lost it, I just remember the 
-    // problem simplified into some variant of the bars and stars problem, see 
-    // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics). 
+    // neighbors does not sum up to something we will ever encounter. See all_qs above,
+    // where some neighborhood configuration sum to 8 (last column), but we use a
+    // 4-way neighborhood in that example.
+    // Skip those.
+    //
+    // NOTE: Ideally we would remove those values, and keep only lines in all_qs that
+    // sum to valid combinations. This would make all_qs not grow as fast with the number
+    // of neighbors and state, thus enabling memoization for more complex models.
+    // However, this complexifies a lot the way to keep
+    // track of where to pick the transition probability for each neighbor combination.
+    // I [Alex] worked out a math formula somewhere but lost it, I just remember the
+    // problem simplified into some variant of the bars and stars problem, see
+    // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics).
     if (all_qs[l][ns] > n_nb) {
       continue;
     }
@@ -200,20 +200,20 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   }
   memcpy(new_ps, old_ps, sizeof(uword) * ns);
 
-  
-  // When we do not use memoization, we maintain for each cell of the grid the state 
-  // of its neighbors (in old/new_qs). Everytime a cell changes state, the values of 
-  // those matrices are changed for its neighboring cells. 
-  // 
-  // When we use memoization, we do not need to keep track of the local counts of 
-  // neighbors, we just need to adjust the index (row) in old/new_pline which contains 
-  // where in tprobs the probability of transition needs to be picked for a cell 
+
+  // When we do not use memoization, we maintain for each cell of the grid the state
+  // of its neighbors (in old/new_qs). Everytime a cell changes state, the values of
+  // those matrices are changed for its neighboring cells.
+  //
+  // When we use memoization, we do not need to keep track of the local counts of
+  // neighbors, we just need to adjust the index (row) in old/new_pline which contains
+  // where in tprobs the probability of transition needs to be picked for a cell
   // in that specific neighborhood configuration. There is a relationship between
-  // the type of neighborhood change and the number of rows to add or substract to find 
-  // the new probabilities of transition. This means that when we memoize probabilities we 
+  // the type of neighborhood change and the number of rows to add or substract to find
+  // the new probabilities of transition. This means that when we memoize probabilities we
   // never have to count neighbors, which is a large part of the speed boost.
   // See adjust_nb_plines() in common.h for more information.
-  // 
+  //
 #if PRECOMPUTE_TRANS_PROBAS
   // Matrix holding probability line in the precomputed table
   auto old_pline = new uword[nr][nc];
@@ -282,7 +282,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
     for (uword s = 0; s < substeps; s++) {
 
 #if PRECOMPUTE_TRANS_PROBAS
-      // Note that we do not need to pass the arrays with model coefficients to the 
+      // Note that we do not need to pass the arrays with model coefficients to the
       // function, because they are known at compile time
       precompute_transition_probabilites(tprobs, all_qs, old_ps);
 #endif
@@ -291,13 +291,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       // This parallel block has an implicit barrier at the end, so each thread will
       // process a line and wait for the others to finish before switching to the next
       // line. This ensures that two threads will never write to the same cell in the
-      // shared data structures. This slows down things a lot when precomputing 
-      // probabilities, but when there is a significant amount of work to do 
-      // per line (complex model, no memoization of probas), this works well. 
-      // 
-      // Note that this probably assumes that nr >> cores, but it would be a quite 
-      // pathological case if this was not true. 
-      // 
+      // shared data structures. This slows down things a lot when precomputing
+      // probabilities, but when there is a significant amount of work to do
+      // per line (complex model, no memoization of probas), this works well.
+      //
+      // Note that this probably assumes that nr >> cores, but it would be a quite
+      // pathological case if this was not true.
+      //
       // This has funny indentation but it is the only way to align code in the
       // inside blocks with the non-parallel version
       for (uword c = 0; c < (nr / cores); c++) {
@@ -342,10 +342,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           double rn = randunif(0);
 #endif
 
-          // Check if we actually transition. We compute the cumulative sum of 
-          // probabilities, then draw a random number (here 'rn'), to see if the 
-          // transition occurs or not. 
-          // 
+          // Check if we actually transition. We compute the cumulative sum of
+          // probabilities, then draw a random number (here 'rn'), to see if the
+          // transition occurs or not.
+          //
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ p0 < rn < (p0+p1) => p1 wins
           //                                           ^ rn > everything => no transition

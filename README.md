@@ -12,23 +12,23 @@ several discrete states. At each time step, those cells can transition from
 one state to another with a given probability. This probability typically
 depends on the neighbors of the cell and the global state of the landscape.
 
-You probably already know Conway's game of life -- a stochastic cellular automaton
-is identical, except that cell transitions do not always occur when a rule is satisfied,
-but with a given probability.
+You probably already know Conway's game of life -- a stochastic cellular
+automaton is the same, except that cell transitions do not always occur when
+a rule is satisfied, but with a given probability.
 
-`chouca` is still in development, and interfaces are still unstable. If you use it
-for your own work, expect breaking changes.
+`chouca` is still in development, and interfaces are still unstable. If you use
+it for your own work, expect breaking changes.
 
 ## What this package implements
 
-This package is an *engine* for stochastic cellular automata (PCA), although it can
-also run deterministic cellular automata. The objective is to provide a high-level,
-declarative interface to a PCA model, and leave the implementation details to the
-package.
+This package is an *engine* for stochastic cellular automata (PCA), although
+it can also run deterministic cellular automata. The objective is to provide
+a high-level, declarative interface to a PCA model, and leave
+the implementation details to the package.
 
-For example, Kubo's forest model (Kubo, 1996), which describes how gaps created by wind
-in a forest appear and expand, can be implemented using the following few lines
-of code:
+For example, Kubo's forest model (Kubo, 1996), which describes how gaps created
+by wind in a forest appear and expand, can be implemented using the following
+few lines of code:
 
 ```r
 kubo <- camodel(
@@ -85,31 +85,6 @@ Here are a few graphs that should help you judge what performance to expect from
 taken from the literature:
 
 ![benchmark_results](./benchmarks_last_commit.png)
-
-the live display of simulations
-
-## Motivation and objectives
-
-Stochastic cellular automata are widely used in ecology to describe the dynamics of
-organisms over space, and investigate how their interactions may affect the dynamic
-of the system as a whole. However, implementing those models is often done using ad-hoc
-R code, which is slow, error-prone, and does not encourage exploring different
-variations around a single model. `chouca` provides a high-level interface to
-such type of models, in order to reduce errors, and spend more time on model design,
-rather than debugging ugly code.
-
-`chouca` wants to be user-friendly, yet provide very good performance.
-Several backend are provided, the main one being in C++. `chouca` can also
-emit and compile the required C++ code at runtime for a specific model. This
-allows making optimizations that would be impossible otherwise, and improves
-performance typically one or two orders of magnitude.
-
-Here are a few graphs that should help you judge what performance to expect from
-`chouca`. These curves represent the average performance across a few models
-taken from the literature:
-
-![benchmark_results](./benchmarks_last_commit.png)
-
 
 ## Installation
 

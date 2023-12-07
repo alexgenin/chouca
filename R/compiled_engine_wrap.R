@@ -3,16 +3,16 @@
 #
 
 
-# Here we use the local() call so that the function can keep some internal state. 
-# Otherwise the parent environment of the function is the package's internal 
-# environment, which cannot be written into. 
+# Here we use the local() call so that the function can keep some internal state.
+# Otherwise the parent environment of the function is the package's internal
+# environment, which cannot be written into.
 camodel_compiled_engine_wrap <- local({
 
 # This environment is here to store the functions that will be created here
 function_envir <- environment()
-  
+
 function(ctrl, console_callback, cover_callback, snapshot_callback) {
-  
+
   # Unwrap elements of the ctrl list that we need here
   wrap       <- ctrl[["wrap"]]
   use_8_nb   <- ctrl[["neighbors"]] == 8
@@ -24,12 +24,12 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # Read cpp file that we will compile
   cppfile <- system.file("compiled_engine.cpp", package = "chouca")
   clines <- readLines(cppfile)
-  
-  # gsubf() replaces lines in the read cpp file, and print to the console if that 
+
+  # gsubf() replaces lines in the read cpp file, and print to the console if that
   # was asked for
   if ( ctrl[["verbose_compilation"]] ) {
     cat("Compilation options:\n")
-    gsubf <- function(a, b, lines) { # 
+    gsubf <- function(a, b, lines) { #
       cat(sprintf("Setting %s to '%s'\n", a, b))
       lines <- gsub(a, b, lines)
     }
@@ -38,7 +38,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   }
   # Convert a logical to a cpp bool string
   boolstr <- function(x) ifelse(x, "true", "false")
-  
+
   # Replace values in cpp template
   clines <- gsubf("__NR__", format(nrow(init)), clines)
   clines <- gsubf("__NC__", format(ncol(init)), clines)
@@ -56,31 +56,31 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
                      system.file("common.h", package = "chouca"), clines)
 
 
-  # Write transition matrix. This contains 1/0 depending on whether the transition 
-  # from one state to another exists. 
+  # Write transition matrix. This contains 1/0 depending on whether the transition
+  # from one state to another exists.
   tmat_array <- write_cpp_array_2d(ctrl[["transition_mat"]])
   clines <- gsubf("__TMATRIX_ARRAY__", tmat_array, clines)
 
   # Write indices over which to iterate for each transition. These small matrices
   # contains where to jump in the big table for each transition
-  
-  # We pack all coefficients needed to compute all transition probabilities into a big 
-  # table. Recall that all transition probabilities in chouca have the form: 
-  #  beta0 + 
-  #    sum( f(q) ) + 
+
+  # We pack all coefficients needed to compute all transition probabilities into a big
+  # table. Recall that all transition probabilities in chouca have the form:
+  #  beta0 +
+  #    sum( f(q) ) +
   #    sum( c p_a^b p_c^d ) for all a,b,c,d
   #    sum( c q_a^b q_c^d ) for all a,b,c,d
   #    sum( c p_a^b q_c^d ) for all a,b,c,d
-  # 
-  # All coefficients (beta0, a, b, c, d, etc.) are stored in different tables at this 
+  #
+  # All coefficients (beta0, a, b, c, d, etc.) are stored in different tables at this
   # stage, depending on which component above they correspond to:
-  #    - 'c' (beta_0), 
-  #    - 'f(q)' (beta_q), 
-  #    - 'c*p[x]*p[y]' (beta_pp), 
-  #    - 'c*q[x]*q[y]' (beta_qq) 
+  #    - 'c' (beta_0),
+  #    - 'f(q)' (beta_q),
+  #    - 'c*p[x]*p[y]' (beta_pp),
+  #    - 'c*q[x]*q[y]' (beta_qq)
   #    - 'c*p[x]*q[y]' (beta_pq)
-  # 
-  # Here we merge all that into a single big table. This seems to help with cache 
+  #
+  # Here we merge all that into a single big table. This seems to help with cache
   # locality when computing transition probabilities
   tables <- c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")
   coef_table <- plyr::ldply(tables, function(tab) {
@@ -90,9 +90,9 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
       data.frame(table = character(0), ctrl[[tab]])
     }
   })
-  
-  # 'betas_index' contains the starting and ending index to pick relevant coefficients in 
-  # coef_table for each transition. It is a 3d array where the first columns correspond 
+
+  # 'betas_index' contains the starting and ending index to pick relevant coefficients in
+  # coef_table for each transition. It is a 3d array where the first columns correspond
   # to the state being transitioned from and to, and the third dimension contains the
   # starting and ending indices in coef_table
   betas_index <- array(nrow(coef_table)+1, dim = list(ns, ns, 2 * length(tables)))
@@ -115,7 +115,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
       }
     }
   }
-  
+
   # Trim coef table and write it to c++
   coef_tab_ints <- as.matrix(coef_table[ ,c("from", "to", "state_1", "state_2",
                                             "expo_1", "expo_2", "qs")])
@@ -125,9 +125,9 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   ctrl[["coef_tab_ints"]] <- coef_tab_ints
   clines <- gsubf("__COEF_TAB_NROW__", nrow(coef_tab_ints), clines)
 
-  # Write it as c++ array in the file 
+  # Write it as c++ array in the file
   betas_index_str <- write_cpp_array_3d(betas_index)
-  clines <- gsubf("__betas_index__", betas_index_str, clines)
+  clines <- gsubf("__BETAS_INDEX__", betas_index_str, clines)
 
   # Decide whether we fixed the number of neighbors or not
   clines <- gsubf("__FIXED_NEIGHBOR_NUMBER__",
@@ -168,7 +168,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
     # This is a dummy matrix just to make sure we pass something to the c++ function.
     all_qs <- matrix(0, nrow = 1, ncol = ns)
   }
-  
+
   # Replace size in compiled code
   clines <- gsubf("__ALL_QS_NROW__", format(nrow(all_qs)), clines)
 

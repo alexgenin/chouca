@@ -51,10 +51,10 @@ static inline double randunif(uchar core) {
   return xf;
 }
 
-// Not very efficient integer power of another value. We should probably use 
-// exponentiation by squaring, though since we almost always deal with powers <=5, 
-// typically 1-2, this may be overkill. 
-// Note that we know at compile time the maximum value for b, so there may be 
+// Not very efficient integer power of another value. We should probably use
+// exponentiation by squaring, though since we almost always deal with powers <=5,
+// typically 1-2, this may be overkill.
+// Note that we know at compile time the maximum value for b, so there may be
 // some optimization we are missing, especially when max(b) <= 1.
 inline uword intpow(const uchar a,
                     const uchar b) {
@@ -65,9 +65,9 @@ inline uword intpow(const uchar a,
   return p;
 }
 
-// Another try at fast power. Remarks above also apply, this is probably not very 
-// efficient. for information tests seem to say ~10% cpu time spent in here when 
-// not memoization probas of transition. 
+// Another try at fast power. Remarks above also apply, this is probably not very
+// efficient. for information tests seem to say ~10% cpu time spent in here when
+// not memoization probas of transition.
 static inline double fintpow(const double a,
                              const uchar  b) {
   switch ( b ) {
@@ -211,7 +211,7 @@ inline uword number_of_neighbors(const arma::uword i,
   return nnb;
 }
 
-// This function will set the "probability lines", ie fill in the array that contains 
+// This function will set the "probability lines", ie fill in the array that contains
 // for each neighborhood configuration, where to pick its probability of transitions
 void initialize_prob_line(arma::uword prob_lines[nr][nc],
                                  const uchar m[nr][nc]) {
@@ -311,7 +311,7 @@ void initialize_prob_line(arma::uword prob_lines[nr][nc],
 }
 
 // Adjust the local densities of the neighboring cells of a cell that changed state
-// from state 'from' to state 'to' at position 'i', 'j'. 
+// from state 'from' to state 'to' at position 'i', 'j'.
 inline void adjust_local_density(uchar qs[nr][nc][ns],
                                  const uword i,
                                  const uword j,
@@ -393,7 +393,7 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
 
 }
 
-// When we memoize probabilities, we do not need to adjust the local densities, but 
+// When we memoize probabilities, we do not need to adjust the local densities, but
 // we need to change the line at which to pick the probability of transition
 inline void adjust_nb_plines(uword pline[nr][nc],
                              const uword i,
@@ -493,8 +493,8 @@ inline void compute_rate(double tprob_line[ns],
   for ( ushort to=0; to<ns; to++ ) {
 
     // Check if we will ever transition into the state. This assumes
-    // probability is set to zero above, otherwise tprob_line contains undefined or 
-    // wrong values. 
+    // probability is set to zero above, otherwise tprob_line contains undefined or
+    // wrong values.
     if ( ! transition_matrix[from][to] ) {
       continue;
     }
@@ -593,9 +593,9 @@ inline void compute_rate(double tprob_line[ns],
 }
 
 
-// These wrappers are her to convert back c-style arrays to armadillo arrays, which 
-// Rcpp can understand. 
-// 
+// These wrappers are her to convert back c-style arrays to armadillo arrays, which
+// Rcpp can understand.
+//
 void console_callback_wrap(const arma::uword iter,
                            const arma::uword ps[ns],
                            const Rcpp::Function console_callback) {
