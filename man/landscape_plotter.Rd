@@ -17,73 +17,80 @@ landscape_plotter(
 \arguments{
 \item{mod}{The model being used (created by \code{link{camodel}})}
 
-\item{col}{a set of colors (character vector) of length equal to the number of 
+\item{col}{a set of colors (character vector) of length equal to the number of
 states in the model.}
 
-\item{fps_cap}{The maximum number of frame per seconds at which to plot the results}
+\item{fps_cap}{The maximum number of frame displayed per seconds. Simulation
+will be slowed down if necessary so that plot updates will not be
+more frequent than this value}
 
-\item{burn_in}{A number of iterations to skip before plotting}
+\item{burn_in}{Do not display anything before this time step has been
+reached}
 
-\item{transpose}{Set to \code{TRUE} to transpose the landscape matrix 
+\item{transpose}{Set to \code{TRUE} to transpose the landscape matrix
 before displaying it \code{\link[graphics]{image}}}
 
-\item{new_window}{Controls whether the plots are displayed in a new window, 
+\item{new_window}{Controls whether the plots are displayed in a new window,
 or in the default device (typically the plot panel in Rstudio)}
 
 \item{...}{other arguments are passed to \code{\link[graphics]{image}}}
 }
 \description{
-This function creates another function that plot the model 
-  landscape during the of simulation a stochastic cellular automaton.
+This function creates an internal function to plot the model
+  landscape during the simulation of a stochastic cellular automaton.
 }
 \details{
-This function creates another function that is suitable for use with 
-  \code{\link{run_camodel}}. It allows plotting the landscape as it is being 
-  simulated, using the base function \code{\link[graphics]{image}}. You can set 
-  colors using the argument \code{col}, or tranpose the landscape before 
-  plotting using \code{transpose}. The resulting function must by passed to 
-  \code{\link{run_camodel}} as the control argument \code{custom_output_fun}. 
-  
-  \code{\link[graphics]{image}} tends to be quite slow at displaying matrices, 
-  especially if the matrix is large, but if it is still too fast for your visualize 
-  
-  It is important to note that this function will probably massively slow down a 
-  simulation, so this is mostly for exploratory analyses, or just to 
-  have a good look of what is happening in a model.
+This function creates another function that is suitable for use with
+  \code{\link{run_camodel}}. It allows plotting the landscape as it is being
+  simulated, using the base function \code{\link[graphics]{image}}. You can set
+  colors using the argument \code{col}, or tranpose the landscape before
+  plotting using \code{transpose}. The resulting function must by passed to
+  \code{\link{run_camodel}} as the control argument \code{custom_output_fun}.
+  Typically, this function is not used by itself, but is being used when
+  specifying simulation options before calling \code{\link{run_camodel}},
+  see examples below.
+
+  \code{\link[graphics]{image}} tends to be quite slow at displaying matrices,
+  especially if the matrix is large, but if it is still too fast for you to
+  visualize your results, you can cap the number of landscapes displayed
+  per seconds by setting the argument \code{fps_cap}.
+
+  It is important to note that this function will probably massively slow
+  down a simulation, so this is most useful for exploratory analyses.
 }
 \examples{
 
-\dontrun{ 
+\dontrun{
 
-# Display the psychedelic spirals of the rock-paper-scissor model as the model is 
-# being run 
+# Display the psychedelic spirals of the rock-paper-scissor model as the model is
+# being run
 mod <- ca_library("rock-paper-scissor")
 colors <- c("#fb8500", "#023047", "#8ecae6")
-ctrl <- list(custom_output_every = 1, 
+ctrl <- list(custom_output_every = 1,
              custom_output_fun = landscape_plotter(mod, col = colors))
 init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
 run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 
-# Arid vegetation model 
+# Arid vegetation model
 mod <- ca_library("aridvege")
 init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
 colors <- c("gray80", "white", "darkgreen")
-ctrl <- list(custom_output_every = 1, 
-             custom_output_fun = landscape_plotter(mod, col = colors, xaxt = "n", 
+ctrl <- list(custom_output_every = 1,
+             custom_output_fun = landscape_plotter(mod, col = colors, xaxt = "n",
                                                    yaxt = "n"))
 run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 
-# Game of life, turning off plot decoration using extra arguments read by matplot()
-mod <- ca_library("gameoflife") 
+# Game of life, set plot margins to zero so that the landscape takes all
+# of the plot window
+mod <- ca_library("gameoflife")
 init <- generate_initmat(mod, c(0.5, 0.5), nr = 100, nc = 178)
-colors <- c("white", "black") 
-ctrl <- list(custom_output_every = 1, 
-             custom_output_fun = landscape_plotter(mod, col = colors, 
-                                                   xaxt = "n", 
-                                                   yaxt = "n"))
+colors <- c("white", "black")
+ctrl <- list(custom_output_every = 1,
+             custom_output_fun = landscape_plotter(mod, col = colors,
+                                                   mar = c(0, 0, 0, 0)))
 run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 
-} 
+}
 
 }
 \seealso{

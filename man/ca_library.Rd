@@ -13,74 +13,79 @@ included with \code{chouca}.}
 \item{parms}{The model parameters to use, as a named list. If unset, the model default
 parameters will be used.}
 
-\item{neighbors}{The number of neighbors to use in the cellular automaton (4 for 4-way 
-or von-Neumann neghborhood, or 8 for a Moore neighborhood). If unset, the model 
+\item{neighbors}{The number of neighbors to use in the cellular automaton (4 for 4-way
+or von-Neumann neghborhood, or 8 for a Moore neighborhood). If unset, the model
 default neighborhood will be used.}
 
-\item{wrap}{Whether the 2D grid should wrap around at the edges. Default it to wrap 
+\item{wrap}{Whether the 2D grid should wrap around at the edges. Default it to wrap
 around the edges of the landscape.}
 }
 \description{
-Get one of the PCA model included in \code{chouca}
+Get one of the SCA models included in \code{chouca}
 }
 \details{
-This function gives access to different stochastic cellular automata models. You 
+This function gives access to different stochastic cellular automata models. You
     can provide a named list of parameters, or set the number of neighbor or wrapping
-    options, but default are chosen if left unspecified. This function provides 
-    the following models (the string represents the name of the model, as passed 
-    using the 'model' argument): 
-  
-  \enumerate{ 
-    \item \code{"forestgap"} Kubo's forest gap model (1996), which describes how 
+    options, but default are chosen if left unspecified. This function provides
+    the following models (the string represents the name of the model, as passed
+    using the 'model' argument):
+
+  \enumerate{
+    \item \code{"forestgap"} Kubo's forest gap model (1996), which describes how
       gaps form in a forest and expand through disturbances.
-    
-    \item \code{"musselbed"} A model of mussel beds, in which disturbance by waves 
-      occurs at the edge of mussel patches (Guichard et al. 2003) 
-     
+
+    \item \code{"musselbed"} A model of mussel beds, in which disturbance by waves
+      occurs at the edge of mussel patches (Guichard et al. 2003)
+
     \item \code{"aridvege"} A model of arid vegetation, in which facilitation between
-      neighboring plants occur, along with grazing. The original model is to be 
+      neighboring plants occur, along with grazing. The original model is to be
       found in Kéfi et al. (2007), with extensions in Schneider et al. (2016)
-     
-    \item \code{"aridvege-danet"} An extension of the previous model to two species 
+
+    \item \code{"aridvege-danet"} An extension of the previous model to two species
       with assymetric facilitation (Danet et al. 2021)
-    
-    \item \code{"coralreef"} A model of coral reef with local feedbacks of corals and 
+
+    \item \code{"coralreef"} A model of coral reef with local feedbacks of corals and
       macroalgae (Génin, in prep)
-    
-    \item \code{"gameoflife"} The famous Game of Life by Conway, a deterministic 
-      model. 
-    
-    \item \code{"rockpaperscissor"} A rock-paper-scissor model with three states, in 
-      which a cell changes state depending on its neighbors according the game rules 
-      (e.g. "rock beats scissors"). This deterministic model produces nice spirals. 
+
+    \item \code{"gameoflife"} The famous Game of Life by Conway, a deterministic
+      model.
+
+    \item \code{"rockpaperscissor"} A rock-paper-scissor model with three states, in
+      which a cell changes state depending on its neighbors according the game rules
+      (e.g. "rock beats scissors"). This deterministic model produces nice spirals.
   }
 }
 \examples{
 
 # Import a model, create an initial landscape and run it for ten iterations
 forestgap_model <- ca_library("forestgap")
-im <- generate_initmat(forestgap_model, c(0.5, 0.5), nr = 64, nc = 100) 
-run_camodel(forestgap_model, im, times = seq(0,100)) 
+im <- generate_initmat(forestgap_model, c(0.5, 0.5), nr = 64, nc = 100)
+run_camodel(forestgap_model, im, times = seq(0,100))
 
 }
 \references{
-Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021. 
+Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.
  "Indirect Facilitation Drives Species Composition and Stability in Drylands."
  Theoretical Ecology 14 (2): 189–203. doi: 10.1007/s12080-020-00489-0.
- 
+
+ Genin, A., S. A. Navarrete, A. Garcia-Mayor, and E. A. Wieters. in
+ press (2023). Emergent spatial patterns can indicate upcoming regime
+ shifts in a realistic model of coral community. The American Naturalist.
+
  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
  disturbance dynamics: signatures of oceanographic forcing from local interactions. The
  American Naturalist, 161, 889–904. doi: 10.1086/375300
 
- Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P. 
- Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation 
- Patterns and Imminent Desertification in Mediterranean Arid Ecosystems." 
+ Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P.
+ Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation
+ Patterns and Imminent Desertification in Mediterranean Arid Ecosystems."
  Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
- 
+
  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
- Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology 
+ Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology
  180 (3): 229–46.
+
  Schneider, Florian D., and Sonia Kefi. 2016. "Spatially Heterogeneous Pressure Raises
- Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17. 
+ Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17.
  doi: 10.1007/s12080-015-0289-1.
 }

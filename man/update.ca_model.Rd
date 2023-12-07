@@ -18,29 +18,29 @@
 \arguments{
 \item{object}{The SCA object (returned by \code{\link{camodel}})}
 
-\item{parms}{a named list of parameters, which should be all numeric, 
-single values. If this list contains only a subset of model parameters, the 
+\item{parms}{a named list of parameters, which should be all numeric,
+single values. If this list contains only a subset of model parameters, the
 old parameter values will be reused for those not provided.}
 
-\item{neighbors}{The number of neighbors to use in the cellular automaton 
-('4' for 4-way or von-Neumann neghborhood, or '8' for an 8-way or Moore 
+\item{neighbors}{The number of neighbors to use in the cellular automaton
+('4' for 4-way or von-Neumann neghborhood, or '8' for an 8-way or Moore
 neighborhood)}
 
-\item{wrap}{If \code{TRUE}, then the 2D grid on which the model is run wraps 
-around at the edges (the top/leftmost cells will be considered neighbors 
+\item{wrap}{If \code{TRUE}, then the 2D grid on which the model is run wraps
+around at the edges (the top/leftmost cells will be considered neighbors
 of the bottom/rightmost cells)}
 
 \item{fixed_neighborhood}{When not using wrapping around the edges (\code{wrap = TRUE},
-the number of neighbors per cell is variable, which can slow down the simulation. 
-Set this option to \code{TRUE} to consider that the number of neighbors is always 
-four or eight, regardless of the position of the cell in the landscape, at the cost 
+the number of neighbors per cell is variable, which can slow down the simulation.
+Set this option to \code{TRUE} to consider that the number of neighbors is always
+four or eight, regardless of the position of the cell in the landscape, at the cost
 of approximate dynamics on the edge of the landscape.}
 
-\item{check_model}{A check of the model definition is done to make sure there 
-are no issues with it (e.g. probabilities outside the [1,0] interval, or an 
+\item{check_model}{A check of the model definition is done to make sure there
+are no issues with it (e.g. probabilities outside the [1,0] interval, or an
 unsupported model definition). A quick check that should catch most problems is
-performed if check_model is "quick", an extensive check that tests all 
-neighborhood configurations is done with "full", and no check is performed with 
+performed if check_model is "quick", an extensive check that tests all
+neighborhood configurations is done with "full", and no check is performed with
 "none".}
 
 \item{verbose}{whether information should be printed when parsing the model
@@ -49,50 +49,50 @@ definition.}
 \item{...}{extra arguments are ignored}
 }
 \description{
-Update the definition of a stochastic cellular automaton 
-  (SCA), using new parameters, type of wrapping, or any other parameters 
+Update the definition of a stochastic cellular automaton
+  (SCA), using new parameters, type of wrapping, or any other parameters
   entering in the definition of the model.
 }
 \details{
-This function updates some aspects of a pre-defined stochastic celullar 
-   automaton, such as parameter values, the type of neighborhood, whether 
-   to wrap around the edge of space, etc. It is handy when running multiple 
-   simulations, and only a few aspects of the model needs to be changed, such as 
+This function updates some aspects of a pre-defined stochastic celullar
+   automaton, such as parameter values, the type of neighborhood, whether
+   to wrap around the edge of space, etc. It is handy when running multiple
+   simulations, and only a few aspects of the model needs to be changed, such as
    parameter values. Note that this function cannot add or remove states to a model.
- 
- Note that the \code{parms} list may only specify a subset of the model parameters 
-   to update. In this case, old parameter values not specified in the call to 
+
+ Note that the \code{parms} list may only specify a subset of the model parameters
+   to update. In this case, old parameter values not specified in the call to
    \code{update} will be re-used.
 }
 \examples{
 
-\dontrun{ 
+\dontrun{
 
-# Update the parameters of a model 
+# Update the parameters of a model
 mussels <- ca_library("musselbed")
-mussels[["parms"]] # old parameters 
+mussels[["parms"]] # old parameters
 mussels_new <- update(mussels, parms = list(d = 0.2, delta = 0.1, r = 0.8))
-mussels_new[["parms"]] # updated parameters 
+mussels_new[["parms"]] # updated parameters
 
-# Update the type of neighborhood, wrapping around the edges, and 
+# Update the type of neighborhood, wrapping around the edges, and
 # the parameters
-mussels_new <- update(mussels, 
-                      parms = list(d = 0.2, delta = 0.1, r = 0.8), 
-                      wrap = TRUE, 
+mussels_new <- update(mussels,
+                      parms = list(d = 0.2, delta = 0.1, r = 0.8),
+                      wrap = TRUE,
                       neighbors = 8)
-mussels_new 
+mussels_new
 
 # Run the model for different values of d, the death rate of mussels
 ds <- seq(0, 0.25, length.out = 12)
 initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nr = 64, nc = 64)
-results <- lapply(ds, function(this_dvalue) { 
+results <- lapply(ds, function(this_dvalue) {
   musselmod <- update(mussels, parms = list(d = this_dvalue))
   run <- run_camodel(musselmod, initmat, times = seq(0, 128))
-  data.frame(d = this_dvalue, 
+  data.frame(d = this_dvalue,
              as.data.frame(tail(run[["output"]][["covers"]], 1)))
 })
 results <- do.call(rbind, results)
-plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b", 
+plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b",
      xlab = "d", ylab = "Mussel cover")
 
 }

@@ -10,7 +10,7 @@ as.camodel_initmat(m, levels = NULL)
 \item{m}{The input matrix (numeric, character or factor)}
 
 \item{levels}{The levels to use in the resulting landscape. If \code{NULL}, the unique
-values of the input matrix are used as levels. Set this manually if you want the 
+values of the input matrix are used as levels. Set this manually if you want the
 resulting landscape to have extra levels that are not present in the original matrix.}
 }
 \description{
@@ -20,43 +20,43 @@ Convert a matrix to a CA model landscape for later use with
 \examples{
 
 # Simple conversion of a matrix with regular patterns
-x <- seq(0, 2 * pi, l = 256) 
+x <- seq(0, 2 * pi, l = 256)
 z <- outer(x, x, function(x, y) as.numeric(sin(10*x) + cos(10*y) > 0.8))
 mat <- as.camodel_initmat(z)
 summary(mat)
 image(mat)
 
-\dontrun{ 
+\dontrun{
 
-# This is a character matrix. We need to convert it to use it as input to 
+# This is a character matrix. We need to convert it to use it as input to
 # run_camodel()
 size <- 64
 m <- matrix(ifelse(runif(size^2) < .5, "TREE", "EMPTY"), nrow = size, ncol = size)
 m <- as.camodel_initmat(m)
-summary(m) # this is a landscape object 
+summary(m) # this is a landscape object
 image(m)
 
-# Start a simulation using this matrix 
+# Start a simulation using this matrix
 mod <- ca_library("forestgap")
 out <- run_camodel(mod, m, seq(0, 256))
 plot(out)
 
-# Run a glider in the game of life 
-mod <- ca_library("gameoflife") 
+# Run a glider in the game of life
+mod <- ca_library("gameoflife")
 init <- matrix(c(0, 0, 1, 0, 0, 0, 0,
                  0, 0, 0, 1, 0, 0, 0,
                  0, 1, 1, 1, 0, 0, 0,
                  0, 0, 0, 0, 0, 0, 0,
                  0, 0, 0, 0, 0, 0, 0,
-                 0, 0, 0, 0, 0, 0, 0), 
-                nrow = 6, ncol = 7, byrow = TRUE) 
+                 0, 0, 0, 0, 0, 0, 0),
+                nrow = 6, ncol = 7, byrow = TRUE)
 init[] <- ifelse(init == 1, "LIVE", "DEAD")
 # image() does not work on init here without conversion by as.camodel_initmat
 init <- as.camodel_initmat(init)
-image(init) 
+image(init)
 
 # Run the model and display simulation output as it is running
-ctrl <- list(custom_output_fun = landscape_plotter(mod, fps_cap = 5), 
+ctrl <- list(custom_output_fun = landscape_plotter(mod, fps_cap = 5),
              custom_output_every = 1)
 out <- run_camodel(mod, init, times = seq(0, 32), control = ctrl)
 

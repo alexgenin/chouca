@@ -54,7 +54,7 @@ BEGIN_RCPP
 END_RCPP
 }
 // generate_all_qs
-arma::umat generate_all_qs(arma::uword nb, arma::uword ns, arma::uword filter, arma::sword line_cap);
+arma::umat generate_all_qs(arma::uword nb, arma::uword ns, arma::uword filter, arma::uword line_cap);
 RcppExport SEXP _chouca_generate_all_qs(SEXP nbSEXP, SEXP nsSEXP, SEXP filterSEXP, SEXP line_capSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
@@ -62,7 +62,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< arma::uword >::type nb(nbSEXP);
     Rcpp::traits::input_parameter< arma::uword >::type ns(nsSEXP);
     Rcpp::traits::input_parameter< arma::uword >::type filter(filterSEXP);
-    Rcpp::traits::input_parameter< arma::sword >::type line_cap(line_capSEXP);
+    Rcpp::traits::input_parameter< arma::uword >::type line_cap(line_capSEXP);
     rcpp_result_gen = Rcpp::wrap(generate_all_qs(nb, ns, filter, line_cap));
     return rcpp_result_gen;
 END_RCPP

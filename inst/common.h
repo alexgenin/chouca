@@ -1,5 +1,5 @@
 
-// Depth of the fromto_array at which to pick the start/end of coefficient
+// Depth of the betas_index array at which to pick the start/end for each coefficient
 constexpr uword _beta_0_start  = 0;
 constexpr uword _beta_0_end    = 1;
 constexpr uword _beta_q_start  = 2;
@@ -51,6 +51,11 @@ static inline double randunif(uchar core) {
   return xf;
 }
 
+// Not very efficient integer power of another value. We should probably use 
+// exponentiation by squaring, though since we almost always deal with powers <=5, 
+// typically 1-2, this may be overkill. 
+// Note that we know at compile time the maximum value for b, so there may be 
+// some optimization we are missing, especially when max(b) <= 1.
 inline uword intpow(const uchar a,
                     const uchar b) {
   uword p = 1;
@@ -60,8 +65,9 @@ inline uword intpow(const uchar a,
   return p;
 }
 
-// Fast power when b is integer between zero and five (the maximum degree considered
-// for models)
+// Another try at fast power. Remarks above also apply, this is probably not very 
+// efficient. for information tests seem to say ~10% cpu time spent in here when 
+// not memoization probas of transition. 
 static inline double fintpow(const double a,
                              const uchar  b) {
   switch ( b ) {
@@ -78,7 +84,8 @@ static inline double fintpow(const double a,
   return 1.0;
 }
 
-inline void init_local_densities(uchar qs[nr][nc][ns],
+// Initalize the count of local densities for each cell in the landscape
+void init_local_densities(uchar qs[nr][nc][ns],
                                  const uchar m[nr][nc]) {
 
   // Set all counts to zero
@@ -157,9 +164,6 @@ inline void init_local_densities(uchar qs[nr][nc][ns],
       }
     }
   }
-
-
-
 }
 
 inline uword number_of_neighbors(const arma::uword i,
@@ -207,8 +211,9 @@ inline uword number_of_neighbors(const arma::uword i,
   return nnb;
 }
 
-// This function will set the probability lines
-inline void initialize_prob_line(arma::uword prob_lines[nr][nc],
+// This function will set the "probability lines", ie fill in the array that contains 
+// for each neighborhood configuration, where to pick its probability of transitions
+void initialize_prob_line(arma::uword prob_lines[nr][nc],
                                  const uchar m[nr][nc]) {
   for ( uword i=0; i<nr; i++ ) {
     for ( uword j=0; j<nc; j++ ) {
@@ -306,6 +311,7 @@ inline void initialize_prob_line(arma::uword prob_lines[nr][nc],
 }
 
 // Adjust the local densities of the neighboring cells of a cell that changed state
+// from state 'from' to state 'to' at position 'i', 'j'. 
 inline void adjust_local_density(uchar qs[nr][nc][ns],
                                  const uword i,
                                  const uword j,
@@ -387,7 +393,8 @@ inline void adjust_local_density(uchar qs[nr][nc][ns],
 
 }
 
-
+// When we memoize probabilities, we do not need to adjust the local densities, but 
+// we need to change the line at which to pick the probability of transition
 inline void adjust_nb_plines(uword pline[nr][nc],
                              const uword i,
                              const uword j,
@@ -395,7 +402,7 @@ inline void adjust_nb_plines(uword pline[nr][nc],
                              const uchar to) {
 
   // NOTE: we use a signed integer here because the pline adjustment can be negative
-  sword adj = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from);
+  arma::sword adj = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from);
 
   // If we wrap, then what would go max_nb by max_nb goes instead one by one, so
   // we need to divide the line jump here.
@@ -472,17 +479,6 @@ inline void adjust_nb_plines(uword pline[nr][nc],
 
 }
 
-inline bool is_absorbing_state(const uchar from) {
-#if has_absorb
-  for ( ushort state=0; state<n_absorbing_states; state++ ) {
-    if ( from == absorbing_states[state] ) {
-      return( true );
-    }
-  }
-#endif
-  return( false );
-}
-
 // Compute probability components
 inline void compute_rate(double tprob_line[ns],
                          const uchar qs[ns],
@@ -496,7 +492,9 @@ inline void compute_rate(double tprob_line[ns],
 
   for ( ushort to=0; to<ns; to++ ) {
 
-    // Check if we will ever transition into the state
+    // Check if we will ever transition into the state. This assumes
+    // probability is set to zero above, otherwise tprob_line contains undefined or 
+    // wrong values. 
     if ( ! transition_matrix[from][to] ) {
       continue;
     }
@@ -519,8 +517,7 @@ inline void compute_rate(double tprob_line[ns],
       kstart = betas_index[_beta_q_start][from][to];
       kend = betas_index[_beta_q_end][from][to];
       uword n_coef_to_sum = (kend - kstart + 1) / xpoints;
-      // Rcpp::Rcout << "kstart: " << kstart << " kend: " << kend << " n_coef_to_sum: " << n_coef_to_sum << "\n";
-      if ( kstart >= 0 ) { // betas_index is constexpr so this is optimized
+      if ( kstart >= 0 ) {
         // qthis holds the current point at which to extract the value of the coefficient
         // for q. When a transition depends on multiple neighbor expressions, i.e.
         // when P(a -> b) = f(q_1) + f(q_2), then we need to sum both the
@@ -529,9 +526,6 @@ inline void compute_rate(double tprob_line[ns],
         // coefficient table, so we just sum values every xpoints
         uword qthis = qs[coef_tab_ints(kstart, _state_1)] * qpointn;
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
-          // double cf = coef_tab_dbls(kstart + qthis + xpoints*coef);
-        // Rcpp::Rcout << "n_coef_to_sum: " << n_coef_to_sum << " coef: " << coef
-          // << " row: " << kstart + qthis*coef << " dbl: " << cf << "\n";
           total += coef_tab_dbls(kstart + qthis + xpoints*coef);
         }
       }
@@ -542,8 +536,8 @@ inline void compute_rate(double tprob_line[ns],
       kstart = betas_index[_beta_pp_start][from][to];
       kend   = betas_index[_beta_pp_end][from][to];
       for ( sword k=kstart; k<=kend; k++ ) {
-        double p1 = ps[coef_tab_ints(k, _state_1)] / ncells;
-        double p2 = ps[coef_tab_ints(k, _state_2)] / ncells;
+        const double p1 = ps[coef_tab_ints(k, _state_1)] / ncells;
+        const double p2 = ps[coef_tab_ints(k, _state_2)] / ncells;
         total += coef_tab_dbls(k) *
           fintpow(p1, coef_tab_ints(k, _expo_1)) *
           fintpow(p2, coef_tab_ints(k, _expo_2));
@@ -555,8 +549,8 @@ inline void compute_rate(double tprob_line[ns],
       kstart = betas_index[_beta_qq_start][from][to];
       kend   = betas_index[_beta_qq_end][from][to];
       for ( sword k=kstart; k<=kend; k++ ) {
-        double q1 = (double) qs[coef_tab_ints(k, _state_1)] / total_nb;
-        double q2 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb;
+        const double q1 = (double) qs[coef_tab_ints(k, _state_1)] / total_nb;
+        const double q2 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb;
         total += coef_tab_dbls(k) *
           fintpow(q1, coef_tab_ints(k, _expo_1)) *
           fintpow(q2, coef_tab_ints(k, _expo_2));
@@ -568,8 +562,8 @@ inline void compute_rate(double tprob_line[ns],
       kstart = betas_index[_beta_pq_start][from][to];
       kend   = betas_index[_beta_pq_end][from][to];
       for ( sword k=kstart; k<=kend; k++ ) {
-        double p1 = ps[coef_tab_ints(k, _state_1)] / ncells;
-        double q1 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb;
+        const double p1 = ps[coef_tab_ints(k, _state_1)] / ncells;
+        const double q1 = (double) qs[coef_tab_ints(k, _state_2)] / total_nb;
         total += coef_tab_dbls(k) *
           fintpow(p1, coef_tab_ints(k, _expo_1)) *
           fintpow(q1, coef_tab_ints(k, _expo_2));
@@ -587,6 +581,7 @@ inline void compute_rate(double tprob_line[ns],
     // total = total > 1.0 ? 1.0 : total;
     // total = total < 0.0 ? 0.0 : total;
 
+    // Total contains the probability for this transition.
     tprob_line[to] = total;
   }
 
@@ -598,6 +593,9 @@ inline void compute_rate(double tprob_line[ns],
 }
 
 
+// These wrappers are her to convert back c-style arrays to armadillo arrays, which 
+// Rcpp can understand. 
+// 
 void console_callback_wrap(const arma::uword iter,
                            const arma::uword ps[ns],
                            const Rcpp::Function console_callback) {

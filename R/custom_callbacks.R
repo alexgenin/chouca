@@ -6,17 +6,20 @@
 
 #' @title Plot simulation landscapes
 #'
-#' @description This function creates another function that plot the model
-#'   landscape during the of simulation a stochastic cellular automaton.
+#' @description This function creates an internal function to plot the model
+#'   landscape during the simulation of a stochastic cellular automaton.
 #'
 #' @param mod The model being used (created by \code{link{camodel}})
 #'
 #' @param col a set of colors (character vector) of length equal to the number of
 #'   states in the model.
 #'
-#' @param fps_cap The maximum number of frame per seconds at which to plot the results
+#' @param fps_cap The maximum number of frame displayed per seconds. Simulation
+#'   will be slowed down if necessary so that plot updates will not be
+#'   more frequent than this value
 #'
-#' @param burn_in A number of iterations to skip before plotting
+#' @param burn_in Do not display anything before this time step has been
+#'   reached
 #'
 #' @param transpose Set to \code{TRUE} to transpose the landscape matrix
 #'   before displaying it \code{\link[graphics]{image}}
@@ -34,15 +37,17 @@
 #'   colors using the argument \code{col}, or tranpose the landscape before
 #'   plotting using \code{transpose}. The resulting function must by passed to
 #'   \code{\link{run_camodel}} as the control argument \code{custom_output_fun}.
+#'   Typically, this function is not used by itself, but is being used when
+#'   specifying simulation options before calling \code{\link{run_camodel}},
+#'   see examples below.
 #'
 #'   \code{\link[graphics]{image}} tends to be quite slow at displaying matrices,
-#'   especially if the matrix is large, but if it is still too fast for your visualize
-#    your results, you can cap the number of landscapes displayed per seconds by setting
-#    the argument \code{fps_cap}.
+#'   especially if the matrix is large, but if it is still too fast for you to
+#'   visualize your results, you can cap the number of landscapes displayed
+#'   per seconds by setting the argument \code{fps_cap}.
 #'
-#'   It is important to note that this function will probably massively slow down a
-#'   simulation, so this is mostly for exploratory analyses, or just to
-#'   have a good look of what is happening in a model.
+#'   It is important to note that this function will probably massively slow
+#'   down a simulation, so this is most useful for exploratory analyses.
 #'
 #' @seealso trace_plotter, run_camodel
 #'
@@ -68,14 +73,14 @@
 #'                                                    yaxt = "n"))
 #' run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #'
-#' # Game of life, turning off plot decoration using extra arguments read by matplot()
+#' # Game of life, set plot margins to zero so that the landscape takes all
+#' # of the plot window
 #' mod <- ca_library("gameoflife")
 #' init <- generate_initmat(mod, c(0.5, 0.5), nr = 100, nc = 178)
 #' colors <- c("white", "black")
 #' ctrl <- list(custom_output_every = 1,
 #'              custom_output_fun = landscape_plotter(mod, col = colors,
-#'                                                    xaxt = "n",
-#'                                                    yaxt = "n"))
+#'                                                    mar = c(0, 0, 0, 0)))
 #' run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #'
 #' }
@@ -156,9 +161,8 @@ landscape_plotter <- function(mod,
 
 #' @title Plot simulation covers
 #'
-#' @description This function returns another helper function to display covers or any
-#'   other metric as a stochastic cellular automaton simulation is being run by
-#'   \code{\link{run_camodel}}.
+#' @description This function creates an internal function to plot the model
+#'   landscape during the simulation of a stochastic cellular automaton.
 #'
 #' @param mod The model being used (created by \code{link{camodel}})
 #'
@@ -171,11 +175,14 @@ landscape_plotter <- function(mod,
 #' @param col a set of colors (character vector) of length equal to the number of
 #'   values returned by fun.
 #'
-#' @param fps_cap The maximum number of frame per seconds at which to plot the results
+#' @param fps_cap The maximum number of frame displayed per seconds. Simulation
+#'   will be slowed down if necessary so that plot updates will not be
+#'   more frequent than this value
 #'
 #' @param max_samples The maximum number of samples to display in the plot
 #'
-#' @param burn_in A number of iterations to skip before plotting
+#' @param burn_in Do not display anything before this time step has been
+#'   reached
 #'
 #' @param new_window Controls whether the plots are displayed in a new window,
 #'   or in the default device (typically the plot panel in Rstudio)
@@ -186,10 +193,13 @@ landscape_plotter <- function(mod,
 #' @details
 #'
 #'   This function creates another function that is suitable for use with
-#'   \code{\link{run_camodel}}. It allows plotting any matric computed on the landscape
-#'   as it is being simulated, using the base function \code{\link[graphics]{matplot}}.
-#'   The resulting function must by passed to \code{\link{run_camodel}} as the control
-#'   argument \code{custom_output_fun}.
+#'   \code{\link{run_camodel}}. It allows plotting any matric computed on the
+#'   landscape as it is being simulated, using the base function
+#'   \code{\link[graphics]{matplot}}. The resulting function must by passed to
+#'   \code{\link{run_camodel}} as the control argument \code{custom_output_fun}.
+#'   Typically, this function is not used by itself, but is being used when
+#'   specifying simulation options before calling \code{\link{run_camodel}},
+#'   see examples below.
 #'
 #'   By default, the global covers of each state in the landscape will be displayed, but
 #'   you can pass any function as argument \code{fun} to compute something else, as long
@@ -219,7 +229,7 @@ landscape_plotter <- function(mod,
 #'              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
 #' run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 #'
-#' # Display statistics on autocorrelation on the fly for the arid
+#' # Display statistics on spatial autocorrelation on the fly for the arid
 #' # vegetation model
 #' if ( requireNamespace("spatialwarnings") ) {
 #'   mod <- ca_library("aridvege")
@@ -233,6 +243,22 @@ landscape_plotter <- function(mod,
 #'                                                  fun = moran))
 #'   run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #' }
+#'
+#' # Display dynamics of cell pairs in the rock-paper-scissor model
+#' if ( requireNamespace("spatialwarnings") ) {
+#'   mod <- ca_library("rock-paper-scissor")
+#'   init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#'   pair_counts <- function(mat) {
+#'     pairs <- spatialwarnings::pair_counts(mat, prop = FALSE)
+#'     as.vector(pairs[lower.tri(pairs)])
+#'   }
+#'   ctrl <- list(custom_output_every = 1,
+#'                custom_output_fun = trace_plotter(mod, init,
+#'                                                  fun = pair_counts))
+#'   out <- run_camodel(mod, init, times = seq(0, 128), control = ctrl)
+#' }
+#
+#
 #
 #'@export
 trace_plotter <- function(mod, initmat,
@@ -324,6 +350,7 @@ trace_plotter <- function(mod, initmat,
                         xlab = "time",
                         ylab = "covers",
                         ...)
+
     }
 
     # Rollback to one if we go above the max number of lines. We need to store it in

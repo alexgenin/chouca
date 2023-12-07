@@ -23,44 +23,44 @@ transition(from, to, prob)
 \item{...}{a number of transition descriptions, as built by the
 \code{\link{transition}} function (see Details and Examples)}
 
-\item{neighbors}{The number of neighbors to use in the cellular automaton (4 for 4-way 
+\item{neighbors}{The number of neighbors to use in the cellular automaton (4 for 4-way
 or von-Neumann neigborhood, or 8 for an 8-way or Moore neighborhood)}
 
-\item{wrap}{If \code{TRUE}, then the 2D grid on which the model is run wraps around 
-at the edges (the top/leftmost cells will be considered neighbors of the 
+\item{wrap}{If \code{TRUE}, then the 2D grid on which the model is run wraps around
+at the edges (the top/leftmost cells will be considered neighbors of the
 bottom/rightmost cells)}
 
 \item{parms}{a named list of parameters, which should be all numeric, single values}
 
 \item{all_states}{the complete set of states of the model (a character vector). If
-unspecified, it will be guessed from the transition rules, but it is a good idea 
+unspecified, it will be guessed from the transition rules, but it is a good idea
 to pass it here to make sure the model definition is correct.}
 
-\item{check_model}{A check of the model definition is done to make sure there 
-are no issues with it (e.g. probabilities outside the [0,1] interval, or an 
+\item{check_model}{A check of the model definition is done to make sure there
+are no issues with it (e.g. probabilities outside the [0,1] interval, or an
 unsupported model definition). A quick check that should catch most problems is
-performed if check_model is "quick", an extensive check that tests all possible 
-neighborhood configurations is done with "full", and no check is performed with 
+performed if check_model is "quick", an extensive check that tests all possible
+neighborhood configurations is done with "full", and no check is performed with
 "none".}
 
 \item{verbose}{whether information should be printed when parsing the model
 definition.}
 
 \item{epsilon}{A small value under which the internal model coefficients values are
-considered to be equal to zero. The default value should work well here, except 
+considered to be equal to zero. The default value should work well here, except
 if you run models that have extremely small transition probabilities (<1e-8).}
 
 \item{fixed_neighborhood}{When not using wrapping around the edges (\code{wrap = TRUE},
-the number of neighbors per cell is variable, which can slow down the simulation. 
-Set this option to \code{TRUE} to consider that the number of neighbors is always 
-four or eight, regardless of the position of the cell in the landscape, at the cost 
+the number of neighbors per cell is variable, which can slow down the simulation.
+Set this option to \code{TRUE} to consider that the number of neighbors is always
+four or eight, regardless of the position of the cell in the landscape, at the cost
 of approximate dynamics on the edge of the landscape.}
 
 \item{from}{The state from which the transition is defined}
 
 \item{to}{The state to which the transition is defined}
 
-\item{prob}{a one-sided formula describing the probability of transition between the two 
+\item{prob}{a one-sided formula describing the probability of transition between the two
 states (see Details section for more information).}
 }
 \description{
@@ -70,22 +70,22 @@ High-level definition of a stochastic cellular automaton
 This function allows defining a stochastic cellular automaton model by its set of
 transition rules. These are defined by a set of calls to the \code{transition()}
 function. Each of these calls defines the two states of the transition, and the
-probability (as a one-sided formula involving constants and special values p, q, 
-etc.). 
+probability (as a one-sided formula involving constants and special values p, q,
+etc.).
 
-\code{transition()} calls takes three arguments: the state from which the transition 
-is defined, the state to which the transition goes, and a transition probability, 
-defined as a one-sided formula. This formula can include numerical constants, 
-parameters defined in the named list \code{parms}, and any combination of p['a'] 
-and q['b'], which respectively represent the proportion of cells in a landscape in 
-state 'a', and the proportion of neighbors of a given cell in state 'b' ('a', and 
-'b' being, of course, any of the possible states defined in the model). See 
-section Examples for examples of model implementations. 
+\code{transition()} calls takes three arguments: the state from which the transition
+is defined, the state to which the transition goes, and a transition probability,
+defined as a one-sided formula. This formula can include numerical constants,
+parameters defined in the named list \code{parms}, and any combination of p['a']
+and q['b'], which respectively represent the proportion of cells in a landscape in
+state 'a', and the proportion of neighbors of a given cell in state 'b' ('a', and
+'b' being, of course, any of the possible states defined in the model). See
+section Examples for examples of model implementations.
 
-It is important to remember when using this function that \code{chouca} only 
-supports models where the probabilities depend on constant parameters, the global 
-proportion of each state in the landscape, and the local proportion of cells around 
-a given cell. 
+It is important to remember when using this function that \code{chouca} only
+supports models where the probabilities depend on constant parameters, the global
+proportion of each state in the landscape, and the local proportion of cells around
+a given cell.
 
 \deqn{
   \beta_0 + \\
@@ -96,37 +96,45 @@ a given cell.
   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \epsilon_{k,l,a,b} p_k^a q_l^b
 }
 
-where \eqn{p_k} and \eqn{q_k} are the proportions of cells in state k in the 
+where \eqn{p_k} and \eqn{q_k} are the proportions of cells in state k in the
 landscape, and in the cell neighborhood, respectively, and the various \eqn{\beta},
-\eqn{gamma}, \eqn{delta} and \eqn{epsilon} are constant coefficients. 
-\eqn{D} above sets the maximum degree of the internal form, and is set by default 
-to 5. You can override it by setting its value using 
-\code{options(chouca.degmax = n)}, but we do not recommend changing it as higher 
-values typically make the packages slow and/or lead to numerical instabilities. 
+\eqn{gamma}, \eqn{delta} and \eqn{epsilon} are constant coefficients.
+\eqn{D} above sets the maximum degree of the internal form, and is set by default
+to 5. You can override it by setting its value using
+\code{options(chouca.degmax = n)}, but we do not recommend changing it as higher
+values typically make the packages slow and/or lead to numerical instabilities.
 
-\eqn{f} above can be any function, so \code{chouca} effectively supports any type 
-of transition rule involving the neighborhood of a cell, including some 'threshold' 
-rules that involve one state (and only one). For example, a rule such as "more than 
-5 neighbors in a given state makes a cell switch from state A to B" is OK, but 
+\eqn{f} above can be any function, so \code{chouca} effectively supports any type
+of transition rule involving the neighborhood of a cell, including some 'threshold'
+rules that involve one state (and only one). For example, a rule such as "more than
+5 neighbors in a given state makes a cell switch from state A to B" is OK, but
 combining states may not be supported, such as "more than 5
-neighbors in state A *and* 2 in state B means a cell switches from A to B". When in 
-doubt, just write your model, and \code{chouca} will tell you if it cannot run it 
-accurately. 
+neighbors in state A *and* 2 in state B means a cell switches from A to B". When in
+doubt, just write your model, and \code{chouca} will tell you if it cannot run it
+accurately.
 
-This model check is controlled by \code{check_model}. When set to "quick" or "full", 
+This model check is controlled by \code{check_model}. When set to "quick" or "full",
 a check is performed to make sure the functional form above is able to accurately
-represent probabilities of transitions in the model, with "full" enabling more 
-extensive tesing, and "none" removing it entirely. When using chouca, very small
-coefficients in the formula above may be rounded down to zero. This may be an issue 
-if your transition probabilities are very low: in this case, consider reducing
-\code{epsilon} to a smaller value. 
+represent probabilities of transitions in the model, with "full" enabling more
+extensive tesing, and "none" removing it entirely. When using chouca,
+coefficients in the formula above are rounded down to zero when below
+\code{epsilon}. This may be an issue if your transition probabilities are
+close to zero: consider reducing \code{epsilon} to a smaller value in this
+case.
 
-To run a model once it is defined, the function \code{\link{run_camodel}} can be 
-used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial 
-landscape for a simulation can be created using \code{\link{generate_initmat}}. 
+When space does not wrap around (\code{wrap = FALSE}), cells in the corners
+or in the edges will have a lower number of neighbors. The proportions
+of cells in a given state k, \eqn{q_k}, will thus be computed with a reduced
+number of cells. For example, a cell in a corner will have only 2 neighbors
+when using a 4x4 neighborhood, so \eqn{q_k} is computed using only the state
+of two cells.
 
-You can update a model definition with new parameters (all of them or a subset) 
-using the \code{\link[=update.ca_model]{update}} method. The model graph can be 
+To run a model once it is defined, the function \code{\link{run_camodel}} can be
+used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial
+landscape for a simulation can be created using \code{\link{generate_initmat}}.
+
+You can update a model definition with new parameters (all of them or a subset)
+using the \code{\link[=update.ca_model]{update}} method. The model graph can be
 displayed using the \code{plot} method (this requires igraph).
 }
 \section{Functions}{
@@ -136,81 +144,85 @@ displayed using the \code{plot} method (this requires igraph).
 }}
 \examples{
 
-# Redefine Kubo's 1996 forest gap model 
-kubo <- camodel( 
-  transition(from = "TREE", 
-             to   = "EMPTY", 
-             prob = ~ d + delta * q["EMPTY"] ), 
-  transition(from = "EMPTY", 
-             to   = "TREE", 
-             prob = ~ alpha), 
-  parms = list(d = 0.125, 
-               delta = 0.5, 
-               alpha = 0.2), 
-  all_states = c("EMPTY", "TREE"), 
-  neighbors = 4, 
+# Redefine Kubo's 1996 forest gap model
+kubo <- camodel(
+  transition(from = "TREE",
+             to   = "EMPTY",
+             prob = ~ d + delta * q["EMPTY"] ),
+  transition(from = "EMPTY",
+             to   = "TREE",
+             prob = ~ alpha),
+  parms = list(d = 0.125,
+               delta = 0.5,
+               alpha = 0.2),
+  all_states = c("EMPTY", "TREE"),
+  neighbors = 4,
   wrap = TRUE
 )
 
 # Display it as a graph
-plot(kubo) 
+plot(kubo)
 
-# A fun plant model 
+# A fun plant model
 mod <- camodel(
-  transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ), 
-  transition("empty", "plant", ~ q["plant"]^2 ), 
-  all_states = c("empty", "plant"), 
-  wrap = TRUE, 
-  neighbors = 4, 
+  transition("plant", "empty", ~ death * ( 1 - (2*q["plant"]-1)^2) ),
+  transition("empty", "plant", ~ q["plant"]^2 ),
+  all_states = c("empty", "plant"),
+  wrap = TRUE,
+  neighbors = 4,
   parms = list(death = 0.2496)
 )
 
 
-# Conway's Game of Life 
-mod <- camodel( 
-  transition("LIVE", "DEAD", ~ q["LIVE"] < (2/8) | q["LIVE"] > (3/8)), 
-  transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)), 
-  wrap = TRUE, 
-  neighbors = 8, 
+# Conway's Game of Life
+mod <- camodel(
+  transition("LIVE", "DEAD", ~ q["LIVE"] < (2/8) | q["LIVE"] > (3/8)),
+  transition("DEAD", "LIVE", ~ q["LIVE"] == (3/8)),
+  wrap = TRUE,
+  neighbors = 8,
   all_states = c("DEAD", "LIVE")
 )
 
 # A spiral-generating rock-paper-scissor model
 mod <- camodel(
-  transition(from = "r", to = "p", ~ q["p"] > 0.25 ), 
-  transition(from = "p", to = "c", ~ q["c"] > 0.25 ), 
-  transition(from = "c", to = "r", ~ q["r"] > 0.25 ), 
-  parms = list(prob = 1), 
-  wrap = TRUE, 
+  transition(from = "r", to = "p", ~ q["p"] > 0.25 ),
+  transition(from = "p", to = "c", ~ q["c"] > 0.25 ),
+  transition(from = "c", to = "r", ~ q["r"] > 0.25 ),
+  parms = list(prob = 1),
+  wrap = TRUE,
   neighbors = 8
 )
 
-# Display the model as a graph 
+# Display the model as a graph
 plot(mod)
 
-# Running the above model (see also the help files for the relevant functions) 
-init <- generate_initmat(mod, c(r = 1/3, p = 1/3, c = 1/3), nrow = 128) 
+# Running the above model (see also the help files for the relevant functions)
+init <- generate_initmat(mod, c(r = 1/3, p = 1/3, c = 1/3), nrow = 128)
 out <- run_camodel(mod, init, times = seq(0, 128))
-plot(out) 
+plot(out)
 
 # Update a model definition using update()
 mod <- camodel(
-  transition("plant", "empty", ~ m), 
-  transition("empty", "plant", ~ r * q["plant"] * ( 1 - q["plant"] ) ), 
-  all_states = c("empty", "plant"), 
-  wrap = TRUE, 
-  neighbors = 4, 
+  transition("plant", "empty", ~ m),
+  transition("empty", "plant", ~ r * q["plant"] * ( 1 - q["plant"] ) ),
+  all_states = c("empty", "plant"),
+  wrap = TRUE,
+  neighbors = 4,
   parms = list(m = 0.35, r = 0.4)
 )
 
-mod_updated <- update(mod, parms = list(m = 0.05, r = 1)) 
+mod_updated <- update(mod, parms = list(m = 0.05, r = 1))
 init <- generate_initmat(mod_updated, c(plant = 0.8, empty = 0.2), nr = 128)
 out <- run_camodel(mod_updated, init, times = seq(0, 128))
-plot(out) 
+plot(out)
 image(out)
+
+# You can also specify only part of the parameters, the others will be
+# kept to their original values
+mod_updated <- update(mod, parms = list(m = 0.035))
 
 }
 \seealso{
-run_camodel, run_meanfield, generate_initmat, run_meanfield, 
+run_camodel, run_meanfield, generate_initmat, run_meanfield,
   update.ca_model, ca_library
 }

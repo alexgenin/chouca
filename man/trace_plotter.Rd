@@ -21,76 +21,95 @@ trace_plotter(
 
 \item{initmat}{The initial landscape given to \code{\link{run_camodel}}}
 
-\item{fun}{The function used to summarise the landscape into summary metrics. By 
-default, gloal covers of each state are computed. It must return a vector of 
+\item{fun}{The function used to summarise the landscape into summary metrics. By
+default, gloal covers of each state are computed. It must return a vector of
 numeric values.}
 
-\item{col}{a set of colors (character vector) of length equal to the number of 
+\item{col}{a set of colors (character vector) of length equal to the number of
 values returned by fun.}
 
 \item{max_samples}{The maximum number of samples to display in the plot}
 
-\item{fps_cap}{The maximum number of frame per seconds at which to plot the results}
+\item{fps_cap}{The maximum number of frame displayed per seconds. Simulation
+will be slowed down if necessary so that plot updates will not be
+more frequent than this value}
 
-\item{burn_in}{A number of iterations to skip before plotting}
+\item{burn_in}{Do not display anything before this time step has been
+reached}
 
-\item{new_window}{Controls whether the plots are displayed in a new window, 
+\item{new_window}{Controls whether the plots are displayed in a new window,
 or in the default device (typically the plot panel in Rstudio)}
 
-\item{...}{other arguments passed to \code{\link[graphics]{matplot}}, which is used to 
+\item{...}{other arguments passed to \code{\link[graphics]{matplot}}, which is used to
 display the trends.}
 }
 \description{
-This function returns another helper function to display covers or any 
-  other metric as a stochastic cellular automaton simulation is being run by 
-  \code{\link{run_camodel}}.
+This function creates an internal function to plot the model
+  landscape during the simulation of a stochastic cellular automaton.
 }
 \details{
-This function creates another function that is suitable for use with 
-  \code{\link{run_camodel}}. It allows plotting any matric computed on the landscape 
-  as it is being simulated, using the base function \code{\link[graphics]{matplot}}. 
-  The resulting function must by passed to \code{\link{run_camodel}} as the control
-  argument \code{custom_output_fun}.
-  
-  By default, the global covers of each state in the landscape will be displayed, but 
-  you can pass any function as argument \code{fun} to compute something else, as long 
-  as \code{fun} returns a numeric vector of length at least 1. 
-  
-  \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but 
-  if it is still too fast for your taste, you can cap the refresh rate by setting 
-  
-  It is important to note that this function will probably massively slow down a 
-  simulation, so it is mostly here for exploratory analyses, or just to 
+This function creates another function that is suitable for use with
+  \code{\link{run_camodel}}. It allows plotting any matric computed on the
+  landscape as it is being simulated, using the base function
+  \code{\link[graphics]{matplot}}. The resulting function must by passed to
+  \code{\link{run_camodel}} as the control argument \code{custom_output_fun}.
+  Typically, this function is not used by itself, but is being used when
+  specifying simulation options before calling \code{\link{run_camodel}},
+  see examples below.
+
+  By default, the global covers of each state in the landscape will be displayed, but
+  you can pass any function as argument \code{fun} to compute something else, as long
+  as \code{fun} returns a numeric vector of length at least 1.
+
+  \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but
+  if it is still too fast for your taste, you can cap the refresh rate by setting
+
+  It is important to note that this function will probably massively slow down a
+  simulation, so it is mostly here for exploratory analyses, or just to
   have a good look of what is happening in a model.
 }
 \seealso{
 landscape_plotter, run_camodel
 
-# Display covers of the rock/paper/scissor model as it is running 
+# Display covers of the rock/paper/scissor model as it is running
 mod <- ca_library("rock-paper-scissor")
 init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
-ctrl <- list(custom_output_every = 1, 
+ctrl <- list(custom_output_every = 1,
              custom_output_fun = trace_plotter(mod, init))
 run_camodel(mod, init, times = seq(0, 256), control = ctrl)
 
-# Adjust colors of the previous example and increase speed 
+# Adjust colors of the previous example and increase speed
 colors <- c("#fb8500", "#023047", "#8ecae6")
-ctrl <- list(custom_output_every = 1, 
+ctrl <- list(custom_output_every = 1,
              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
 run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 
-# Display statistics on autocorrelation on the fly for the arid 
-# vegetation model 
-if ( requireNamespace("spatialwarnings") ) { 
+# Display statistics on spatial autocorrelation on the fly for the arid
+# vegetation model
+if ( requireNamespace("spatialwarnings") ) {
   mod <- ca_library("aridvege")
   init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
   moran <- function(mat) {
     m <- matrix(mat == "VEGE", nrow = nrow(mat), ncol = ncol(mat))
     spatialwarnings::raw_moran(m)
   }
-  ctrl <- list(custom_output_every = 1, 
-               custom_output_fun = trace_plotter(mod, init, 
+  ctrl <- list(custom_output_every = 1,
+               custom_output_fun = trace_plotter(mod, init,
                                                  fun = moran))
   run_camodel(mod, init, times = seq(0, 128), control = ctrl)
+}
+
+# Display dynamics of cell pairs in the rock-paper-scissor model
+if ( requireNamespace("spatialwarnings") ) {
+  mod <- ca_library("rock-paper-scissor")
+  init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+  pair_counts <- function(mat) {
+    pairs <- spatialwarnings::pair_counts(mat, prop = FALSE)
+    as.vector(pairs[lower.tri(pairs)])
+  }
+  ctrl <- list(custom_output_every = 1,
+               custom_output_fun = trace_plotter(mod, init,
+                                                 fun = pair_counts))
+  out <- run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 }
 }
