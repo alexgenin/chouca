@@ -276,7 +276,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       }
 
       export_n++;
-      next_export_t = times(export_n);
+      // Avoids an OOB read when on last iteration
+      if ( export_n < times.n_elem ) {
+        next_export_t = times(export_n);
+      }
     }
 
     for (uword s = 0; s < substeps; s++) {
@@ -325,15 +328,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           uword qpointn_factorf = (xpoints - 1) / qs_total;
 
           // Compute probability transitions
-          for (ushort to = 0; to < ns; to++) {
-            // Init probability
-            compute_rate(ptrans,
-                         old_qs[i][j], // qs
-                         old_ps, // ps
-                         qpointn_factorf, // where to find f(q)
-                         qs_total, // number of neighbors
-                         from); // from (current) state
-          }
+          compute_rate(ptrans,
+                       old_qs[i][j], // qs
+                       old_ps, // ps
+                       qpointn_factorf, // where to find f(q)
+                       qs_total, // number of neighbors
+                       from); // from (current) state
 #endif
 
 #if USE_OMP
