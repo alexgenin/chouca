@@ -210,8 +210,8 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'
 #' The \code{control} list must have named elements, and allows altering the
 #'   way the simulation is run, including the live display of covers or
-#'   landscapes (see \code{\link{trace_plotter()}} or
-#'   \code{\link{landscape_plotter()}}).
+#'   landscapes (see \code{\link{trace_plotter}} or
+#'   \code{\link{landscape_plotter}}).
 #'
 #' Possible options are the following:
 #'
