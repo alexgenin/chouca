@@ -1,0 +1,19 @@
+
+
+note <- sprintf("R package version %s", meta$Version)
+year <- substr(as.character(Sys.Date()), 1, 4)
+
+bibentry(bibtype = "Article",
+         title = "Easy, fast and reproducible Stochastic Cellular Automata with 'chouca'",
+         journal = "Biorxiv", 
+         doi = "10.1101/2023.11.08.566206", 
+         author = c(person("Alexandre", "Genin"),
+                    person("Guillaume", "Dupont"),
+                    person("Daniel", "Valencia"),
+                    person("Mauro", "Zucconi"),
+                    person("M. Isidora", "Avila-Thieme"),
+                    person("Sergio A.", "Navarrete"),
+                    person("Evie A.", "Wieters")), 
+         year = year, 
+         note = note,
+         url = "https://www.biorxiv.org/content/10.1101/2023.11.08.566206v1")
