@@ -107,6 +107,6 @@ run_meanfield <- function(mod, init, times, ...) {
     list(dX)
   }
   
-  ode_out <- deSolve::ode(init, times = times, funcol = dX, ...)
+  ode_out <- deSolve::ode(init, times = times, func = dX, ...)
   return(ode_out)
 }
