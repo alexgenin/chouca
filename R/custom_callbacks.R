@@ -61,12 +61,12 @@
 #' colors <- c("#fb8500", "#023047", "#8ecae6")
 #' ctrl <- list(custom_output_every = 1,
 #'              custom_output_fun = landscape_plotter(mod, col = colors))
-#' init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#' init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 #' run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #'
 #' # Arid vegetation model
 #' mod <- ca_library("aridvege")
-#' init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#' init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 #' colors <- c("gray80", "white", "darkgreen")
 #' ctrl <- list(custom_output_every = 1,
 #'              custom_output_fun = landscape_plotter(mod, col = colors, xaxt = "n",
@@ -76,7 +76,7 @@
 #' # Game of life, set plot margins to zero so that the landscape takes all
 #' # of the plot window
 #' mod <- ca_library("gameoflife")
-#' init <- generate_initmat(mod, c(0.5, 0.5), nr = 100, nc = 178)
+#' init <- generate_initmat(mod, c(0.5, 0.5), nrow = 100, ncol = 178)
 #' colors <- c("white", "black")
 #' ctrl <- list(custom_output_every = 1,
 #'              custom_output_fun = landscape_plotter(mod, col = colors,
@@ -207,7 +207,7 @@ landscape_plotter <- function(mod,
 #'
 #'   \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but
 #'   if it is still too fast for your taste, you can cap the refresh rate by setting
-#    the argument \code{fps_cap}.
+#'   the argument \code{fps_cap}.
 #'
 #'   It is important to note that this function will probably massively slow down a
 #'   simulation, so it is mostly here for exploratory analyses, or just to
@@ -218,7 +218,7 @@ landscape_plotter <- function(mod,
 #'
 #' # Display covers of the rock/paper/scissor model as it is running
 #' mod <- ca_library("rock-paper-scissor")
-#' init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#' init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 #' ctrl <- list(custom_output_every = 1,
 #'              custom_output_fun = trace_plotter(mod, init))
 #' run_camodel(mod, init, times = seq(0, 256), control = ctrl)
@@ -233,7 +233,7 @@ landscape_plotter <- function(mod,
 #' # vegetation model
 #' if ( requireNamespace("spatialwarnings") ) {
 #'   mod <- ca_library("aridvege")
-#'   init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#'   init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 #'   moran <- function(mat) {
 #'     m <- matrix(mat == "VEGE", nrow = nrow(mat), ncol = ncol(mat))
 #'     spatialwarnings::raw_moran(m)
@@ -247,7 +247,7 @@ landscape_plotter <- function(mod,
 #' # Display dynamics of cell pairs in the rock-paper-scissor model
 #' if ( requireNamespace("spatialwarnings") ) {
 #'   mod <- ca_library("rock-paper-scissor")
-#'   init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+#'   init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 #'   pair_counts <- function(mat) {
 #'     pairs <- spatialwarnings::pair_counts(mat, prop = FALSE)
 #'     as.vector(pairs[lower.tri(pairs)])

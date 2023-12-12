@@ -37,20 +37,20 @@
 #'   considered to be equal to zero. The default value should work well here, except
 #'   if you run models that have extremely small transition probabilities (<1e-8).
 #'
-#' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = TRUE},
+#' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = FALSE}),
 #'   the number of neighbors per cell is variable, which can slow down the simulation.
 #'   Set this option to \code{TRUE} to consider that the number of neighbors is always
 #'   four or eight, regardless of the position of the cell in the landscape, at the cost
 #'   of approximate dynamics on the edge of the landscape.
 #'
 #' @details
-#'
+#' 
 #' This function allows defining a stochastic cellular automaton model by its set of
 #' transition rules. These are defined by a set of calls to the \code{transition()}
 #' function. Each of these calls defines the two states of the transition, and the
-#' probability (as a one-sided formula involving constants and special values p, q,
-#' etc.).
-#'
+#' probability as a one-sided formula involving constants and the special vectors 
+#' p and q.
+#' 
 #' \code{transition()} calls takes three arguments: the state from which the transition
 #' is defined, the state to which the transition goes, and a transition probability,
 #' defined as a one-sided formula. This formula can include numerical constants,
@@ -58,13 +58,13 @@
 #' and q['b'], which respectively represent the proportion of cells in a landscape in
 #' state 'a', and the proportion of neighbors of a given cell in state 'b' ('a', and
 #' 'b' being, of course, any of the possible states defined in the model). See
-#' section Examples for examples of model implementations.
-#'
+#' below for examples of model definitions
+#' 
 #' It is important to remember when using this function that \code{chouca} only
 #' supports models where the probabilities depend on constant parameters, the global
 #' proportion of each state in the landscape, and the local proportion of cells around
 #' a given cell.
-#'
+#' 
 #' \deqn{
 #'   \beta_0 + \\
 #'   \sum_{k=1}^S f(q_k) + \\
@@ -112,8 +112,9 @@
 #' landscape for a simulation can be created using \code{\link{generate_initmat}}.
 #'
 #' You can update a model definition with new parameters (all of them or a subset)
-#' using the \code{\link[=update.ca_model]{update}} method. The model graph can be
-#' displayed using the \code{plot} method (this requires igraph).
+#' using the \code{\link[=update.ca_model]{update}} method. The model graph with the 
+#' different states and transitions can be displayed using the \code{plot} method 
+#' (this requires the igraph).
 #'
 #' @seealso run_camodel, run_meanfield, generate_initmat, run_meanfield,
 #'   update.ca_model, ca_library
@@ -188,7 +189,7 @@
 #' )
 #'
 #' mod_updated <- update(mod, parms = list(m = 0.05, r = 1))
-#' init <- generate_initmat(mod_updated, c(plant = 0.8, empty = 0.2), nr = 128)
+#' init <- generate_initmat(mod_updated, c(plant = 0.8, empty = 0.2), nrow = 128)
 #' out <- run_camodel(mod_updated, init, times = seq(0, 128))
 #' plot(out)
 #' image(out)
@@ -429,7 +430,7 @@ pack_table_fromto <- function(tr, table) {
 #'
 #' # Run the model for different values of d, the death rate of mussels
 #' ds <- seq(0, 0.25, length.out = 12)
-#' initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nr = 64, nc = 64)
+#' initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nrow = 64, ncol = 64)
 #' results <- lapply(ds, function(this_dvalue) {
 #'   musselmod <- update(mussels, parms = list(d = this_dvalue))
 #'   run <- run_camodel(musselmod, initmat, times = seq(0, 128))

@@ -63,6 +63,7 @@ This function creates another function that is suitable for use with
 
   \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but
   if it is still too fast for your taste, you can cap the refresh rate by setting
+  the argument \code{fps_cap}.
 
   It is important to note that this function will probably massively slow down a
   simulation, so it is mostly here for exploratory analyses, or just to
@@ -73,7 +74,7 @@ landscape_plotter, run_camodel
 
 # Display covers of the rock/paper/scissor model as it is running
 mod <- ca_library("rock-paper-scissor")
-init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 ctrl <- list(custom_output_every = 1,
              custom_output_fun = trace_plotter(mod, init))
 run_camodel(mod, init, times = seq(0, 256), control = ctrl)
@@ -88,7 +89,7 @@ run_camodel(mod, init, times = seq(0, 300), control = ctrl)
 # vegetation model
 if ( requireNamespace("spatialwarnings") ) {
   mod <- ca_library("aridvege")
-  init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+  init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
   moran <- function(mat) {
     m <- matrix(mat == "VEGE", nrow = nrow(mat), ncol = ncol(mat))
     spatialwarnings::raw_moran(m)
@@ -102,7 +103,7 @@ if ( requireNamespace("spatialwarnings") ) {
 # Display dynamics of cell pairs in the rock-paper-scissor model
 if ( requireNamespace("spatialwarnings") ) {
   mod <- ca_library("rock-paper-scissor")
-  init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+  init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
   pair_counts <- function(mat) {
     pairs <- spatialwarnings::pair_counts(mat, prop = FALSE)
     as.vector(pairs[lower.tri(pairs)])

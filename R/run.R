@@ -42,7 +42,7 @@
 #'
 #' # Run the Game of Life starting from a random grid
 #' game_of_life <- ca_library("gameoflife")
-#' grid <- generate_initmat(game_of_life, c(LIVE = .1, DEAD = .9), nr = 64)
+#' grid <- generate_initmat(game_of_life, c(LIVE = .1, DEAD = .9), nrow = 64)
 #' out <- run_camodel(game_of_life, grid, times = seq(0, 128))
 #' image(out) # final configuration
 #'
@@ -54,7 +54,7 @@
 #'   wrap = TRUE,
 #'   neighbors = 8
 #' )
-#' grid <- generate_initmat(mod, c(empty = .99, plant = .01), nr = 128)
+#' grid <- generate_initmat(mod, c(empty = .99, plant = .01), nrow = 128)
 #' image(grid) # initial state
 #' out <- run_camodel(mod, grid, times = seq(0, 30))
 #' image(out) # final state
@@ -316,7 +316,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'
 #' # Run a model with default parameters
 #' mod <- ca_library("musselbed")
-#' im  <- generate_initmat(mod, c(0.4, 0.6, 0), nr = 100, nc = 50)
+#' im  <- generate_initmat(mod, c(0.4, 0.6, 0), nrow = 100, ncol = 50)
 #' out <- run_camodel(mod, im, times = seq(0, 100))
 #' plot(out)
 #'

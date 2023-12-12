@@ -26,27 +26,27 @@
 #'    p = q). 
 #'  
 #'  For example, if we consider a model with two states 'a' and 'b' and transitions 
-#'    between them, then the following system of equation is used to describe the 
-#'    variations of the proportions of cells in each state: 
+#'    from and to each other, then the following system of equation is used to describe 
+#'    the variations of the proportions of cells in each state: 
 #'  
 #'  \deqn{\frac{da}{dt} = p_b P(b \to a) - p_a P(a \to b)}{ da/dt = p[b] P(b to a) - p[a] P(a to b)}
 #'  \deqn{\frac{db}{dt} = p_a P(a \to b) - p_b P(b \to a)}{ db/dt = p[a] P(a to b) - p[b] P(b to a)}
 #'  
 #'  Running mean-field approximations is useful to understand general dynamics in the 
 #'    absence of neighborhood interactions between cells, or simply to obtain an 
-#'    approximate, but fast simulation of the model. 
+#'    fast but approximate simulation of the model. 
 #'  
 #'  Note that this function uses directly the expressions of the probabilities, so any 
 #'    cellular automaton is supported, regardless of whether or not it can be simulated 
 #'    exactly by \code{\link{run_camodel}}.
 #'  
-#'@examples   
-#'  
+#'@examples
+#' 
 #' if ( requireNamespace("deSolve") ) { 
 #'   # Get the mean-field approximation to the arid vegetation model 
 #'   arid <- ca_library("aridvege") 
 #'   mod <- ca_library("aridvege")
-#'   init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 100)
+#'   init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 100)
 #'   times <- seq(0, 128)
 #'   out <- run_meanfield(mod, init, times)
 #'   # This uses the default plot method in deSolve
@@ -93,8 +93,8 @@ run_meanfield <- function(mod, init, times, ...) {
     for ( i in seq_along(trs) ) { 
       tr <- trs[[i]]
       change <- eval(as.expression(as.list(tr[["prob"]])), 
-                      envir = c(mod[["parms"]], list(p = X, q = X)), 
-                      enclos = environment(tr[["prob"]]))
+                     envir = c(mod[["parms"]], list(p = X, q = X)), 
+                     enclos = environment(tr[["prob"]]))
       change <- change * X[ tr[["from"]] ]
       dX[ tr[["to"]] ] <- dX[ tr[["to"]] ] + change 
       dX[ tr[["from"]] ] <- dX[ tr[["from"]] ] - change 
@@ -107,6 +107,6 @@ run_meanfield <- function(mod, init, times, ...) {
     list(dX)
   }
   
-  ode_out <- deSolve::ode(init, times = times, func = dX, ...)
+  ode_out <- deSolve::ode(init, times = times, funcol = dX, ...)
   return(ode_out)
 }

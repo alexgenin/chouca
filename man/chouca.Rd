@@ -18,10 +18,11 @@
  information on the types of supported model can be found in our publication, but in
  any case \code{chouca} is able to identify and warn you if your model is unsupported.
 
- The workflow of working with this package has typically four steps (1) define the
+ The package workflow has typically four steps (1) define the
  model, (2) create an initial landscape (grid of cells), (3) run the model, and
  (4) display/extract the results. We describe each step below, and give examples at the
- end of this document.
+ end of this document. A more complete description of the workflow and the package 
+ is available in the vignette \code{vignette("chouca-package", package = "chouca")}.
 
  (1) Model definition
 
@@ -45,11 +46,11 @@
    goes from, to, and an expression on how to compute its probability. In this model,
    the probability that the first transition occurs depends on the proportion of
    "plant" cells in the landscape, \code{p["plant"]}, and the proportion of neighbors
-   in the "plant" state, \code{q["plant"]}. Overall, the model has three parameters,
-   \code{r1}, \code{r2} and \code{m}. The \code{neighbors} argument
-   defines the type of neighborhood (here 8-way, or Moore neighborhood), and we
-   specify that the model should run over a toric space that wraps around the edges of
-   the grid (wrap = TRUE).
+   in the "plant" state, \code{q["plant"]}. The model has three parameters,
+   \code{r1}, \code{r2} and \code{m} whose value is passed through the named list 
+   \code{parms}. The \code{neighbors} argument defines the type of neighborhood 
+   (here 8-way, or Moore neighborhood), and we specify that the model should run over 
+   a toric space that wraps around the edges of the grid (\code{wrap = TRUE}).
 
    More information about the creation of models is available at \code{\link{camodel}}.
 
@@ -107,7 +108,12 @@ assumes that local and global proportion of states are equal.
 If you use and like \code{chouca}, we would appreciate you to cite our corresponding
 publication:
 
---TODO--
+ Genin A, Dupont G, Valencia D, Zucconi M, Avila-Thieme M, Navarrete
+ S, Wieters E (2023). “Easy, fast and reproducible Stochastic Cellular
+ Automata with 'chouca'.” _Biorxiv_. doi:10.1101/2023.11.08.566206
+ <https://doi.org/10.1101/2023.11.08.566206>, R package version
+ 0.0.99,
+ <https://www.biorxiv.org/content/10.1101/2023.11.08.566206v1>.
 }
 \examples{
 \dontrun{

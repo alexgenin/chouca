@@ -65,7 +65,7 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
                                                const unsigned char all_qs[all_qs_nrow][ns + 1],
                                                const arma::uword ps[ns]) {
 
-  //
+  // 
   // This function depends on the matrix all_qs, which contains all possible
   // neighborhood configurations, with an added column at the end with the total
   // number of neighbors (a fixed number under some set of options, e.g. it is always
@@ -84,19 +84,19 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
   // [8,]    1    1    2    4
   // [9,]    1    2    1    4
   //
-  // For all rows of all_qs, i.e. for all possible neighbor configurations,
-  // we need to compute at this iteration the probability of switching from one state to
+  // For all rows of all_qs above, i.e. for all possible neighbor configurations,
+  // we need to compute at each iteration the probability of switching from one state to
   // another, which is stored in tprobs. Then once we know the neighbor configuration
   // of a cell, we just need to fetch it from tprobs instead of recomputing it from
   // scratch.
-  //
+  // 
   // Note that when the neighborhood of a cell changes, we know immediately where to
   // find the new neighborhood configuration all_qs. For example, if we go from the
   // neighborhood (1, 0, 3) to (0, 0, 4), we know we new neighborhood config is 6 rows
   // above in all_qs (and thus in tprobs). This is because in all_qs,
   // the neighborhood configurations have a specific ordering. See adjust_nb_plines()
   // in common.h for more details.
-  //
+  // 
   for (uword l = 0; l < all_qs_nrow; l++) {
 
     // Some combinations in all_qs will never be used because the number of
@@ -108,22 +108,30 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
     // NOTE: Ideally we would remove those values, and keep only lines in all_qs that
     // sum to valid combinations. This would make all_qs not grow as fast with the number
     // of neighbors and state, thus enabling memoization for more complex models.
-    // However, this complexifies a lot the way to keep
-    // track of where to pick the transition probability for each neighbor combination.
+    // However, this complexifies a lot the way of keeping
+    // track of where to pick the transition probability for each neighbor combination. 
+    // 
     // I [Alex] worked out a math formula somewhere but lost it, I just remember the
     // problem simplified into some variant of the bars and stars problem, see
-    // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics).
+    // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics). 
     if (all_qs[l][ns] > n_nb) {
       continue;
     }
 
     for (uchar from = 0; from < ns; from++) {
 
-      // Factor to convert the number of neighbors into the point at which the
-      // dependency on q is sampled.
+      // qpointn_factorf is a number used to convert the number of neighbors into 
+      // the point at which the value of f(q) is stored in the coefficient tables. 
       // all_qs[ ][ns] holds the total number of neighbors
-      uword qpointn_factorf = (xpoints - 1) / all_qs[l][ns];
-
+      // 
+      // fixed_nb is constexpr so this if() should be optimized away when we use a 
+      // fixed number of neighbors and qpointn_factorf will be known at compile time. 
+      if ( fixed_nb ) { 
+        const uword qpointn_factorf = (xpoints - 1) / n_nb;
+      } else { 
+        const uword qpointn_factorf = (xpoints - 1) / all_qs[l][ns];
+      }
+      
       // Init probability
       compute_rate(tprobs[l][from],
                    all_qs[l], // qs for this line of all_qs
@@ -159,13 +167,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   const bool custom_callback_active = custom_callback_every > 0;
   Rcpp::Function custom_callback = ctrl["custom_callback"];
 
-  // Extract things from list. These arrays are declared as static above
+  // Extract things from list. These arrays are declared as static above so accessible 
+  // from other functions. 
   coef_tab_ints = Rcpp::as<arma::Mat<ushort>>(ctrl["coef_tab_ints"]);
   coef_tab_dbls = Rcpp::as<arma::Mat<double>>(ctrl["coef_tab_dbls"]);
 
-  // Copy some things as c arrays. Convert
+  // Copy some things as c arrays. 
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up
-  // the size of the C stack beyond what is acceptable.
+  // the size of the C stack beyond acceptable.
   auto old_mat = new uchar[nr][nc];
   auto new_mat = new uchar[nr][nc];
   for (uword i = 0; i < nr; i++) {
@@ -180,7 +189,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   auto all_qs = new uchar[all_qs_nrow][ns + 1];
   for (uword i = 0; i < all_qs_nrow; i++) {
     for (uword k = 0; k < (ns + 1); k++) {
-      all_qs[i][k] = (uchar)all_qs_arma(i, k);
+      all_qs[i][k] = (uchar) all_qs_arma(i, k);
     }
   }
 #endif
@@ -203,12 +212,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 
   // When we do not use memoization, we maintain for each cell of the grid the state
   // of its neighbors (in old/new_qs). Everytime a cell changes state, the values of
-  // those matrices are changed for its neighboring cells.
-  //
+  // those matrices are changed for all neighboring cells.
+  // 
   // When we use memoization, we do not need to keep track of the local counts of
   // neighbors, we just need to adjust the index (row) in old/new_pline which contains
   // where in tprobs the probability of transition needs to be picked for a cell
-  // in that specific neighborhood configuration. There is a relationship between
+  // with that specific neighborhood configuration. There is a relationship between
   // the type of neighborhood change and the number of rows to add or substract to find
   // the new probabilities of transition. This means that when we memoize probabilities we
   // never have to count neighbors, which is a large part of the speed boost.

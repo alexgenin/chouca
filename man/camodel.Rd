@@ -50,7 +50,7 @@ definition.}
 considered to be equal to zero. The default value should work well here, except
 if you run models that have extremely small transition probabilities (<1e-8).}
 
-\item{fixed_neighborhood}{When not using wrapping around the edges (\code{wrap = TRUE},
+\item{fixed_neighborhood}{When not using wrapping around the edges (\code{wrap = FALSE}),
 the number of neighbors per cell is variable, which can slow down the simulation.
 Set this option to \code{TRUE} to consider that the number of neighbors is always
 four or eight, regardless of the position of the cell in the landscape, at the cost
@@ -70,8 +70,8 @@ High-level definition of a stochastic cellular automaton
 This function allows defining a stochastic cellular automaton model by its set of
 transition rules. These are defined by a set of calls to the \code{transition()}
 function. Each of these calls defines the two states of the transition, and the
-probability (as a one-sided formula involving constants and special values p, q,
-etc.).
+probability as a one-sided formula involving constants and the special vectors 
+p and q.
 
 \code{transition()} calls takes three arguments: the state from which the transition
 is defined, the state to which the transition goes, and a transition probability,
@@ -80,7 +80,7 @@ parameters defined in the named list \code{parms}, and any combination of p['a']
 and q['b'], which respectively represent the proportion of cells in a landscape in
 state 'a', and the proportion of neighbors of a given cell in state 'b' ('a', and
 'b' being, of course, any of the possible states defined in the model). See
-section Examples for examples of model implementations.
+below for examples of model definitions
 
 It is important to remember when using this function that \code{chouca} only
 supports models where the probabilities depend on constant parameters, the global
@@ -134,8 +134,9 @@ used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial
 landscape for a simulation can be created using \code{\link{generate_initmat}}.
 
 You can update a model definition with new parameters (all of them or a subset)
-using the \code{\link[=update.ca_model]{update}} method. The model graph can be
-displayed using the \code{plot} method (this requires igraph).
+using the \code{\link[=update.ca_model]{update}} method. The model graph with the 
+different states and transitions can be displayed using the \code{plot} method 
+(this requires the igraph).
 }
 \section{Functions}{
 \itemize{

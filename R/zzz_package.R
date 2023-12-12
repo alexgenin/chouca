@@ -12,7 +12,7 @@
 
   packageStartupMessage({
     paste0("This is chouca ", package_ver, devel_message, "\n",
-           "See vignette(\"chouca-package\") for a user guide")
+           "See vignette(\"chouca-package\") for a user guide or ?chouca for an overview")
     }, appendLF = TRUE)
 
 }

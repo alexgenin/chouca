@@ -8,6 +8,12 @@ DEGMAX <- 5
 DEGINIT <- 1
 ERROR_REL_MAX <- 0.001 # 0.1 % error is the limit to produce a warning
 
+# 
+# This function parses the definition of a transition, and computers the internal 
+# coefficients used to describe the probability as a function of q, p, and the products 
+# qp, pp, qq (see full description in the vignette vignette("chouca-package")). This is 
+# very much an internal function. 
+# 
 parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors,
                              check_model) {
 
@@ -25,7 +31,9 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
 
   # We accumulate warnings, and print them later if any arose.
   warn <- character()
-
+  
+  # Compute the probability of transition from its symbolic expression using the 
+  # values of p and q
   prob_with <- function(p, q) {
     prob <- as.numeric( eval(pexpr,
                              envir = c(parms, list(p = p, q = q)),
@@ -45,13 +53,18 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   }
 
   # Get intercept for this transition. Note that beta_0 always has one line, but
-  # we use a df anyway because we are going to pack multiple values into a df later
+  # we use a df here because we are going to pack multiple values into a df later
   # (using plyr::ldply).
   beta0dbl <- prob_with(p = zero, q = zero)
   beta_0 <- data.frame(coef = beta0dbl)
-
-  # Get coefficient/exponent table for q. We evaluate q at 'xpoints' points for vectors
-  # of q with zeros everywhere except one state.
+  
+  # Get coefficient/exponent table for q. Note that we allow any function of q, i.e. 
+  # the probability can depend on any univariate function f(q_i) for all possible states 
+  # i. This is ok because there is a finite number of values for f(q_i) as q_i can only 
+  # take values 0, 1/nb, 2/nb, ... nb/nb (=1) where nb is the number of neighbors. 
+  # 
+  # We evaluate q at 'xpoints' points for vectors of q with zeros everywhere except one
+  # state.
   beta_q <- plyr::ldply(state_names, function(s) {
     q <- zero
     xs <- seq(0, 1, length.out = xpoints)
@@ -64,6 +77,8 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     data.frame(state_1 = s, qs = nqs, coef = ys)
   })
 
+  # We need to fit a sparse polynomial to get alpha * q_i^k * q_j^l. Level of sparsity 
+  # is obtained by cross-validation in fitprod
   beta_qq <- fitprod(function(q) {
     prob_with(p = zero, q = q) - beta0dbl -
       sum(sapply(seq_along(q), function(i) {
@@ -72,12 +87,16 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       }))
   }, state_names, epsilon, tr, parms, nosingle = TRUE)
 
-  # We need to fit a sparse polynomial to get alpha * p_a^k * p_b^l
+  # We need to fit a sparse polynomial to get alpha * p_i^k * p_j^l. Level of sparsity 
+  # is obtained by cross-validation in fitprod
   beta_pp <- fitprod(function(p) {
     prob_with(p = p, q = zero) - beta0dbl
   }, state_names, epsilon, tr, parms, nosingle = FALSE)
   
   
+  # Fit a sparse polynomial to get alpha * p_i^k * q_j^l. Level of sparsity 
+  # is obtained by cross-validation in fitprod2. The function is different because 
+  # fitprod() can make a few simplifying assumptions as it uses only the p vector. 
   beta_pq <- fitprod2(function(p, q) {
     prob_with(p = p, q = q) -
       prob_with(p = zero, q = q) -
@@ -99,11 +118,10 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   beta_pq  <- beta_pq[notzero(beta_pq[ ,"coef"]), , drop = FALSE]
   beta_qq  <- beta_qq[notzero(beta_qq[ ,"coef"]), , drop = FALSE]
 
-
   # For beta_q, we do not subset things that are zero, because this allows doing
-  # pointer arithmetic to directly fetch the corresponding value in the table, without
+  # pointer/line arithmetic to directly fetch the corresponding value in the table, without
   # having to 'scan' for values.
-  beta_q   <- plyr::ddply(beta_q, ~ state_1, function(df) {
+  beta_q <- plyr::ddply(beta_q, ~ state_1, function(df) {
     if ( any(notzero(df[ ,"coef"])) ) {
       df
     } else {
@@ -128,12 +146,14 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
                                line_cap = cap)[ ,1:ns, drop = FALSE]
 
     colnames(all_qss) <- state_names
-    ps <- matrix(stats::runif(ns*nrow(all_qss)), nrow = nrow(all_qss), ncol = ns)
+    ps <- matrix(stats::runif(ns * nrow(all_qss)), 
+                 nrow = nrow(all_qss), 
+                 ncol = ns)
     ps <- t(apply(ps, 1, function(X) X / sum(X)))
     colnames(ps) <- state_names
 
     p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) {
-      prob_with(q = all_qss[i, ]/neighbors, p = ps[i, ])
+      prob_with(q = all_qss[i, ] / neighbors, p = ps[i, ])
     })
 
     p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) {
@@ -142,18 +162,18 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       # transition).
       beta <- ifelse(nrow(beta_0) == 0, 0, beta_0[ ,"coef"])
 
-      # TODO: the join is very slow, try to do something
+      # TODO: the join is very slow, try to do something about it
       qssum <- 0
       if ( nrow(beta_q) > 0 ) {
         # q component.
         qslong <- data.frame(state_1 = state_names,
                              # this gets the qs point corresponding to this proportion
-                            # of neighbors.
+                             # of neighbors.
                              qs = all_qss[i, ] / neighbors * (xpoints - 1))
 
         qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong),
                              match = "first")
-        # If nomatch, then coef is NA, which should count as zero here
+        # If nomatch, then coef is NA, which will count as zero here
         qssum <- sum(qslong[ ,"coef"], na.rm = TRUE)
       }
 
@@ -183,15 +203,18 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
           (beta_qq[ ,"qs1"] / neighbors) ^ beta_qq[ ,"expo_1"] *
           (beta_qq[ ,"qs2"] / neighbors) ^ beta_qq[ ,"expo_2"]
       )
-
+      
+      # Total probability expression is the sum of all components
       beta + qssum + ppssum + pqssum + qqssum
     })
-
+    
+    # Compute the errors in probability reconstruction
     mean_error <- mean(abs(p_refs - p_preds))
     max_error  <- max(abs(p_refs - p_preds))
     max_rel_error <- max(ifelse((p_refs - p_preds) != 0,
                                 abs((p_refs - p_preds)/p_refs), 0))
-
+    
+    
     if ( max_rel_error > ERROR_REL_MAX || max_error > ERROR_REL_MAX ) {
       msg <- paste(
         "Residual error in computed probabilities",
@@ -277,7 +300,6 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     delta_yp <- do.call(rbind, delta_yp)
 
     keep_lines <- apply(delta_yp, 1, function(X) all(abs(X) > epsilon))
-#     cat("Removed ", sum(!keep_lines), " coefs\n")
     vals <- vals[keep_lines, , drop = FALSE]
 
     if ( nrow(vals) == 0 ) {
@@ -299,7 +321,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
 
   #   ps <- subset(ps, apply(ps, 1, sum) == 1)
     colnames(ps) <- colnames(qs) <- state_names
-
+    
     test_set <- which(seq(1, nrow(ps)) %% 3 == 0)
     ps_test <- ps[test_set, , drop = FALSE]
     qs_test <- qs[test_set, , drop = FALSE]
@@ -370,21 +392,8 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 fitprod <- function(yfun, state_names, epsilon, tr, parms,
-                    nosingle = FALSE) {
+                    no_zero_exponent = FALSE) {
 
   ns <- length(state_names)
 
@@ -402,15 +411,15 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
                         state_2 = seq.int(ns),
                         expo_1  = seq(0, deg),
                         expo_2  = seq(0, deg))
-
-    if ( nosingle ) {
+    
+    # sometimes we do not want to include zero exponents, i.e. terms of the 
+    # sum that depend only on one q_i and not the product q_i q_j. This is because these
+    # single terms are already captured by the f(q_i) terms. 
+    if ( no_zero_exponent ) {
       vals <- vals[vals[ ,"expo_1"] > 0 & vals[ ,"expo_2"] > 0, ]
     } else {
       vals <- vals[vals[ ,"expo_1"] > 0 | vals[ ,"expo_2"] > 0, ]
     }
-
-    # Clamp to low degree
-    # vals <- subset(vals, expo_1 + expo_2 <= deg)
 
     # Check the uniqueness of products.
     primes <- primes[1:ns]
@@ -446,7 +455,6 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
                          abs(delta_yp[ ,1]) > epsilon,
                          abs(delta_yp[ ,1]) > epsilon & abs(delta_yp[ ,2]) > epsilon)
 
-#     cat("Removed ", sum(!keep_lines), " coefs\n")
     vals <- vals[keep_lines, , drop = FALSE]
 
     if ( nrow(vals) == 0 ) {
@@ -462,10 +470,11 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
       }
     })
 
-
     ps <- as.matrix(do.call(expand.grid, ps))
     colnames(ps) <- state_names
-
+    
+    # We decide on a test set to evalute the polynomial fit. We will stop adding terms 
+    # when the test error increases. 
     test_set <- which(seq(1, nrow(ps)) %% 3 == 0)
     ps_test <- ps[test_set, , drop = FALSE]
     ps <- ps[-test_set, , drop = FALSE]
@@ -487,7 +496,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
       }))
       coefs[] <- stats::lm.fit(mframe, ys, tol = 1e-16)$coefficients
 
-#     #   if ( length(coefs) > 20 ) browser()
+#     # if ( length(coefs) > 20 ) browser()
       # optimans <- stats::optim(coefs, ssq,
       #                          method = "BFGS",
       #                          control = list(maxit = 1000L,
@@ -507,7 +516,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     ys_test <- sapply(seq.int(nrow(ps_test)), function(i) yfun(ps_test[i, ]))
 
     new_max_abs_error <- max(abs(ys_test - ypred))
-#
+
     # par(mfrow = c(1, 2))
     # plot(ps[ ,2] * ps[ ,2], ys,
     #      xlim = c(0, 1), ylim = range(c(ys, ys_test)))
@@ -515,7 +524,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     # plot(ps_test[ ,2]*ps_test[ ,2], ys_test,
     #      xlim = c(0, 1), ylim = range(c(ys, ys_test)))
     # points(ps_test[ ,2]*ps_test[ ,2], ypred, col = "red")
-#   #   plot(ps_test[ ,2]*ps_test[ ,2], ys_test - ypred, col = "red")
+    #   plot(ps_test[ ,2]*ps_test[ ,2], ys_test - ypred, col = "red")
 
 #     print(deg)
 #     print(new_max_abs_error)
@@ -538,24 +547,24 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
 
 
 # This function reorganizes a matrix of coefficients (for beta_pp and beta_qq), i.e.
-#  * it fixes the exponents: when we have p[state]^a * p[state]^b, we simplify this into
-# p[state]^(a+b)
+#  * it fixes the exponents: when we have p[state]^a * p[state]^b, we simplify this 
+#      into p[state]^(a+b)
 #  * it reorders the rows of states so it is more cache-friendly (hopefully)
 normalize_coefs <- function(vals) {
 
   # Normalize coefficients
   same_state <- vals[ ,"state_1"] == vals[ ,"state_2"]
-  vals[same_state, "expo_1"] <- vals[same_state,"expo_1"] + vals[same_state,"expo_2"]
+  vals[same_state, "expo_1"] <- vals[same_state, "expo_1"] + vals[same_state, "expo_2"]
   vals[same_state, "expo_2"] <- 0
 
   vals <- vals[order(vals[ ,"state_1"], vals[ ,"state_2"],
-                      vals[ ,"expo_2"], vals[ ,"expo_1"]), ]
+                     vals[ ,"expo_2"], vals[ ,"expo_1"]), ]
   vals
 }
 
 
-# A list of the first 1000 prime numbers. This allows handling states up to 256 states,
-# which is the max we support in compiled code anyway.
+# A list of the first 1000 prime numbers. This is more than enough to handle up to 256
+# states, which is the max we support in compiled code anyway.
 primes <- c(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167,
 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269,

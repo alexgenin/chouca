@@ -16,9 +16,6 @@ You probably already know Conway's game of life -- a stochastic cellular
 automaton is the same, except that cell transitions do not always occur when
 a rule is satisfied, but with a given probability.
 
-`chouca` is still in development, and interfaces are still unstable. If you use
-it for your own work, expect breaking changes.
-
 ## What this package implements
 
 This package is an *engine* for stochastic cellular automata (PCA), although
@@ -50,7 +47,7 @@ kubo <- camodel(
 Running the model for 200 iterations on a 100x100 grid is another couple of lines:
 
 ```r
-initmat <- generate_initmat(kubo, c(TREE = 0.5, EMPTY = 0.5), nr = 100, nc = 100)
+initmat <- generate_initmat(kubo, c(TREE = 0.5, EMPTY = 0.5), nrow = 100, nc = 100)
 run_camodel(kubo, initmat, times = seq(0, 200))
 ```
 
@@ -86,6 +83,8 @@ taken from the literature:
 
 ![benchmark_results](./benchmarks_last_commit.png)
 
+
+
 ## Installation
 
 `chouca` can be installed with the devtools `package` directly from github:
@@ -93,6 +92,7 @@ taken from the literature:
 ```r
 devtools::install_github("alexgenin/chouca")
 ```
+
 
 ## Authors and acknowledgements
 

@@ -59,7 +59,7 @@ This function gives access to different stochastic cellular automata models. You
 
 # Import a model, create an initial landscape and run it for ten iterations
 forestgap_model <- ca_library("forestgap")
-im <- generate_initmat(forestgap_model, c(0.5, 0.5), nr = 64, nc = 100)
+im <- generate_initmat(forestgap_model, c(0.5, 0.5), nrow = 64, ncol = 100)
 run_camodel(forestgap_model, im, times = seq(0,100))
 
 }

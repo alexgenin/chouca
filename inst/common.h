@@ -579,8 +579,8 @@ inline void compute_rate(double tprob_line[ns],
     // P(s -> b) when using substeps >= 2.
     // Cap the proba to 0-1 range
     // total = total > 1.0 ? 1.0 : total;
-    // total = total < 0.0 ? 0.0 : total;
-
+    total = total < 0.0 ? 0.0 : total;
+    
     // Total contains the probability for this transition.
     tprob_line[to] = total;
   }

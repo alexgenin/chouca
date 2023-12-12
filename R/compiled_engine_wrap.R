@@ -68,9 +68,9 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # table. Recall that all transition probabilities in chouca have the form:
   #  beta0 +
   #    sum( f(q) ) +
-  #    sum( c p_a^b p_c^d ) for all a,b,c,d
-  #    sum( c q_a^b q_c^d ) for all a,b,c,d
-  #    sum( c p_a^b q_c^d ) for all a,b,c,d
+  #    sum( c p_a^b p_c^d ) for various a,b,c,d
+  #    sum( c q_a^b q_c^d ) for various a,b,c,d
+  #    sum( c p_a^b q_c^d ) for various a,b,c,d
   #
   # All coefficients (beta0, a, b, c, d, etc.) are stored in different tables at this
   # stage, depending on which component above they correspond to:
@@ -161,7 +161,6 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
 
   # Make the table with all combinations of qs
-
   if ( precompute_probas ) {
     all_qs <- generate_all_qs(max_nb, ns, filter = wrap, line_cap = 0)
   } else {

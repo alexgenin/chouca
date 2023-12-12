@@ -68,12 +68,12 @@ mod <- ca_library("rock-paper-scissor")
 colors <- c("#fb8500", "#023047", "#8ecae6")
 ctrl <- list(custom_output_every = 1,
              custom_output_fun = landscape_plotter(mod, col = colors))
-init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 
 # Arid vegetation model
 mod <- ca_library("aridvege")
-init <- generate_initmat(mod, rep(1, 3)/3, nr = 100, nc = 178)
+init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
 colors <- c("gray80", "white", "darkgreen")
 ctrl <- list(custom_output_every = 1,
              custom_output_fun = landscape_plotter(mod, col = colors, xaxt = "n",
@@ -83,7 +83,7 @@ run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 # Game of life, set plot margins to zero so that the landscape takes all
 # of the plot window
 mod <- ca_library("gameoflife")
-init <- generate_initmat(mod, c(0.5, 0.5), nr = 100, nc = 178)
+init <- generate_initmat(mod, c(0.5, 0.5), nrow = 100, ncol = 178)
 colors <- c("white", "black")
 ctrl <- list(custom_output_every = 1,
              custom_output_fun = landscape_plotter(mod, col = colors,
