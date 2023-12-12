@@ -1,5 +1,5 @@
 ---
-title: "The complete guide to `chouca`"
+title: "The `chouca` user guide"
 output: rmarkdown::html_vignette
 author: Alexandre Génin <a.a.h.genin@uu.nl>
 vignette: >
@@ -94,7 +94,7 @@ compiler optimizations that would be impossible with pre-compiled code, and
 often improves simulation speed by one or two orders of magnitude. `chouca` can
 also use a memoisation-based strategy to run simulations, in which probabilities
 are not recomputed for each cell at each iteration, providing another boost in
-performance. For supported models, chouca can be 3 to 4 orders of magnitude
+performance. For supported models, `chouca` can be 3 to 4 orders of magnitude
 faster than common implementations.
 
 While `chouca` is built mainly for stochastic cellular automata, it can also
@@ -238,21 +238,31 @@ Overall, the assumed functional form of transitions probabilities must be the fo
 
 $$
 P( a \rightarrow b ) = \beta_0 \\
-  + \sum_{s \in S} f_s(q_s) \\
-  + \alpha_1 p_1 ... \alpha_n p_S \\
-  + \beta_1  p_1 p_2 + p_1 p_2^2 + p_1^2 p_2 ...  \beta_n p_S^k p_S^k \\
-  + \gamma_1 q_1 q_2 + q_1 q_2^2 + q_1^2 q_2 ... \gamma_n q_{S-1}^k q_S^k \\
-  + \delta_1 p_1 q_1 + p_1 q_1^2 + p_1^2 q_1 ... \delta_n p_S^k q_S^k
+  + \sum_{s \in S} f_s(q_s) \\ 
+  + \Zeta(\boldsymbol p, \boldsymbol p) + 
+  + \Zeta(\boldsymbol p, \boldsymbol q) + 
+  + \Zeta(\boldsymbol q, \boldsymbol q) 
 $$
 
 where $S$ represents the set of states of the cellular automaton, $f_s$ can be any
-function of $q_s$. All the $(\alpha_i)$, $(\beta_i)$, $(\gamma_i)$ and $(\delta_i)$ are
+function of $q_s$. $\Zeta(\boldsymbol x, \boldsymbol y)$ is, for two vectors of 
+length $n$ $\boldsymbol x = (x_1, x_2, ..., x_n)$ and 
+$\boldsymbol y = (y_1, y_2, ..., y_n)$, the sum of $K$ terms 
+$$
+ \Zeta(\boldsymbol x, \boldsymbol y) = \beta_1 x_1^{a_0} x_2^{b_0} + 
+   \beta_2 x_2^{a_1} x_1^{b_1} + 
+   \beta_3 x_3^{a_2} x_1^{b_1} + 
+   ...
+   \beta_K x_n^{a_K} x_1^{b_K} 
+$$
+
+All the $(\beta_i)_{i \in [0:K]}$, $(a)_{i \in [1:K]}$, $(b)_{i \in [1:K]}$ 
 constant model parameters. Many models can be represented using this functional form -
 however, this may not always be the case, especially as soon as non-linear
 functions are involved (exp, sin, etc.), or functions with discontinuities. This
 functional form looks daunting, but `chouca` will warn you if the transition
-probabilities cannot be accurately modelled, so the best way is to write your model and
-see if it is supported.
+probabilities cannot be accurately computed, so the best way to go is to write your 
+model and see if it is supported.
 
 For all models, `chouca` reports an estimation of the error on the probabilities of
 transition, and whether probabilities can reach problematic values above one 
@@ -328,7 +338,7 @@ One of the main appeal of `chouca` is its performance: which is affected by
 various factors. The main one is the model complexity. Using a model with
 transition probabilities that are complicated products of global or neighbor
 covers, or that do not fit well the expected functional form will lead to poor
-performance. When possible, try to make your model follow those forms. However,
+performance. When possible, try to make your model follow this form. That being said, 
 several approaches exist to improve simulation speed in chouca, regardless of
 the model: (i) on-the-fly compilation, (ii) memoisation of transition
 probabilities and (iii) multithreading.
@@ -338,7 +348,7 @@ automaton. This is done by setting the `engine` control argument to "compiled":
 
 ```{r}
 control_args <- list(engine = "compiled",
-                     precompute_probas = FALSE)
+                     precompute_probas = FALSE) # see below for meaning of this parameter
 
 out <- run_camodel(kubo_model,
                    initmat = init_mat,
@@ -352,8 +362,7 @@ itself will be much faster. Compilation only needs to be done when the
 structure of the model or the size of the landscape changes. A simple change
 in parameter value will not trigger a new compilation, except when the
 probabilities of transition can be simplified, for example when a parameter
-is set to zero.
-
+is set to zero. 
 
 Another approach to better performance lies in the precomputation of
 probabilities. The naive approach to run a CA is to consider each cell in
@@ -385,7 +394,7 @@ neighborhood configurations grows very quickly with the number of different
 model states ($S^4$ or $S^8$ for $S$ states, depending on the type of
 neighborhood). By default, a simple heuristic is used to make a decent choice.
 
-The last approach to improve performance is to use multithreading. In chouca,
+The last approach to improve performance is to use multithreading. In `chouca`,
 the approach used considers the updating of cells in parallel, instead of
 doing it one-by-one. However, there is some synchronisation work required
 between threads to make sure the different cores are not writing to shared

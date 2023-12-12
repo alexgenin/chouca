@@ -85,13 +85,13 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
         q[-i] <- 0
         prob_with(p = zero, q = q) - beta0dbl
       }))
-  }, state_names, epsilon, tr, parms, nosingle = TRUE)
+  }, state_names, epsilon, tr, parms, no_zero_exponent = TRUE)
 
   # We need to fit a sparse polynomial to get alpha * p_i^k * p_j^l. Level of sparsity 
   # is obtained by cross-validation in fitprod
   beta_pp <- fitprod(function(p) {
     prob_with(p = p, q = zero) - beta0dbl
-  }, state_names, epsilon, tr, parms, nosingle = FALSE)
+  }, state_names, epsilon, tr, parms, no_zero_exponent = FALSE)
   
   
   # Fit a sparse polynomial to get alpha * p_i^k * q_j^l. Level of sparsity 

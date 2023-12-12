@@ -483,7 +483,6 @@ inline void adjust_nb_plines(uword pline[nr][nc],
 inline void compute_rate(double tprob_line[ns],
                          const uchar qs[ns],
                          const uword ps[ns],
-                         const arma::uword & qpointn,
                          const arma::uword & total_nb,
                          const arma::uword & from) {
 
@@ -524,6 +523,15 @@ inline void compute_rate(double tprob_line[ns],
         // corresponding coefficient for f(q_1), but also the one for f(q_2).
         // We know they are spaced xpoints apart from each other in the
         // coefficient table, so we just sum values every xpoints
+        
+        // qpointn is a number used to convert the number of neighbors into 
+        // the point at which the value of f(q) is stored in the coefficient tables. 
+        // all_qs[ ][ns] holds the total number of neighbors, and is passed as 
+        // total_nb. However, here fixed_nb is constexpr so this if() should be 
+        // optimized away when we use a fixed number of neighbors as qpointn
+        // will be known at compile time. 
+        uchar qpointn = (xpoints - 1 ) / ( fixed_nb ? n_nb : total_nb ); 
+        
         uword qthis = qs[coef_tab_ints(kstart, _state_1)] * qpointn;
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
           total += coef_tab_dbls(kstart + qthis + xpoints*coef);

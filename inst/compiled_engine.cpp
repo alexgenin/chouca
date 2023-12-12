@@ -120,23 +120,17 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
 
     for (uchar from = 0; from < ns; from++) {
 
-      // qpointn_factorf is a number used to convert the number of neighbors into 
-      // the point at which the value of f(q) is stored in the coefficient tables. 
-      // all_qs[ ][ns] holds the total number of neighbors
-      // 
-      // fixed_nb is constexpr so this if() should be optimized away when we use a 
-      // fixed number of neighbors and qpointn_factorf will be known at compile time. 
+      uword qpointn_factorf; 
       if ( fixed_nb ) { 
-        const uword qpointn_factorf = (xpoints - 1) / n_nb;
+        qpointn_factorf = (xpoints - 1) / n_nb;
       } else { 
-        const uword qpointn_factorf = (xpoints - 1) / all_qs[l][ns];
+        qpointn_factorf = (xpoints - 1) / all_qs[l][ns];
       }
       
       // Init probability
       compute_rate(tprobs[l][from],
                    all_qs[l], // qs for this line of all_qs
                    ps, // current ps
-                   qpointn_factorf, // where to find the q value
                    all_qs[l][ns], // total of neighbors
                    from); // from, to states
     }
@@ -332,15 +326,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           // Normalized local densities to proportions
           uword qs_total = number_of_neighbors(i, j);
 
-          // Factor to convert the number of neighbors into the point at which the
-          // dependency on q is sampled.
-          uword qpointn_factorf = (xpoints - 1) / qs_total;
-
           // Compute probability transitions
           compute_rate(ptrans,
                        old_qs[i][j], // qs
                        old_ps, // ps
-                       qpointn_factorf, // where to find f(q)
                        qs_total, // number of neighbors
                        from); // from (current) state
 #endif
