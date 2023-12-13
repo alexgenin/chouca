@@ -43,35 +43,35 @@ automaton looks like the following animation in practice:
 
 ```{r gifcreate, echo = FALSE, output = TRUE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE}
 
-if ( ! requireNamespace("animate", quietly = TRUE) ) { 
-  install.packages("animate")
-}
+if ( requireNamespace("animate", quietly = TRUE) ) { 
 
-mod <- ca_library("aridvege")
-init <- generate_initmat(mod, rep(1/3, 3), nr = 64, nc = 64)
-export_landscapes <- function(t, mat) {
-  if ( t <= 128 ) {
+  mod <- ca_library("aridvege")
+  init <- generate_initmat(mod, rep(1/3, 3), nr = 64, nc = 64)
+  export_landscapes <- function(t, mat) {
+    if ( t <= 128 ) {
+      return(TRUE)
+    }
+
+    par(mar = rep(0, 4))
+    image(as.camodel_initmat(mat),
+          xaxt = "n", yaxt = "n",
+          col = hcl.colors(12, "YlOrRd", rev = TRUE))
+  #   dev.off()
     return(TRUE)
   }
 
-  par(mar = rep(0, 4))
-  image(as.camodel_initmat(mat),
-        xaxt = "n", yaxt = "n",
-        col = hcl.colors(12, "YlOrRd", rev = TRUE))
-#   dev.off()
-  return(TRUE)
-}
+  invisible({
+    run_camodel(mod, init, times = seq(0, 164),
+                control = list(custom_output_every = 1,
+                              custom_output_fun = export_landscapes,
+                              console_output_every = 0))
+  })
 
-invisible({
-  run_camodel(mod, init, times = seq(0, 164),
-              control = list(custom_output_every = 1,
-                             custom_output_fun = export_landscapes,
-                             console_output_every = 0))
-})
-
-# Make sure we upload the files
-if ( file.exists("upload_files.R") ) { 
-  source("upload_files.R")
+  # Make sure we upload the files
+  if ( file.exists("upload_files.R") ) { 
+    source("upload_files.R")
+  }
+  
 }
 
 ```
