@@ -29,6 +29,7 @@ Suggests:
     deSolve,
     igraph,
     knitr,
-    rmarkdown
+    rmarkdown, 
+    ggplot2
 Config/testthat/edition: 3
 VignetteBuilder: knitr

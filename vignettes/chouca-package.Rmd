@@ -27,7 +27,6 @@ img {
 ```{r, echo = FALSE, results = FALSE, warning = FALSE, message = FALSE}
 library(chouca)
 library(plyr)
-library(tidyr)
 library(ggplot2)
 ```
 
