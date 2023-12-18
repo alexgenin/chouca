@@ -14,7 +14,9 @@ depends on the neighbors of the cell and the global state of the landscape.
 
 You probably already know Conway's game of life -- a stochastic cellular
 automaton is the same, except that cell transitions do not always occur when
-a rule is satisfied, but with a given probability.
+a rule is satisfied, but with a given probability. It typically looks like this:
+
+![example SCA](chouca_sca_example.gif)
 
 ## What this package implements
 
