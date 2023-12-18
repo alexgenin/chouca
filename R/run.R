@@ -662,7 +662,11 @@ load_control_list <- function(l, tmax) {
        is.function(control_list[["custom_output_fun"]]) ) {
     warning("A custom output function was provided, but it will not be used")
   }
-
+  
+  # Some platforms do not support OpenMP, so we disable the support of multiple 
+  # cores
+  control_list[["cores"]] <- openmp_platform_check(control_list[["cores"]])
+  
   control_list
 }
 
@@ -689,4 +693,9 @@ is_positive <- function(x) {
   }
   # zero
   return(FALSE)
+}
+
+
+openmp_platform_check <- function(ncores) { 
+  return(ncores) # not implemented
 }

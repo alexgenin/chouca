@@ -8,7 +8,17 @@
 #define ARMA_NO_DEBUG
 #endif
 
-#define USE_OMP __USE_OMP__
+
+// This is required for portability 
+#ifdef _OPENMP
+# define USE_OMP __USE_OMP__
+#else
+# define USE_OMP 0
+#endif
+
+#if USE_OMP 
+# include <omp.h>
+#endif
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
