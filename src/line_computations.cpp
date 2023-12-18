@@ -31,8 +31,6 @@ arma::umat generate_all_qs(arma::uword nb,
                            arma::uword filter,
                            arma::uword line_cap) {
 
-  // keep all combinations, even those that do not match the number of neighbors
-  constexpr uword FILTER_NOTHING = 0;
   // keep only multiple of neighbor number (0, 8, 16, 32, etc.)
   constexpr uword FILTER_MULTIPLE_NEIGHB = 1;
   // keep only when neighbor number is obtained (4 or 8)
