@@ -20,10 +20,10 @@ a rule is satisfied, but with a given probability. It typically looks like this:
 
 ## What this package implements
 
-This package is an *engine* for stochastic cellular automata (PCA), although
+This package is an *engine* for stochastic cellular automata (SCA), although
 it can also run deterministic cellular automata. The objective is to provide
-a high-level, declarative interface to a PCA model, and leave
-the implementation details to the package.
+a high-level, declarative interface to an SCA model, and leave the implementation 
+details to the package.
 
 For example, Kubo's forest model (Kubo, 1996), which describes how gaps created
 by wind in a forest appear and expand, can be implemented using the following
