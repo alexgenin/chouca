@@ -5,6 +5,7 @@
 
 TMPDIR="/tmp/choucabuild$RANDOM"
 ACTION="$(echo $1 | tr '[:upper:]' '[:lower:]')" 
+shift
 
 if [ "$ACTION" == "" ]; then 
   echo "No action provided" 
@@ -14,14 +15,14 @@ fi
 git clone "." "$TMPDIR/chouca"
 
 if [ "$ACTION" == "build" ]; then 
-  R CMD "$ACTION" "$TMPDIR/chouca"
+  R CMD build "$TMPDIR/chouca"
 fi
 
 if [ "$ACTION" == "check" ]; then 
   cd "$TMPDIR"
-  R CMD build "chouca"
+  R CMD build --no-build-vignettes "chouca" 
   R CMD check chouca*.tar.gz
-fi 
+fi
 
 rm -rf "$TMPDIR"
 
