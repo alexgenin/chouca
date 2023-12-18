@@ -213,7 +213,7 @@ mod <- camodel(
 )
 
 mod_updated <- update(mod, parms = list(m = 0.05, r = 1))
-init <- generate_initmat(mod_updated, c(plant = 0.8, empty = 0.2), nr = 128)
+init <- generate_initmat(mod_updated, c(plant = 0.8, empty = 0.2), nrow = 128)
 out <- run_camodel(mod_updated, init, times = seq(0, 128))
 plot(out)
 image(out)

@@ -140,7 +140,7 @@ Possible options are the following:
 
 # Run a model with default parameters
 mod <- ca_library("musselbed")
-im  <- generate_initmat(mod, c(0.4, 0.6, 0), nr = 100, nc = 50)
+im  <- generate_initmat(mod, c(0.4, 0.6, 0), nrow = 100, ncol = 50)
 out <- run_camodel(mod, im, times = seq(0, 100))
 plot(out)
 

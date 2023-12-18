@@ -84,7 +84,7 @@ mussels_new
 
 # Run the model for different values of d, the death rate of mussels
 ds <- seq(0, 0.25, length.out = 12)
-initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nr = 64, nc = 64)
+initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nrow = 64, ncol = 64)
 results <- lapply(ds, function(this_dvalue) {
   musselmod <- update(mussels, parms = list(d = this_dvalue))
   run <- run_camodel(musselmod, initmat, times = seq(0, 128))

@@ -20,9 +20,12 @@
 ^\.git.*$
 ^\.github.*$
 ^guide$
-^report/.*$
+^report$
 ^doc$
 ^Meta$
-^vignettes/chouca-package.Rmd$
+^vignettes/chouca-package.*$
 ^..Rcheck$
 ^vignettes/.gitignore$
+^\..*\.kate-swp$^
+^choucatests$^
+^.*pdf$
