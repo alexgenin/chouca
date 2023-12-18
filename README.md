@@ -16,7 +16,7 @@ You probably already know Conway's game of life -- a stochastic cellular
 automaton is the same, except that cell transitions do not always occur when
 a rule is satisfied, but with a given probability. It typically looks like this:
 
-![example SCA](chouca_sca_example.gif)
+![example SCA](https://alex.lecairn.org/files/chouca_sca_gifcreate.gif)
 
 ## What this package implements
 
