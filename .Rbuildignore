@@ -18,9 +18,11 @@
 ^src/.gitignore$
 ^..Rcheck$
 ^\.git.*$
-^\.github$
+^\.github.*$
 ^guide$
 ^report/.*$
 ^doc$
 ^Meta$
 ^vignettes/chouca-package.Rmd$
+^..Rcheck$
+^vignettes/.gitignore$
