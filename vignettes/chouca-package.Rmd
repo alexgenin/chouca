@@ -39,9 +39,12 @@ of cells. Each cell can be in one of a finite number of states, and switch
 states over time with probabilities that depend on their neighborhood.
 
 A picture being worth a thousand words, the output of a stochastic cellular
-automaton looks like the following animation in practice:
+automaton looks like the following image in practice:
 
-```{r gifcreate, echo = FALSE, output = TRUE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE}
+[!SCA example](chouca_sca_example.png)
+
+<!-- 
+```{r , echo = FALSE, output = TRUE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE, eval = FALSE}
 
 if ( requireNamespace("animate", quietly = TRUE) ) { 
 
@@ -75,16 +78,16 @@ if ( requireNamespace("animate", quietly = TRUE) ) {
 }
 
 ```
+-->
 
-Please see animation <a href="https://alex.lecairn.org/files/chouca_sca_gifcreate.webm">there</a> if it does not show in your viewing software.
+(NOTE: Please see animated version <a href="https://alex.lecairn.org/files/chouca_sca_gifcreate.webm">there</a>).
 
 Stochastic cellular automata are widely used to describe the dynamics of
-landscapes, for example, forests or coral reefs growing over space. Yet,
-implementations are often ad-hoc, and done by the authors themselves,
-which is prone to bugs and often leads to slow implementations. `chouca` tries
-to avoid this by providing a common base onto which such models can be built.
-The goal is for the user to declare the probabilities of state transitions of
-the model, then `chouca` handles the rest.
+landscapes, for example, forests or corals growing over space. Yet, implementations 
+are often ad-hoc, and done by the authors themselves, which is prone to bugs and often 
+leads to slow implementations. `chouca` tries to avoid this by providing a common base 
+onto which such models can be built. The goal is for the user to declare the 
+probabilities of state transitions of the model, then `chouca` handles the rest.
 
 `chouca` supports a wide selection of models, while preserving decent performance.
 This is done by writing most of the code in C++, and being able to emit and
@@ -97,18 +100,18 @@ performance. For supported models, `chouca` can be 3 to 4 orders of magnitude
 faster than common implementations.
 
 While `chouca` is built mainly for stochastic cellular automata, it can also
-handle non-stochastic cellular automata, such as the game of life or the
-[rock-paper-scissor automaton](https://www.youtube.com/watch?v=TvZI6Xc0J1Y). A
-deterministic cellular automaton is simply a subclass of stochastic celular
-automaton in which probabilities of transition are always ones or zero.
+handle non-stochastic cellular automata, such as Conway's Game of Life or the
+[rock-paper-scissor automaton](https://www.youtube.com/watch?v=TvZI6Xc0J1Y). This is 
+because a deterministic cellular automaton is simply a stochastic celular automata in 
+which transition probabilities are always ones or zero.
 
 ## Your first model in `chouca`
 
-Let's implement a small forest gap model (Kubo et al. 1996). In such model,
-cells can be either 'empty', or filled with a tree, what we call here the
-'forest' state. Trees produce seeds that can fly over the whole landscape and
-land haphazardly in any cell. Thus, the probability of an empty cell to switch
-to the forested state is proportional to $p_+$, the proportion of cells with
+To give you an idea on how `chouca` works, let's implement a small forest gap model 
+(Kubo et al. 1996). In such model, cells can be either 'empty', or filled with a tree, 
+what we call here the 'forest' state. Trees produce seeds that can fly over the whole
+landscape and land haphazardly in any cell. Thus, the probability of an empty cell to 
+switch to the forested state is proportional to $p_+$, the proportion of cells with
 trees in the landscape. If we represent the empty state as $0$ and the forest
 state as $+$, this probability of transition is thus:
 
@@ -116,9 +119,8 @@ $$P(0 \rightarrow +) = \alpha p_{+}$$
 
 where $\alpha$ is the rate at which seeds are produced by each tree.
 
-Trees naturally die over time, and because wind bursts are stronger in
-empty areas, trees have a higher probability of dying when they have empty
-neighboring cells:
+Trees naturally die over time, and because wind bursts are stronger in empty areas, 
+trees have a higher probability of dying when they have empty neighboring cells:
 
 $$P(+ \rightarrow 0) = \delta_0 + \delta q_{empty}$$
 
@@ -131,8 +133,8 @@ This model has three parameters, $\alpha$, $\delta_0$ and $\delta$, and can be
 defined in `chouca` using the following syntax:
 ```{r example_mod_def}
 kubo_model <- camodel(
-  transition(from = "0",  to = "+", ~ alpha * p["+"]),         # transition 1
-  transition(from = "+", to = "0", ~ delta0 + delta * q["0"]), # transition 2
+  transition(from = "0",  to = "+", ~ alpha * p["+"]),         # reproduction of trees
+  transition(from = "+", to = "0", ~ delta0 + delta * q["0"]), # death 
   parms = list(alpha = 0.6, delta0 = 0.05, delta = 0.4),
   wrap = TRUE,
   neighbors = 8
@@ -163,7 +165,7 @@ model definition and options.
 kubo_model
 ```
 
-You can also plot the model structure (the states and the transitions), using 
+You can also plot the model structure (the states and the transitions) as a graph, using 
 the generic function `plot()`: 
 
 ```{r}
