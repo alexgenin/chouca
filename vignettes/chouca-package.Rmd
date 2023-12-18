@@ -503,7 +503,7 @@ out <- run_camodel(mod, init, times = seq(0, 64), control = control_args)
 
 ```
 
-The results can be extracted the following way:
+The results can be extracted as follows:
 
 ```{r}
 my_output <- out[["output"]][["custom"]]
@@ -527,13 +527,13 @@ The first one is `landscape_plotter()`, which can be used as follow, and will
 display the landscape as it is being run. We use the "rock-paper-scissor"
 model included with `chouca` for its pretty patterns:
 
-```{r trace_landscape, echo = TRUE, output = TRUE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE}
+```{r trace_landscape, eval = FALSE}
 
 mod <- ca_library("rock-paper-scissor")
 
 ctrl <- list(custom_output_every = 1,
              precompute_probas = FALSE,
-             custom_output_fun = landscape_plotter(mod, new_window = FALSE))
+             custom_output_fun = landscape_plotter(mod))
 
 init <- generate_initmat(mod, rep(1, 3)/3, 100, 178)
 
@@ -541,32 +541,43 @@ out <- run_camodel(mod, init, seq(0, 128), control = ctrl)
 
 ```
 
-Note that we use the `new_window = FALSE` argument above so that the plots are 
-displayed on the default graphic device, instead of doing it in a new window, the 
-default behavior (this is required to produce this vignette).
+[!SCA result](chouca_landscape_plotting_example.png)
+
+See also the [animated version](https://alex.lecairn.org/files/chouca_landscape_plotting_example.mp4) for this output. 
 
 Another option to visualize simulations as they run is using `trace_plotter()`,
 which will display the covers of each state in the landscape during the run:
 
-```{r trace_covers, echo = TRUE, output = TRUE, fig.show = "animate", fig.width = 4, fig.height = 4, dev='jpeg', interval = 0.04, cache = TRUE}
+```{r trace_covers, eval = FALSE}
 
 ctrl <- list(custom_output_every = 1,
-             custom_output_fun = trace_plotter(mod, init, max_samples = 128, 
-                                               new_window = FALSE),
+             custom_output_fun = trace_plotter(mod, init, max_samples = 128),
              console_output_every = 128)
 
 out <- run_camodel(mod, init, seq(0, 512), control = ctrl)
 
 ```
 
+[!Trace plotting result](chouca_trace_plotting_example.png)
+
+See also the [animated version](https://alex.lecairn.org/files/chouca_trace_plotting_example.mp4) for this output. 
+
 These two functions have many options to customize their output to your liking,
 which are documented in `?trace_plotter` or `?landscape_plotter`. Of course,
 using them involves a large performance penalty as plots needs to be redrawn
-during the execution of the simulation.
+during the execution of the simulation: make sure you remove them if you need to run 
+a large amount of simulations!
 
 
 
 
+
+
+# Limits 
+
+While `chouca` is flexible, it would probably be unwise to define stochastic cellular 
+automata with more than 100 different states. `chouca` works better with models that 
+have a low number of states and/or transitions. 
 
 # References
 
