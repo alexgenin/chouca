@@ -574,11 +574,18 @@ a large amount of simulations!
 
 
 
-# Limits 
+# Technical limits 
 
-While `chouca` is flexible, it would probably be unwise to define stochastic cellular 
+`chouca` has several caveats you may bump into as you use it: 
+
+* While `chouca` is flexible, it would probably be unwise to define stochastic cellular 
 automata with more than 100 different states. `chouca` works better with models that 
 have a low number of states and/or transitions. 
+
+* M1/2 Macs, and Macs in general have spotty support for [OpenMP](https://mac.r-project.org/openmp/#do): you may or may not be able to use multiple threads on your machine when 
+running simulations. 
+
+
 
 # References
 
