@@ -20,7 +20,7 @@ fi
 
 if [ "$ACTION" == "check" ]; then 
   cd "$TMPDIR"
-  R CMD build --no-build-vignettes "chouca" 
+  R CMD build "chouca" 
   R CMD check chouca*.tar.gz
 fi
 

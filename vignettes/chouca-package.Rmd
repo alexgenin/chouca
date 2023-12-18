@@ -369,7 +369,8 @@ small performance improvements when using memoisation.
 
 control_args <- list(engine = "compiled",
                      precompute_probas = TRUE,
-                     cores = 4,
+                     cores = 2,
+                     verbose_compilation = TRUE, 
                      console_output_every = 128)
 
 out <- run_camodel(kubo_model,
