@@ -30,3 +30,6 @@
 ^.*pdf$
 ^rcmd.sh$
 ^vignettes/chouca-package_buildimages.R$
+^vignettes/chouca_sca_example.png$
+^vignettes/chouca_landscape_plotting_example.png$
+^vignettes/chouca_trace_plotting_example.png$

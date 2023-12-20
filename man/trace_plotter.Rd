@@ -69,8 +69,7 @@ This function creates another function that is suitable for use with
   simulation, so it is mostly here for exploratory analyses, or just to
   have a good look of what is happening in a model.
 }
-\seealso{
-landscape_plotter, run_camodel
+\examples{
 
 # Display covers of the rock/paper/scissor model as it is running
 mod <- ca_library("rock-paper-scissor")
@@ -113,4 +112,7 @@ if ( requireNamespace("spatialwarnings") ) {
                                                  fun = pair_counts))
   out <- run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 }
+}
+\seealso{
+landscape_plotter, run_camodel
 }
