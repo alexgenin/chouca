@@ -21,7 +21,7 @@ fi
 if [ "$ACTION" == "check" ]; then 
   cd "$TMPDIR"
   R CMD build "chouca" 
-  R CMD check chouca*.tar.gz
+  R CMD check --as-cran chouca*.tar.gz
 fi
 
 rm -rf "$TMPDIR"

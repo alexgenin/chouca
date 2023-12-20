@@ -1,5 +1,5 @@
 Package: chouca
-Title: A stochastic cellular automaton engine
+Title: A Stochastic Cellular Automaton Engine
 Version: 0.0.99
 Authors@R: 
     person("Alexandre", "Génin", , "a.a.h.genin@uu.nl", role = c("aut", "cre"),
