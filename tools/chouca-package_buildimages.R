@@ -1,6 +1,15 @@
 
 library(chouca)
 
+if ( ! dir.exists("vignettes") ) { 
+  stop("Wrong working directory, are you in the chouca directory?")
+} else { 
+  setwd("vignettes")
+}
+on.exit({ 
+  setwd("..")
+})
+
 set.seed(123)
 
 mod <- ca_library("aridvege")
