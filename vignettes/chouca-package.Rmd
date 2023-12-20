@@ -41,7 +41,7 @@ states over time with probabilities that depend on their neighborhood.
 A picture being worth a thousand words, the output of a stochastic cellular
 automaton looks like the following image in practice:
 
-[!SCA example](chouca_sca_example.png)
+[SCA example](chouca_sca_example.png)
 
 (NOTE: Please see animated version <a href="https://alex.lecairn.org/files/chouca_sca_gifcreate.mp4">there</a>).
 
@@ -203,17 +203,17 @@ Overall, the assumed functional form of transitions probabilities must be the fo
 $$
 P( a \rightarrow b ) = \beta_0 \\
   + \sum_{s \in S} f_s(q_s) \\ 
-  + \Zeta(\boldsymbol p, \boldsymbol p) + 
-  + \Zeta(\boldsymbol p, \boldsymbol q) + 
-  + \Zeta(\boldsymbol q, \boldsymbol q) 
+  + \zeta(\boldsymbol p, \boldsymbol p) + 
+  + \zeta(\boldsymbol p, \boldsymbol q) + 
+  + \zeta(\boldsymbol q, \boldsymbol q) 
 $$
 
 where $S$ represents the set of states of the cellular automaton, $f_s$ can be any
-function of $q_s$. $\Zeta(\boldsymbol x, \boldsymbol y)$ is, for two vectors of 
+function of $q_s$. $\zeta(\boldsymbol x, \boldsymbol y)$ is, for two vectors of 
 length $n$ $\boldsymbol x = (x_1, x_2, ..., x_n)$ and 
 $\boldsymbol y = (y_1, y_2, ..., y_n)$, the sum of $K$ terms 
 $$
- \Zeta(\boldsymbol x, \boldsymbol y) = \beta_1 x_1^{a_0} x_2^{b_0} + 
+ \zeta(\boldsymbol x, \boldsymbol y) = \beta_1 x_1^{a_0} x_2^{b_0} + 
    \beta_2 x_2^{a_1} x_1^{b_1} + 
    \beta_3 x_3^{a_2} x_1^{b_1} + 
    ...
@@ -370,7 +370,6 @@ small performance improvements when using memoisation.
 control_args <- list(engine = "compiled",
                      precompute_probas = TRUE,
                      cores = 2,
-                     verbose_compilation = TRUE, 
                      console_output_every = 128)
 
 out <- run_camodel(kubo_model,
@@ -453,14 +452,14 @@ covers3 <- run3[["output"]][["covers"]]
 tail(covers3)
 
 plot(covers[ ,"t"], covers[ ,"+"], type = "b", col = "red",
-     xlab = "t", ylab = "forest cover")
+     xlab = "t", ylab = "forest c over")
 lines(covers2[ ,"t"], covers2[ ,"+"], col = "blue")
 points(covers2[ ,"t"], covers2[ ,"+"], col = "blue")
 lines(covers3[ ,"t"], covers3[ ,"+"], col = "darkgreen")
 points(covers3[ ,"t"], covers3[ ,"+"], col = "darkgreen")
 legend(x = "right",
        legend = c("original", "reduced 'times' vector", "using 'save_covers_every'"),
-       col = c("black", "blue", "darkgreen"),
+       col = c("red", "blue", "darkgreen"),
        lty = c(1, 1, 1))
 
 ```
@@ -476,9 +475,9 @@ with similar effects.
 One of the easiest way to dissect the results of your simulation is simply to
 store the landscape, or the covers of each state, then do what you want with
 them afterwards. This is not always possible, however, as the landscapes may be
-large and may not fit in memory, or your model may be running for a large
-number of iterations. To avoid this, `chouca` can take a special function
-that will be executed at regular intervals as the simulation is running.
+large and not that many may fit in your computer's memory, or your model may be running 
+for a large number of iterations. To avoid this, `chouca` can take a special function
+that will be executed as the simulation is running.
 
 This function must have a specific form: its first argument should be `t`,
 the current time of the simulation (an integer), and the second should be 
@@ -493,12 +492,15 @@ landscape as the simulation is running, measured by the Moran's I index
 mod <- ca_library("forestgap")
 init <- generate_initmat(mod, c(TREE = .5, EMPTY = .5), nr = 256)
 
+# Define the function that computes AC at lag-1 using Moran's I
+compute_aclag1 <- function(t, mat) {
+  m <- matrix(mat == "TREE", nrow = nrow(mat), ncol = ncol(mat))
+  data.frame(t = t, ac = spatialwarnings::raw_moran(mat))
+}
+
 control_args <- list(save_covers_every = 0,
                      custom_output_every = 1,
-                     custom_output_fun = function(t, mat) {
-                       m <- matrix(mat == "TREE", nrow = nrow(mat), ncol = ncol(mat))
-                       data.frame(t = t, ac = spatialwarnings::raw_moran(mat))
-                     })
+                     custom_output_fun = compute_aclag1)
 
 out <- run_camodel(mod, init, times = seq(0, 64), control = control_args)
 
@@ -525,7 +527,7 @@ can be visualised as they are running. This can be done, again by passing a spec
 function to `chouca`. The package includes a few helpers to do so.
 
 The first one is `landscape_plotter()`, which can be used as follow, and will
-display the landscape as it is being run. We use the "rock-paper-scissor"
+display the landscape as it is being run. We use here the "rock-paper-scissor"
 model included with `chouca` for its pretty patterns:
 
 ```{r trace_landscape, eval = FALSE}
@@ -542,7 +544,7 @@ out <- run_camodel(mod, init, seq(0, 128), control = ctrl)
 
 ```
 
-[!SCA result](chouca_landscape_plotting_example.png)
+[SCA result](chouca_landscape_plotting_example.png)
 
 See also the [animated version](https://alex.lecairn.org/files/chouca_landscape_plotting_example.mp4) for this output. 
 
@@ -559,7 +561,7 @@ out <- run_camodel(mod, init, seq(0, 512), control = ctrl)
 
 ```
 
-[!Trace plotting result](chouca_trace_plotting_example.png)
+[Trace plotting result](chouca_trace_plotting_example.png)
 
 See also the [animated version](https://alex.lecairn.org/files/chouca_trace_plotting_example.mp4) for this output. 
 
@@ -574,7 +576,7 @@ a large amount of simulations!
 
 
 
-# Technical limits 
+# Technical limitations 
 
 `chouca` has several caveats you may bump into as you use it: 
 
