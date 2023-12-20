@@ -218,6 +218,8 @@ landscape_plotter <- function(mod,
 #' 
 #' @examples 
 #' 
+#' \dontrun{ 
+#' 
 #' # Display covers of the rock/paper/scissor model as it is running
 #' mod <- ca_library("rock-paper-scissor")
 #' init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
@@ -259,9 +261,9 @@ landscape_plotter <- function(mod,
 #'                                                  fun = pair_counts))
 #'   out <- run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 #' }
-#
-#
-#
+#' 
+#' } 
+#'
 #'@export
 trace_plotter <- function(mod, initmat,
                           fun = NULL,

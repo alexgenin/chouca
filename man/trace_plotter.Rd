@@ -71,6 +71,8 @@ This function creates another function that is suitable for use with
 }
 \examples{
 
+\dontrun{ 
+
 # Display covers of the rock/paper/scissor model as it is running
 mod <- ca_library("rock-paper-scissor")
 init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
@@ -112,6 +114,9 @@ if ( requireNamespace("spatialwarnings") ) {
                                                  fun = pair_counts))
   out <- run_camodel(mod, init, times = seq(0, 128), control = ctrl)
 }
+
+} 
+
 }
 \seealso{
 landscape_plotter, run_camodel
