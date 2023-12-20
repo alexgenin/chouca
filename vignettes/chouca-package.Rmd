@@ -41,7 +41,7 @@ states over time with probabilities that depend on their neighborhood.
 A picture being worth a thousand words, the output of a stochastic cellular
 automaton looks like the following image in practice:
 
-[SCA example](chouca_sca_example.png)
+![SCA example](chouca_sca_example.png)
 
 (NOTE: Please see animated version <a href="https://alex.lecairn.org/files/chouca_sca_gifcreate.mp4">there</a>).
 
@@ -544,7 +544,7 @@ out <- run_camodel(mod, init, seq(0, 128), control = ctrl)
 
 ```
 
-[SCA result](chouca_landscape_plotting_example.png)
+![SCA result](chouca_landscape_plotting_example.png)
 
 See also the [animated version](https://alex.lecairn.org/files/chouca_landscape_plotting_example.mp4) for this output. 
 
@@ -561,7 +561,7 @@ out <- run_camodel(mod, init, seq(0, 512), control = ctrl)
 
 ```
 
-[Trace plotting result](chouca_trace_plotting_example.png)
+![Trace plotting result](chouca_trace_plotting_example.png)
 
 See also the [animated version](https://alex.lecairn.org/files/chouca_trace_plotting_example.mp4) for this output. 
 
