@@ -201,8 +201,8 @@ transition probabilities.
 Overall, the assumed functional form of transitions probabilities must be the following:
 
 $$
-P( a \rightarrow b ) = \beta_0 \\
-  + \sum_{s \in S} f_s(q_s) \\ 
+P( a \rightarrow b ) = \beta_0 
+  + \sum_{s \in S} f_s(q_s) 
   + \zeta(\boldsymbol p, \boldsymbol p) + 
   + \zeta(\boldsymbol p, \boldsymbol q) + 
   + \zeta(\boldsymbol q, \boldsymbol q) 

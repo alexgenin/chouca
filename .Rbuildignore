@@ -29,4 +29,4 @@
 ^choucatests$^
 ^.*pdf$
 ^rcmd.sh$
-^vignettes/chouca.package_buildimages.R$
+^vignettes/.*\.R$

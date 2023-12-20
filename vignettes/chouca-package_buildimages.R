@@ -112,9 +112,9 @@ plyr::l_ply(seq_along(pngs), function(i) {
 }, .progress = "time")
 
 # Copy one frame 
-files <- tail(dir(export_dir, full = TRUE), 1)
+files <- tail(dir(export_dir, full = TRUE, pattern = "*.png"), 1)
 file.remove(files) # the last one is buggy for some reason
-files <- tail(dir(export_dir, full = TRUE), 1)
+files <- tail(dir(export_dir, full = TRUE, pattern = "*.png"), 1)
 file.copy(files, "chouca_trace_plotting_example.png", overwrite = TRUE)
 
 # Assemble into video 
