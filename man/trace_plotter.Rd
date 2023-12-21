@@ -84,36 +84,32 @@ run_camodel(mod, init, times = seq(0, 256), control = ctrl)
 colors <- c("#fb8500", "#023047", "#8ecae6")
 ctrl <- list(custom_output_every = 1,
              custom_output_fun = trace_plotter(mod, init, fps_cap = 60, col = colors))
-run_camodel(mod, init, times = seq(0, 300), control = ctrl)
+run_camodel(mod, init, times = seq(0, 600), control = ctrl)
 
-# Display statistics on spatial autocorrelation on the fly for the arid
-# vegetation model
-if ( requireNamespace("spatialwarnings") ) {
-  mod <- ca_library("aridvege")
-  init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
-  moran <- function(mat) {
-    m <- matrix(mat == "VEGE", nrow = nrow(mat), ncol = ncol(mat))
-    spatialwarnings::raw_moran(m)
-  }
-  ctrl <- list(custom_output_every = 1,
-               custom_output_fun = trace_plotter(mod, init,
-                                                 fun = moran))
-  run_camodel(mod, init, times = seq(0, 128), control = ctrl)
+# Display the vegetated to degraded cover ratio for the arid
+# vegetation model. 
+mod <- ca_library("aridvege")
+init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
+ratio <- function(mat) {
+  mean(mat == "VEGE") / mean(mat == "DEGR")
 }
+ctrl <- list(custom_output_every = 1,
+             custom_output_fun = trace_plotter(mod, init,
+                                               fun = ratio))
+run_camodel(mod, init, times = seq(0, 512), control = ctrl)
 
-# Display dynamics of cell pairs in the rock-paper-scissor model
-if ( requireNamespace("spatialwarnings") ) {
-  mod <- ca_library("rock-paper-scissor")
-  init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
-  pair_counts <- function(mat) {
-    pairs <- spatialwarnings::pair_counts(mat, prop = FALSE)
-    as.vector(pairs[lower.tri(pairs)])
-  }
-  ctrl <- list(custom_output_every = 1,
-               custom_output_fun = trace_plotter(mod, init,
-                                                 fun = pair_counts))
-  out <- run_camodel(mod, init, times = seq(0, 128), control = ctrl)
+# Display ratios of cell pairs in the rock-paper-scissor model
+mod <- ca_library("rock-paper-scissor")
+init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
+ratio <- function(mat) {
+  c(mean(mat == "r") / mean(mat == "p"), 
+    mean(mat == "p") / mean(mat == "c"), 
+    mean(mat == "c") / mean(mat == "r"))
 }
+ctrl <- list(custom_output_every = 1,
+             custom_output_fun = trace_plotter(mod, init,
+                                               fun = ratio))
+run_camodel(mod, init, times = seq(0, 512), control = ctrl)
 
 } 
 

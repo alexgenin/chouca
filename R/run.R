@@ -351,19 +351,17 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #' ctrl2 <- list(engine = "compiled", precompute_probas = TRUE)
 #' run2 <- run_camodel(mod, im, times = seq(0, 256), control = ctrl2)
 #'
-#' # Use a custom function to compute spatial statistics while the simulation is running
-#' if ( requireNamespace("spatialwarnings", quietly = TRUE) ) {
-#'  fun <- function(t, mat) {
-#'    m_classif <- matrix(mat == "MUSSEL", nrow = nrow(mat), ncol = ncol(mat))
-#'    data.frame(t = t, aclag1 = spatialwarnings::raw_moran(m_classif),
-#'               m = mean(m_classif))
-#'  }
-#'  ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
-#'
-#'  run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
-#'  stats <- do.call(rbind, run[["output"]][["custom"]])
-#'  matplot(stats[ ,1], stats[ ,-1], ylab = "ac-lag1", xlab = "time", type = "l")
+#' # Use a custom function to compute statistics while the simulation is running
+#' fun <- function(t, mat) {
+#'   # Disturbed cell to mussel cell ratio
+#'   ratio <- mean(mat == "DISTURB") / mean(mat == "MUSSEL")
+#'   data.frame(t = t, ratio = ratio)
 #' }
+#' ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
+#'
+#' run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
+#' stats <- do.call(rbind, run[["output"]][["custom"]])
+#' plot(stats[ ,1], stats[ ,2], ylab = "DISTURB/MUSSEL ratio", xlab = "time", type = "l")
 #'
 #' }
 #'@export

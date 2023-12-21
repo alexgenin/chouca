@@ -254,7 +254,6 @@ list_methods <- function(class,
   
   all_methods <- lapply(class, function(class) { 
     tab <- attr(utils::methods(class = class), "info")
-#     tab[tab[ ,"from"] == "spatialwarnings", "generic"]
     tab[ ,"generic"]
   })
   all_methods <- sort(unique(unlist(all_methods)))
