@@ -4,8 +4,6 @@ Version: 0.0.99
 Authors@R: 
     person("Alexandre", "Génin", , "a.a.h.genin@uu.nl", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3333-1338"))
-Author: Alexandre Genin [aut, cre]
-Maintainer: Alexandre Genin <a.a.h.genin@uu.nl>
 Description: An engine for stochastic cellular automata. It provides a high-level 
   interface to declare a model, which can then be simulated by various backends 
   (Genin et al. (2023) <doi:10.1101/2023.11.08.566206>).
@@ -30,6 +28,7 @@ Suggests:
     igraph,
     knitr,
     rmarkdown, 
-    ggplot2
+    ggplot2, 
+    spatialwarnings
 Config/testthat/edition: 3
 VignetteBuilder: knitr
