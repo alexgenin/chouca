@@ -124,14 +124,14 @@ proportion of each state in the landscape, and the local proportion of cells aro
 a given cell.
 
 \deqn{
-  \a_0 + \sum_{k=1}^S g_k(q_k) + \zeta(q, q) + \zeta(p, q) + \zeta(q, q) 
+  \a_0 + \sum_{k=1}^S g_k(q_k) + \Zeta(q, q) + \Zeta(p, q) + \Zeta(q, q) 
 }
 
 where \eqn{a_0} is a constant, \eqn{g_k} are univariate functions of \eqn{q_k}, 
 the proportions of neighbors of a cell in state k, and \eqn{q} is the vector 
 containing all the \eqn{q_k} for k between \eqn{1} and \eqn{S}, the total number of
 states in the model. Similarly, \eqn{p} is the length-\eqn{S} vector containing the
-proportion of cells in each state in the whole grid. \zeta above is the sum, defined 
+proportion of cells in each state in the whole grid. \Zeta above is the sum, defined 
 for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as 
 
 \deqn{ 
