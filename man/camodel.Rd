@@ -123,28 +123,26 @@ supports models where the probabilities depend on constant parameters, the globa
 proportion of each state in the landscape, and the local proportion of cells around
 a given cell.
 
-\deqn{
-  \a_0 + \sum_{k=1}^S g_k(q_k) + \Zeta(q, q) + \Zeta(p, q) + \Zeta(q, q) 
-}
+\deqn{a_0 + \sum_{k=1}^S g_k(q_k) + s(q, q) + s(p, q) + s(q, q)}{
+      a_0 + \sum_{k=1}^S g_k(q_k) + s(q, q) + s(p, q) + s(q, q)}
 
 where \eqn{a_0} is a constant, \eqn{g_k} are univariate functions of \eqn{q_k}, 
 the proportions of neighbors of a cell in state k, and \eqn{q} is the vector 
 containing all the \eqn{q_k} for k between \eqn{1} and \eqn{S}, the total number of
 states in the model. Similarly, \eqn{p} is the length-\eqn{S} vector containing the
-proportion of cells in each state in the whole grid. \Zeta above is the sum, defined 
+proportion of cells in each state in the whole grid. \eqn{s} above is the sum, defined 
 for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as 
 
 \deqn{ 
   a_1 x_1^{\alpha_1} y_1^{\beta_1} + a_2 x_1^{\alpha_2} y_2^{\beta_2} + 
-  a_3 x_2^{\alpha_3} y_1^{\beta_3} + \dots + a_K + x_S^{\alpha_K} y_S^{\beta_K}
+  a_3 x_2^{\alpha_3} y_1^{\beta_3} + \dots + a_K x_S^{\alpha_K} y_S^{\beta_K}
 }
 
-where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{beta_k} are constants for all \eqn{k}, 
+where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{\beta_k} are constants for all \eqn{k}, 
 and \eqn{K} is the total number of terms (equal to \eqn{S^2}). Note that 
 \eqn{\alpha_K} and \eqn{\beta_K} are capped to 5. This can be overriden using
 \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher 
-values typically make the packages slow and/or lead to numerical instabilities.
-
+values typically make the package slow and/or leads to numerical instabilities.
 The functions \eqn{g_k} above can be any univariate functions of \eqn{q_k}, so
 \code{chouca} effectively supports any type of transition rule involving the 
 neighborhood of a cell, including some 'threshold' rules that involve a single state 
@@ -155,7 +153,7 @@ neighbors in state A *and* 2 in state B means a cell switches from A to B". When
 doubt, just write your model, and \code{chouca} will tell you if it cannot run it
 accurately by running model checks.
 
-This is controlled by \code{check_model}. When set to "quick" or "full",
+Model checks are controlled by \code{check_model}. When set to "quick" or "full",
 a check is performed to make sure the functional form above is able to accurately
 represent probabilities of transitions in the model, with "full" enabling more
 extensive tesing, and "none" removing it entirely. When using chouca,
@@ -166,10 +164,10 @@ case, or adjusting your model parameters.
 
 When space does not wrap around (\code{wrap = FALSE}), cells in the corners
 or in the edges will have a lower number of neighbors. The proportions
-of cells in a given state k, \eqn{q_k}, will thus be computed with a reduced
+of cells in a given state \eqn{k}, \eqn{q_k}, will thus be computed with a reduced
 number of cells. For example, a cell in a corner will have only 2 neighbors
-when using a 4x4 neighborhood, so \eqn{q_k} is computed using only the state
-of two cells, and can be only equal to 0, 0.5 or 1. 
+when using a 4x4 neighborhood, so \eqn{q_k} is computed using only two cells, and 
+can be only equal to 0, 0.5 or 1. 
 
 To run a model once it is defined, the function \code{\link{run_camodel}} can be
 used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial

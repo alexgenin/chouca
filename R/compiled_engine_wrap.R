@@ -94,7 +94,10 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # 'betas_index' contains the starting and ending index to pick relevant coefficients in
   # coef_table for each transition. It is a 3d array where the first columns correspond
   # to the state being transitioned from and to, and the third dimension contains the
-  # starting and ending indices in coef_table
+  # starting and ending indices in coef_table. 
+  # This is a bit cumbersome, but it allows having all the different tables beta_0, 
+  # beta_q, etc. in one big table, which helps with cache locality
+  # 
   betas_index <- array(nrow(coef_table)+1, dim = list(ns, ns, 2 * length(tables)))
   for ( i in seq_along(tables) ) {
     for ( from in seq(0, ns-1) ) {
@@ -160,9 +163,13 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   clines <- gsub("__FPREFIX__", hash, clines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
 
-  # Make the table with all combinations of qs
+  # Make the table with all combinations of qs. If we wrap, then we can discard
+  # combinations that are not multiples of the number of neighbors (this is what the
+  # 'filter' argument does below)
   if ( precompute_probas ) {
-    all_qs <- generate_all_qs(max_nb, ns, filter = wrap, line_cap = 0)
+    all_qs <- generate_all_qs(max_nb, ns, 
+                              filter = wrap, 
+                              line_cap = 0)
   } else {
     # This is a dummy matrix just to make sure we pass something to the c++ function.
     all_qs <- matrix(0, nrow = 1, ncol = ns)

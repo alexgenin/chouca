@@ -20,7 +20,9 @@ Imports:
     Rcpp, 
     plyr, 
     digest, 
-    stats
+    stats, 
+    graphics, 
+    grDevices
 Suggests: 
     covr,
     testthat (>= 3.0.0),

@@ -180,7 +180,7 @@ inline uword number_of_neighbors(const arma::uword i,
   // If we use a fixed number of neighbors, then return early. In this case, cells on
   // the edges will have a lower chance of switching, but this may be an approximation
   // we are willing to make for better performance.
-  if ( fixed_nb || wrap ) {
+  if ( fixed_nb ) {
     return( nnb );
   }
 
@@ -401,11 +401,54 @@ inline void adjust_nb_plines(uword pline[nr][nc],
                              const uchar from,
                              const uchar to) {
 
-  // NOTE: we use a signed integer here because the pline adjustment can be negative
+  // Remember that the table of possible neighborhood configurations is organized like 
+  // this: 
+  //        q_3  q_2  q_1  total
+  //       [,1] [,2] [,3] [,4]
+  // [1,]    0    0    0    0
+  // [2,]    0    0    1    1
+  // [3,]    0    0    2    2
+  // [4,]    0    0    3    3
+  // [5,]    0    0    4    4
+  // [6,]    0    1    0    1
+  // [7,]    0    1    1    2
+  // [8,]    0    1    2    3
+  // [9,]    0    1    3    4
+  // [10,]   0    1    4    5
+  // [11,]   0    2    0    2
+  // 
+  // where the three first columns are the states, and the last column is the total 
+  // number of neighbors. This means that the number of lines before a configuration 
+  // is equal to 
+  // 
+  //  \sum_k=1^ns (nb+1)^(k-1) q_k where 
+  //  
+  //   ns is the number of states 
+  //   nb is the max number of neighbors 
+  //   q_k is the number of neighbors in state k 
+  // 
+  // for example, for line 10 above the number of lines to skip to reach it is equal to 
+  //   (nb+1)^0 * 4 + (nb+1)^1*1 + (nb+1)^2 * 0 = 4 + 5 = 9 
+  // 
+  //  ...and there are indeed 9 lines before line 10. There is some adjustment to do 
+  //  to take into account 0-indexing vs 1-indexing, but this is the gist of it. 
+  // 
+  // Because this is a sum, when one neighbor changes state, this means that one of 
+  // those columns changes, so we need to remove the term corresponding 
+  // to the old state, and add the term corresponding to the new state, hence the 
+  // following adjustment factor: 
+  // 
+  // NOTE: we use a signed integer here because the pline adjustment can be negative (we 
+  // go up in the table)
   arma::sword adj = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from);
-
-  // If we wrap, then what would go max_nb by max_nb goes instead one by one, so
-  // we need to divide the line jump here.
+  
+  // If we have a fixed number of neighbors, then we discard the combinations that 
+  // do not sum to this number of neighbors. In the table above for example, this is 
+  // not done so you have configurations with, for example, 3 neighbors, that do not 
+  // correspond to something that occurs in the grid. This effectively removes every 
+  // line but those that fall every 'nb' (the number of neighbors), so we need to divide
+  // the adjustment factor accordingly (i.e. instead of going nb-by-nb, we go one by
+  // one). 
   adj = wrap ? adj / ( (sword) max_nb ) : adj;
 
   // Get neighbors to the left

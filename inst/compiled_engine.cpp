@@ -308,12 +308,14 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       // process a line and wait for the others to finish before switching to the next
       // line. This ensures that two threads will never write to the same cell in the
       // shared data structures. This slows down things a lot when precomputing
-      // probabilities, but when there is a significant amount of work to do
-      // per line (complex model, no memoization of probas), this works well.
+      // probabilities because there is not much to do and threads will spend a lot of 
+      // time not trying to step on each others' toes, but when there is a significant 
+      // amount of work to do per line (complex model, no memoization of probas), 
+      // this works well.
       //
-      // Note that this probably assumes that nr >> cores, but it would be a quite
+      // Note that this probably assumes that nr >> cores, but it would be a bit of a 
       // pathological case if this was not true.
-      //
+      // 
       // This has funny indentation but it is the only way to align code in the
       // inside blocks with the non-parallel version
       for (uword c = 0; c < (nr / cores); c++) {
