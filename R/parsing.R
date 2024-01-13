@@ -7,7 +7,7 @@
 #'
 #' @description  High-level definition of a stochastic cellular automaton
 #'
-#' @param ... a number of transition descriptions, as built by the
+#' @param ... A number of transition descriptions, as built by the
 #'   \code{\link{transition}} function (see Details and Examples)
 #'
 #' @param neighbors The number of neighbors to use in the cellular automaton (4 for 4-way
@@ -17,13 +17,13 @@
 #'   at the edges (the top/leftmost cells will be considered neighbors of the
 #'   bottom/rightmost cells)
 #'
-#' @param parms a named list of parameters, which should be all numeric, single values
+#' @param parms A named list of parameters, which should be all numeric, single values
 #'
-#' @param all_states the complete set of states of the model (a character vector). If
+#' @param all_states The complete set of states of the model (a character vector). If
 #'   unspecified, it will be guessed from the transition rules, but it is a good idea
 #'   to pass it here to make sure the model definition is correct.
 #'
-#' @param verbose whether information should be printed when parsing the model
+#' @param verbose Whether information should be printed when parsing the model
 #'   definition.
 #'
 #' @param check_model A check of the model definition is done to make sure there
@@ -37,15 +37,20 @@
 #'   considered to be equal to zero. The default value should work well here, except
 #'   if you run models that have extremely small transition probabilities (<1e-8).
 #'
-#' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = FALSE}),
-#'   the number of neighbors per cell is variable, which can slow down the simulation.
-#'   Set this option to \code{TRUE} to consider that the number of neighbors is always
-#'   four or eight, regardless of the position of the cell in the landscape, at the cost
-#'   of approximate dynamics at the edges of the landscape.
+#' @param fixed_neighborhood When not using wrapping around the edges 
+#'   (\code{wrap = FALSE}), the number of neighbors per cell is variable, which can 
+#'   slow down the simulation. Set this option to \code{TRUE} to consider that the number
+#'   of neighbors is always four or eight, regardless of the position of the cell in the
+#'   landscape, at the cost of approximate dynamics at the edges of the landscape.
 #'
 #' @details
 #' 
-#' This function allows defining a stochastic cellular automaton model by its set of
+#' This help page describes in detail technical points related to the definition of 
+#' models in \code{chouca}. If this is your first time working with \code{chouca}, 
+#' you may like the longer introduction in the 
+#' \link[=chouca-package.html]{vignette}.
+#' 
+#' \code{camodel} allows defining a stochastic cellular automaton model by its set of
 #' transition rules. These are defined by a set of calls to the \code{transition()}
 #' function. Each of these calls defines the two states of the transition, and the
 #' probability as a one-sided formula involving constants and the special vectors 
@@ -54,16 +59,18 @@
 #' \code{transition()} calls takes three arguments: the state from which the transition
 #' is defined, the state to which the transition goes, and a transition probability,
 #' defined as a one-sided formula. This formula can include numerical constants,
-#' parameters defined in the named list \code{parms}, and any combination of p['a']
-#' and q['b'], which respectively represent the proportion of cells in a landscape in
-#' state 'a', and the proportion of neighbors of a given cell in state 'b' ('a', and
-#' 'b' being, of course, any of the possible states defined in the model). See
-#' below for examples of model definitions
+#' parameters defined in the named list \code{parms}, and any combination of
+#' \code{p['a']} and \code{q['b']}, which respectively represent the proportion 
+#' of cells in a landscape in state 'a', and the proportion of neighbors of a given cell
+#' in state 'b' ('a', and 'b' being, of course, any of the possible states defined in the
+#' model). Such formula could typically look like \code{~ 0.2 + 0.3 * p["a"] + q["b"]}. 
+#' See below for examples of model definitions. 
 #' 
 #' It is important to remember when using this function that \code{chouca} only
 #' supports models where the probabilities depend on constant parameters, the global
 #' proportion of each state in the landscape, and the local proportion of cells around
-#' a given cell.
+#' a given cell. In other words, all transition probabilities should have the following 
+#' functional form: 
 #' 
 #' \deqn{a_0 + \sum_{k=1}^S g_k(q_k) + s(q, q) + s(p, q) + s(q, q)}{
 #'       a_0 + \sum_{k=1}^S g_k(q_k) + s(q, q) + s(p, q) + s(q, q)}
@@ -98,11 +105,10 @@
 #' Model checks are controlled by \code{check_model}. When set to "quick" or "full",
 #' a check is performed to make sure the functional form above is able to accurately
 #' represent probabilities of transitions in the model, with "full" enabling more
-#' extensive tesing, and "none" removing it entirely. When using chouca,
-#' coefficients in the formula above are rounded down to zero when below
-#' \code{epsilon}. This may be an issue if your transition probabilities are
-#' close to zero: consider reducing \code{epsilon} to a smaller value in this
-#' case, or adjusting your model parameters. 
+#' extensive tesing, and "none" removing it entirely. Coefficients in the formula 
+#' above are rounded down to zero when below \code{epsilon}. This may be an issue if 
+#' your transition probabilities are close to zero: consider reducing \code{epsilon} to 
+#' a smaller value in this case, or adjusting your model parameters. 
 #' 
 #' When space does not wrap around (\code{wrap = FALSE}), cells in the corners
 #' or in the edges will have a lower number of neighbors. The proportions
