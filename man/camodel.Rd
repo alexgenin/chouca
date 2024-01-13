@@ -105,8 +105,8 @@ High-level definition of a stochastic cellular automaton
 \details{
 This help page describes in detail technical points related to the definition of 
 models in \code{chouca}. If this is your first time working with \code{chouca}, 
-you may like the longer introduction in the 
-\link[=chouca-package.html]{vignette}.
+you may like the longer introduction in the vignette, accessible using 
+\code{vignette("chouca-package")}.
 
 \code{camodel} allows defining a stochastic cellular automaton model by its set of
 transition rules. These are defined by a set of calls to the \code{transition()}
@@ -141,8 +141,13 @@ proportion of cells in each state in the whole grid. \eqn{s} above is the sum, d
 for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as 
 
 \deqn{ 
-  a_1 x_1^{\alpha_1} y_1^{\beta_1} + a_2 x_1^{\alpha_2} y_2^{\beta_2} + 
-  a_3 x_2^{\alpha_3} y_1^{\beta_3} + \dots + a_K x_S^{\alpha_K} y_S^{\beta_K}
+  a_1 x_1^{\alpha_1} y_1^{\beta_1} + 
+  a_2 x_1^{\alpha_2} y_2^{\beta_2} + 
+  a_3 x_1^{\alpha_3} y_3^{\beta_3} + 
+  a_4 x_2^{\alpha_3} y_1^{\beta_3} + 
+  a_4 x_2^{\alpha_3} y_2^{\beta_3} + 
+  \dots + 
+  a_K x_S^{\alpha_K} y_S^{\beta_K}
 }
 
 where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{\beta_k} are constants for all \eqn{k}, 
@@ -160,10 +165,10 @@ neighbors in state A *and* 2 in state B means a cell switches from A to B". When
 doubt, just write your model, and \code{chouca} will tell you if it cannot run it
 accurately by running model checks.
 
-Model checks are controlled by \code{check_model}. When set to "quick" or "full",
-a check is performed to make sure the functional form above is able to accurately
-represent probabilities of transitions in the model, with "full" enabling more
-extensive tesing, and "none" removing it entirely. Coefficients in the formula 
+Model checks are controlled by the argument \code{check_model}. When set to "quick" 
+or "full", a check is performed to make sure the functional form above is able to
+accurately represent probabilities of transitions in the model, with "full" enabling
+more extensive testing, and "none" removing it entirely. Coefficients in the formula 
 above are rounded down to zero when below \code{epsilon}. This may be an issue if 
 your transition probabilities are close to zero: consider reducing \code{epsilon} to 
 a smaller value in this case, or adjusting your model parameters. 

@@ -143,18 +143,18 @@ landscape_plotter <- function(mod,
       device_is_open <- ! is.null(devlist)
       if ( device_is_open ) { 
         old_dev <<- grDevices::dev.cur()
-        old_par <<- par(no.readonly = TRUE)
       } else { # there is no graphical plot yet, create one 
         grDevices::dev.new()
-        old_dev <<- dev.cur()
-        old_par <<- par(no.readonly = TRUE) # Default parameters
+        old_dev <<- grDevices::dev.cur()
       } 
+      
+      old_par <<- graphics::par(no.readonly = TRUE) # Default parameters
       
       # If there is a device open, but we asked for a new window anyway, create it here, 
       # and set it to the drawing device
       if ( new_window && device_is_open ) {
         grDevices::dev.new()
-        drawing_dev <<- dev.cur()
+        drawing_dev <<- grDevices::dev.cur()
       # We reuse the existing device (that we may have just created)
       } else { 
         drawing_dev <<- old_dev
@@ -170,8 +170,8 @@ landscape_plotter <- function(mod,
     # new_window to FALSE in the parent environment
     setup_par(parlist)
     on.exit({ 
-      dev.set(old_dev)
-      par(old_par)
+      grDevices::dev.set(old_dev)
+      graphics::par(old_par)
     })
     
     this_call_time <- Sys.time()
@@ -240,7 +240,7 @@ landscape_plotter <- function(mod,
 #' @details
 #'
 #'   This function creates another function that is suitable for use with
-#'   \code{\link{run_camodel}}. It allows plotting any matric computed on the
+#'   \code{\link{run_camodel}}. It can plot any quantity computed on the
 #'   landscape as it is being simulated, using the base function
 #'   \code{\link[graphics]{matplot}}. The resulting function must by passed to
 #'   \code{\link{run_camodel}} as the control argument \code{custom_output_fun}.
@@ -379,18 +379,17 @@ trace_plotter <- function(mod, initmat,
       device_is_open <- ! is.null(devlist)
       if ( device_is_open ) { 
         old_dev <<- grDevices::dev.cur()
-        old_par <<- par(no.readonly = TRUE)
       } else { # there is no graphical plot yet, create one 
         grDevices::dev.new()
-        old_dev <<- dev.cur()
-        old_par <<- par(no.readonly = TRUE) # Default parameters
+        old_dev <<- grDevices::dev.cur()
       } 
+      old_par <<- graphics::par(no.readonly = TRUE) # Default parameters
       
       # If there is a device open, but we asked for a new window anyway, create it here, 
       # and set it to the drawing device
       if ( new_window && device_is_open ) {
         grDevices::dev.new()
-        drawing_dev <<- dev.cur()
+        drawing_dev <<- grDevices::dev.cur()
       # We reuse the existing device (that we may have just created)
       } else { 
         drawing_dev <<- old_dev
@@ -406,8 +405,8 @@ trace_plotter <- function(mod, initmat,
     # new_window to FALSE in the parent environment
     setup_par(parlist)
     on.exit({ 
-      dev.set(old_dev)
-      par(old_par)
+      grDevices::dev.set(old_dev)
+      graphics::par(old_par)
     })
     
     this_call_time <- Sys.time()

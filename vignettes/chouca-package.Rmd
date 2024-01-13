@@ -30,8 +30,6 @@ library(plyr)
 library(ggplot2)
 ```
 
-# Introduction
-
 `chouca` is engine in R for
 [stochastic cellular automata](https://en.wikipedia.org/wiki/Stochastic_cellular_automaton),
 which are models that describes the temporal dynamics of a 2D grid made
@@ -145,16 +143,16 @@ init_mat <- generate_initmat(kubo_model,
 ```
 
 Here we initalize the covers to half forest and half empty space using the
-argument `pvec`, and use a landscape of 128 rows by 256 columns. We can now
-run the simulation:
+argument `pvec`, and use a landscape of 128 rows by 256 columns filled at random. We 
+can now run the simulation:
 
 ```{r run}
 out <- run_camodel(kubo_model, init_mat, times = seq(0, 100))
 ```
 
-We can then display the results, either in the R console using `summary()`, or
-as a plot using the generic function `plot()`, which displays the global covers
-of each state through time, or `image()`, which displays the landscape:
+We can then display the results, either in the R console using `summary()`, as a plot
+using the generic function `plot()`, which displays the global covers of each state
+through time, or `image()`, which displays the landscape:
 
 ```{r display_console}
 summary(out)
@@ -201,11 +199,11 @@ transition probabilities.
 Overall, the assumed functional form of transitions probabilities must be the following:
 
 $$
-P( a \rightarrow b ) = \beta_0 
-  + \sum_{s \in S} f_s(q_s) 
-  + \zeta(\boldsymbol p, \boldsymbol p) + 
-  + \zeta(\boldsymbol p, \boldsymbol q) + 
-  + \zeta(\boldsymbol q, \boldsymbol q) 
+P( a \rightarrow b ) = \beta_0 + 
+  \sum_{s \in S} f_s(q_s) + 
+  \zeta(\boldsymbol p, \boldsymbol p) + 
+  \zeta(\boldsymbol p, \boldsymbol q) + 
+  \zeta(\boldsymbol q, \boldsymbol q) 
 $$
 
 where $S$ represents the set of states of the cellular automaton, $f_s$ can be any
@@ -220,13 +218,13 @@ $$
    \beta_K x_n^{a_K} x_1^{b_K} 
 $$
 
-All the $(\beta_i)_{i \in [0:K]}$, $(a)_{i \in [1:K]}$, $(b)_{i \in [1:K]}$ 
-constant model parameters. Many models can be represented using this functional form -
-however, this may not always be the case, especially as soon as non-linear
+All the $(\beta_i)_{i \in [1:K]}$, $(a)_{i \in [1:K]}$, $(b)_{i \in [1:K]}$ 
+are constant model parameters. Many models can be represented using this functional 
+form - however, this may not always be the case, especially as soon as non-linear
 functions are involved (exp, sin, etc.), or functions with discontinuities. This
 functional form looks daunting, but `chouca` will warn you if the transition
-probabilities cannot be accurately computed, so the best way to go is to write your 
-model and see if it is supported.
+probabilities cannot be accurately computed, so the best way to go is probably to write
+your model and see if it is supported.
 
 For all models, `chouca` reports an estimation of the error on the probabilities of
 transition, and whether probabilities can reach problematic values above one 
@@ -296,19 +294,19 @@ print(mod) # negligible error this time, as we use an approximation of sin()
 
 
 
-# Performance
+## Performance
 
 One of the main appeal of `chouca` is its performance: which is affected by
 various factors. The main one is the model complexity. Using a model with
 transition probabilities that are complicated products of global or neighbor
 covers, or that do not fit well the expected functional form will lead to poor
 performance. When possible, try to make your model follow this form. That being said, 
-several approaches exist to improve simulation speed in chouca, regardless of
-the model: (i) on-the-fly compilation, (ii) memoisation of transition
-probabilities and (iii) multithreading.
+several approaches exist to improve simulation speed, regardless of the model: (i) 
+on-the-fly compilation, (ii) memoisation of transition probabilities and (iii) multithreading.
 
 On-the-fly compilation can be enabled using the "compiled" engine to run the cellular
-automaton. This is done by setting the `engine` control argument to "compiled":
+automaton. This is done by setting the `engine` control argument to the string 
+"compiled":
 
 ```{r}
 control_args <- list(engine = "compiled",
@@ -351,7 +349,7 @@ out <- run_camodel(kubo_model,
 
 ```
 
-This approach can dramatically improve the performance for models that have a
+This can dramatically improve the performance for models that have a
 small number of states and simple transition rules. However, it may be
 counter-productive for models with a larger number of states, as the number of
 neighborhood configurations grows very quickly with the number of different
@@ -395,7 +393,7 @@ performance to the table.
 
 
 
-# Storing/discarding/accessing data
+## Storing/discarding/accessing data
 
 Various options are available to access simulation outputs. When nothing is
 specified, the percentage of cells in each state will be saved at each time
@@ -412,6 +410,8 @@ init <- generate_initmat(kubo_model, c(0.5, 0.5),
                          nr = 128)
 
 run <- run_camodel(kubo_model, init, times = seq(0, 128, by = 1))
+
+# Extract covers and display the last lines of the table
 covers <- run[["output"]][["covers"]]
 tail(covers)
 ```
@@ -468,16 +468,16 @@ A similar argument exists for saving landscapes, `save_snapshots_every`, to
 reduce or increase the number of landscapes being saved during the simulation,
 with similar effects.
 
-# Running computations on the fly
+## Running computations on the fly
 
-## Computing things
+### Computing things
 
-One of the easiest way to dissect the results of your simulation is simply to
-store the landscape, or the covers of each state, then do what you want with
-them afterwards. This is not always possible, however, as the landscapes may be
-large and not that many may fit in your computer's memory, or your model may be running 
-for a large number of iterations. To avoid this, `chouca` can take a special function
-that will be executed as the simulation is running.
+One of the easiest way to dissect the results of your simulation is simply to store the 
+landscape, or the covers of each state as the simulation runs, then do what you want with 
+them afterwards. This is not always possible, however, as the landscapes may be large and 
+not that many may fit in your computer's memory, or your model may be running for a large 
+number of iterations. To avoid this, `chouca` can take a special function that will be 
+executed as the simulation is running.
 
 This function must have a specific form: its first argument should be `t`,
 the current time of the simulation (an integer), and the second should be 
@@ -485,7 +485,7 @@ the current time of the simulation (an integer), and the second should be
 
 For example, we can compute how the spatial autocorrelation changes in the
 landscape as the simulation is running, measured by the Moran's I index
-(available in package (spatialwarnings)[https://cran.r-project.org/package=spatialwarnings]):
+(available in package [spatialwarnings](https://cran.r-project.org/package=spatialwarnings):
 
 ```{r}
 
@@ -520,11 +520,16 @@ my_tbl <- do.call(rbind, my_output)
 tail(my_tbl, 10)
 ```
 
-## Visualising simulations as they run
+
+
+
+
+### Looking at simulations as they run
 
 The ability to carry out on-line computations has the nice side-effect that simulations 
 can be visualised as they are running. This can be done, again by passing a specific 
-function to `chouca`. The package includes a few helpers to do so.
+function that will be executed as the simulation runs. The package includes a few helpers 
+to do so.
 
 The first one is `landscape_plotter()`, which can be used as follow, and will
 display the landscape as it is being run. We use here the "rock-paper-scissor"
@@ -576,20 +581,20 @@ a large amount of simulations!
 
 
 
-# Technical limitations 
+## Technical limitations 
 
 `chouca` has several caveats you may bump into as you use it: 
 
-* While `chouca` is flexible, it would probably be unwise to define stochastic cellular 
-automata with more than 100 different states. `chouca` works better with models that 
-have a low number of states and/or transitions. 
+* It would probably be unwise to define stochastic cellular automata with more than 
+100 different states. `chouca` works better with models that have a low number of 
+states and/or transitions. 
 
 * M1/2 Macs, and Macs in general have spotty support for [OpenMP](https://mac.r-project.org/openmp/#do): you may or may not be able to use multiple threads on your machine when 
 running simulations. 
 
 
 
-# References
+## References
 
 Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. “Forest Spatial Dynamics
 with Gap Expansion: Total Gap Area and Gap Size Distribution.” Journal of

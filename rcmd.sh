@@ -24,5 +24,11 @@ if [ "$ACTION" == "check" ]; then
   R CMD check --as-cran chouca*.tar.gz
 fi
 
+if [ "$ACTION" == "install" ]; then 
+  cd "$TMPDIR"
+  R CMD build "chouca" 
+  R -e "install.packages(dir(pattern = '^chouca.*gz$'), repos = NULL)"
+fi
+
 rm -rf "$TMPDIR"
 

@@ -54,7 +54,7 @@ This function creates an internal function to plot the model
 }
 \details{
 This function creates another function that is suitable for use with
-  \code{\link{run_camodel}}. It allows plotting any matric computed on the
+  \code{\link{run_camodel}}. It can plot any quantity computed on the
   landscape as it is being simulated, using the base function
   \code{\link[graphics]{matplot}}. The resulting function must by passed to
   \code{\link{run_camodel}} as the control argument \code{custom_output_fun}.
