@@ -52,7 +52,44 @@
 #'       which a cell changes state depending on its neighbors according the game rules
 #'       (e.g. "rock beats scissors"). This deterministic model produces nice spirals.
 #'   }
-#'
+#' 
+#' @returns 
+#'   
+#' This function returns a \code{\link{list}} object with class \code{ca_model}, with 
+#' the following named components. Please note that most are for internal use and may 
+#' change with package updates. 
+#' 
+#' \describe{
+#'   \item{\code{transitions}}{the list of transitions of the model, as returned 
+#'       by \code{\link{transition}} }
+#' 
+#'   \item{\code{nstates}}{the number of states of the model}
+#' 
+#'   \item{\code{parms}}{the parameter values used for the model}
+#' 
+#'   \item{\code{beta_0},\code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
+#'     internal tables used to represent probabilities of transitions when running
+#'     simulations, these tables are for internal use and probably not interesting for 
+#'     end users, but more information is provided in the package source code}
+#'   
+#'   \item{\code{wrap}}{Whether the model uses a toric space that wraps around the edge}
+#' 
+#'   \item{\code{neighbors}}{The type of neighborhood (4 or 8)}
+#'   
+#'   \item{\code{epsilon}}{The \code{epsilon} values used in the model definition, below 
+#'     which transition probabilities are assumed to be zero}
+#'   
+#'   \item{\code{xpoints}}{(for internal use only) The number of values used to 
+#'      represent the proportion of neighbors of a cell in each state}
+#'   
+#'   \item{\code{max_error}, \code{max_rel_error}}{vector of numeric values containing 
+#'     the maximum error and maximum relative error on each transition probability}
+#' 
+#'   \item{\code{fixed_neighborhood}}{flag equal to \code{TRUE} when cells have
+#'     a fixed number of neighbors}
+#' 
+#' }
+#' 
 #' @references
 #'
 #'  Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.

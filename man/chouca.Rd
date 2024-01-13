@@ -116,7 +116,6 @@ publication:
  <https://www.biorxiv.org/content/10.1101/2023.11.08.566206v1>.
 }
 \examples{
-\dontrun{
 
 # The above example in full
 mod <- camodel(
@@ -132,7 +131,7 @@ plot(mod)
 
 init_grid <- generate_initmat(mod, c(bare = 0.4, plant = 0.6),
                               nrow = 128, ncol = 90)
-out <- run_camodel(mod, init_grid, times = seq(0, 1024))
+out <- run_camodel(mod, init_grid, times = seq(0, 128))
 
 # Display results
 plot(out)
@@ -144,7 +143,6 @@ if ( requireNamespace("deSolve", quietly = TRUE) ) {
   plot(out)
 }
 
-}
 }
 \seealso{
 camodel, generate_initmat, run_camodel, run_meanfield, ca_library

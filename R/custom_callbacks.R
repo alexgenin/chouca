@@ -48,12 +48,16 @@
 #'
 #'   It is important to note that this function will probably massively slow
 #'   down a simulation, so this is most useful for exploratory analyses.
+#' 
+#' @returns This function returns another function, that will be called internally 
+#'   when simulating the model using \code{\link{run_camodel}}. The latter function 
+#'   returns NULL. 
 #'
 #' @seealso trace_plotter, run_camodel
-#'
+#' 
 #' @examples
 #'
-#' \dontrun{
+#' \donttest{
 #'
 #' # Display the psychedelic spirals of the rock-paper-scissor model as the model is
 #' # being run
@@ -116,18 +120,60 @@ landscape_plotter <- function(mod,
   last_call_time <- Sys.time()
   has_set_par <- FALSE
 
+  old_par <- old_dev <- drawing_dev <- NULL
+  
   function(t, mat) {
 
     # If we are before the burn_in iterations, return without doing anything
     if ( t < burn_in ) {
       return( NULL )
     }
-
-    if ( ! has_set_par ) {
-      setup_par(new_window, parlist)
-      has_set_par <<- TRUE
+    
+    # If there is no plot yet
+    
+    # Make sure the device we are plotting to is still open. If not, reset 
+    # old_par, old_dev and drawing_dev
+    devlist <- grDevices::dev.list()
+    if ( is.null(drawing_dev) || ( ! drawing_dev %in% devlist ) ) { 
+      old_par <<- old_dev <<- drawing_dev <<- NULL
     }
-
+    
+    # Save old device and its parameters if there is one
+    if ( is.null(drawing_dev) ) { 
+      device_is_open <- ! is.null(devlist)
+      if ( device_is_open ) { 
+        old_dev <<- grDevices::dev.cur()
+        old_par <<- par(no.readonly = TRUE)
+      } else { # there is no graphical plot yet, create one 
+        grDevices::dev.new()
+        old_dev <<- dev.cur()
+        old_par <<- par(no.readonly = TRUE) # Default parameters
+      } 
+      
+      # If there is a device open, but we asked for a new window anyway, create it here, 
+      # and set it to the drawing device
+      if ( new_window && device_is_open ) {
+        grDevices::dev.new()
+        drawing_dev <<- dev.cur()
+      # We reuse the existing device (that we may have just created)
+      } else { 
+        drawing_dev <<- old_dev
+      }
+      
+    } else { 
+      # We already created a drawing device, set output to go there
+      dev.set(drawing_dev)
+    }
+    
+    # We setup graphic parameters, and open a new window if needed. Once we have done 
+    # that, we never need to open a new window again (if we did so), so set
+    # new_window to FALSE in the parent environment
+    setup_par(parlist)
+    on.exit({ 
+      dev.set(old_dev)
+      par(old_par)
+    })
+    
     this_call_time <- Sys.time()
     dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
 
@@ -140,11 +186,12 @@ landscape_plotter <- function(mod,
       grDevices::dev.new()
     }
 
-    # Hold plot update, and flush it when exiting the function and everything is drawn
+    # Hold plot update, and flush it when exiting the function and everything is drawn. 
+    # This removes some flicker. 
     grDevices::dev.hold()
     on.exit({
       grDevices::dev.flush()
-    })
+    }, add = TRUE, after = FALSE)
 
     if ( transpose ) {
       mat <- t(mat)
@@ -216,9 +263,13 @@ landscape_plotter <- function(mod,
 #'
 #' @seealso landscape_plotter, run_camodel
 #' 
+#' @returns This function returns another function, that will be called internally 
+#'   when simulating the model using \code{\link{run_camodel}}. The latter function 
+#'   returns NULL. 
+#' 
 #' @examples 
 #' 
-#' \dontrun{ 
+#' \donttest{ 
 #' 
 #' # Display covers of the rock/paper/scissor model as it is running
 #' mod <- ca_library("rock-paper-scissor")
@@ -296,10 +347,13 @@ trace_plotter <- function(mod, initmat,
   backlog <- matrix(NA_real_, ncol = length(ex_res) + 1, nrow = max_samples)
   backlog_line <- 1
   states <- mod[["states"]]
-  has_set_par <- FALSE
 
   last_call_time <- Sys.time()
-
+  
+  old_par <- NULL
+  old_dev <- NULL
+  drawing_dev <- NULL
+  
   function(t, mat) {
 
     # backlog persists across runs, so we need to zero it out when re-running a
@@ -312,37 +366,73 @@ trace_plotter <- function(mod, initmat,
     if ( t < burn_in ) {
       return( NULL )
     }
-
-    if ( ! has_set_par ) {
-      setup_par(new_window, parlist)
-      has_set_par <<- TRUE
+    
+    # Make sure the device we are plotting to is still open. If not, reset 
+    # old_par, old_dev and drawing_dev
+    devlist <- grDevices::dev.list()
+    if ( is.null(drawing_dev) || ( ! drawing_dev %in% devlist ) ) { 
+      old_par <<- old_dev <<- drawing_dev <<- NULL
     }
-
+    
+    # Save old device and its parameters if there is one
+    if ( is.null(drawing_dev) ) { 
+      device_is_open <- ! is.null(devlist)
+      if ( device_is_open ) { 
+        old_dev <<- grDevices::dev.cur()
+        old_par <<- par(no.readonly = TRUE)
+      } else { # there is no graphical plot yet, create one 
+        grDevices::dev.new()
+        old_dev <<- dev.cur()
+        old_par <<- par(no.readonly = TRUE) # Default parameters
+      } 
+      
+      # If there is a device open, but we asked for a new window anyway, create it here, 
+      # and set it to the drawing device
+      if ( new_window && device_is_open ) {
+        grDevices::dev.new()
+        drawing_dev <<- dev.cur()
+      # We reuse the existing device (that we may have just created)
+      } else { 
+        drawing_dev <<- old_dev
+      }
+      
+    } else { 
+      # We already created a drawing device, set output to go there
+      dev.set(drawing_dev)
+    }
+    
+    # We setup graphic parameters, and open a new window if needed. Once we have done 
+    # that, we never need to open a new window again (if we did so), so set
+    # new_window to FALSE in the parent environment
+    setup_par(parlist)
+    on.exit({ 
+      dev.set(old_dev)
+      par(old_par)
+    })
+    
     this_call_time <- Sys.time()
     dtime <- as.numeric(difftime(this_call_time, last_call_time, units = "secs"))
-
+    
     # If {1/fps_cap} has not passed since last time, we wait a little bit
     if ( dtime < (1/fps_cap) ) {
       Sys.sleep( (1/fps_cap) - dtime )
     }
-
+    
     # Compute covers and store them in backlog
     backlog[backlog_line, ] <<- c(t, fun(mat))
-
+    
     # Use only non-NA values and sort them by time
     backlog_sorted <- backlog[ ! is.na(backlog[ ,1]), , drop = FALSE]
     backlog_sorted <- backlog_sorted[order(backlog_sorted[ ,1]), , drop = FALSE]
 
     if ( nrow(backlog_sorted) > 1 ) {
-
-      if ( is.null(grDevices::dev.list()) ) {
-        grDevices::dev.new()
-      }
-
+      
+      # This removes some flicker. 
       grDevices::dev.hold()
       on.exit({
         grDevices::dev.flush()
-      })
+      }, add = TRUE, after = FALSE)
+      
       graphics::matplot(backlog_sorted[ ,1],
                         backlog_sorted[ ,-1],
                         col = col,
@@ -368,28 +458,27 @@ trace_plotter <- function(mod, initmat,
 }
 
 
-setup_par <- function(external, parlist) {
-  devtype <- NA
-  ostype <- tolower(Sys.info()["sysname"])
-  if ( grepl("^linux", ostype) || grepl("^solaris", ostype) ) {
-    devtype <- "x11"
-  } else if ( grepl("^darwin", ostype) ) {
-    devtype <- "quartz"
-  } else if (grepl("^win", ostype) ) {
-    devtype <- "windows"
+testf <- local({ 
+  a <- 1
+  function() { 
+    a <<- a + 1
+    print(a)
   }
+})
 
-  if ( external ) {
-    grDevices::dev.new(devtype)
-  }
 
-  if ( is.na(devtype) ) {
-    stop("Could not detect OS type to set up graphics (please report a bug!)")
-  }
-
+# setup_par needs to maintain some internal state to know where to plot things
+setup_par <- function(parlist) {
+  
+  # Make sure we use only one plot/frame
   if ( ! "mfrow" %in% names(parlist) ) {
     parlist[["mfrow"]] <- c(1, 1)
   }
-
+  
+  # always clean the frame before plotting, not sure why this is sometimes set to 
+  # FALSE
+  parlist[["new"]] <- FALSE 
+  
+  # Set the new params
   do.call(graphics::par, as.list(parlist))
 }

@@ -25,20 +25,24 @@ A \code{ca_model_result} objects, which is a list with the following
 
 \enumerate{
 
-  \item \code{model} The original model used for the model run
+  \item \code{model} The original model used for the model run (see 
+    return value of \code{\link{camodel}} for more details about these objects).
 
-  \item \code{initmat} The initial landscape (matrix) used for the model run
+  \item \code{initmat} The initial landscape (matrix) used for the model run, 
+    such as what is returned by \code{\link{generate_initmat}}. 
 
-  \item \code{times} The times vector at which output is saved
+  \item \code{times} The time points vector at which output is saved
 
   \item \code{control} The control list used for the model run, containing the options
     used for the run
 
-  \item \code{output} A named list containing the model outputs. The 'covers'
+  \item \code{output} A named list containing the simulation outputs. The 'covers'
     component contains a matrix with the first column containing the time step, and the
     other columns the proportions of cells in a given state. The 'snapshots' component
-    contains the landscapes recorded as matrices, with a 't' attribute indicating
-    the corresponding time step of the model run.
+    contains the landscapes recorded as matrices(\code{camodel_initmat} objects), with 
+    a 't' attribute indicating the corresponding time step of the model run. The 
+    'custom' component contains the results from calling a custom function provided 
+    as 'custom_output_fun' in the control list (see examples below).
 }
 }
 \description{
@@ -144,7 +148,13 @@ im  <- generate_initmat(mod, c(0.4, 0.6, 0), nrow = 100, ncol = 50)
 out <- run_camodel(mod, im, times = seq(0, 100))
 plot(out)
 
-\dontrun{
+# Disable console output 
+opts <- list(console_output_every = 0) 
+out <- run_camodel(mod, im, times = seq(0, 100), control = opts)
+
+# 
+
+\donttest{
 
 # Run the same model with the 'compiled' engine, and save snapshots. This
 # requires a compiler on your computer (typically available by installing
@@ -153,7 +163,7 @@ ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 
 run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
 plot(run)
 par(mfrow = c(1, 2))
-image(run, snapshot_time = 1)
+image(run, snapshot_time = 0)
 image(run, snapshot_time = 100)
 
 # Disable console output
@@ -183,7 +193,7 @@ fun <- function(t, mat) {
 }
 ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
 
-run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
+run <- run_camodel(mod, im, times = seq(0, 256), control = ctrl)
 stats <- do.call(rbind, run[["output"]][["custom"]])
 plot(stats[ ,1], stats[ ,2], ylab = "DISTURB/MUSSEL ratio", xlab = "time", type = "l")
 

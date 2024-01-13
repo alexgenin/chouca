@@ -41,7 +41,7 @@
 #'   the number of neighbors per cell is variable, which can slow down the simulation.
 #'   Set this option to \code{TRUE} to consider that the number of neighbors is always
 #'   four or eight, regardless of the position of the cell in the landscape, at the cost
-#'   of approximate dynamics on the edge of the landscape.
+#'   of approximate dynamics at the edges of the landscape.
 #'
 #' @details
 #' 
@@ -66,56 +66,102 @@
 #' a given cell.
 #' 
 #' \deqn{
-#'   \beta_0 + \\
-#'   \sum_{k=1}^S f(q_k) + \\
-#'   \sum_{k = 1}^S \beta^p_k p_k + \\
-#'   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \gamma_{k,l,a,b} p_k^a p_l^b + \\
-#'   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \delta_{k,l,a,b} p_k^a q_l^b + \\
-#'   \sum_{k = 1}^S \sum_{l = 1}^S \sum_{a = 1}^D \sum_{b = 1}^D \epsilon_{k,l,a,b} p_k^a q_l^b
+#'   \a_0 + \sum_{k=1}^S g_k(q_k) + \zeta(q, q) + \zeta(p, q) + \zeta(q, q) 
 #' }
 #'
-#' where \eqn{p_k} and \eqn{q_k} are the proportions of cells in state k in the
-#' landscape, and in the cell neighborhood, respectively, and the various \eqn{\beta},
-#' \eqn{gamma}, \eqn{delta} and \eqn{epsilon} are constant coefficients.
-#' \eqn{D} above sets the maximum degree of the internal form, and is set by default
-#' to 5. You can override it by setting its value using
-#' \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher
+#' where \eqn{a_0} is a constant, \eqn{g_k} are univariate functions of \eqn{q_k}, 
+#' the proportions of neighbors of a cell in state k, and \eqn{q} is the vector 
+#' containing all the \eqn{q_k} for k between \eqn{1} and \eqn{S}, the total number of
+#' states in the model. Similarly, \eqn{p} is the length-\eqn{S} vector containing the
+#' proportion of cells in each state in the whole grid. \zeta above is the sum, defined 
+#' for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as 
+#' 
+#' \deqn{ 
+#'   a_1 x_1^{\alpha_1} y_1^{\beta_1} + a_2 x_1^{\alpha_2} y_2^{\beta_2} + 
+#'   a_3 x_2^{\alpha_3} y_1^{\beta_3} + \dots + a_K + x_S^{\alpha_K} y_S^{\beta_K}
+#' }
+#' 
+#' where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{beta_k} are constants for all \eqn{k}, 
+#' and \eqn{K} is the total number of terms (equal to \eqn{S^2}). Note that 
+#' \eqn{\alpha_K} and \eqn{\beta_K} are capped to 5. This can be overriden using
+#' \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher 
 #' values typically make the packages slow and/or lead to numerical instabilities.
-#'
-#' \eqn{f} above can be any function, so \code{chouca} effectively supports any type
-#' of transition rule involving the neighborhood of a cell, including some 'threshold'
-#' rules that involve one state (and only one). For example, a rule such as "more than
-#' 5 neighbors in a given state makes a cell switch from state A to B" is OK, but
+#' 
+#' The functions \eqn{g_k} above can be any univariate functions of \eqn{q_k}, so
+#' \code{chouca} effectively supports any type of transition rule involving the 
+#' neighborhood of a cell, including some 'threshold' rules that involve a single state 
+#' (and only one). For example, a rule such as "more than
+#' 5 neighbors in a given state make a cell switch from state A to B" is OK, but
 #' combining states may not be supported, such as "more than 5
 #' neighbors in state A *and* 2 in state B means a cell switches from A to B". When in
 #' doubt, just write your model, and \code{chouca} will tell you if it cannot run it
-#' accurately.
-#'
-#' This model check is controlled by \code{check_model}. When set to "quick" or "full",
+#' accurately by running model checks.
+#' 
+#' This is controlled by \code{check_model}. When set to "quick" or "full",
 #' a check is performed to make sure the functional form above is able to accurately
 #' represent probabilities of transitions in the model, with "full" enabling more
 #' extensive tesing, and "none" removing it entirely. When using chouca,
 #' coefficients in the formula above are rounded down to zero when below
 #' \code{epsilon}. This may be an issue if your transition probabilities are
 #' close to zero: consider reducing \code{epsilon} to a smaller value in this
-#' case.
-#'
+#' case, or adjusting your model parameters. 
+#' 
 #' When space does not wrap around (\code{wrap = FALSE}), cells in the corners
 #' or in the edges will have a lower number of neighbors. The proportions
 #' of cells in a given state k, \eqn{q_k}, will thus be computed with a reduced
 #' number of cells. For example, a cell in a corner will have only 2 neighbors
 #' when using a 4x4 neighborhood, so \eqn{q_k} is computed using only the state
-#' of two cells.
-#'
+#' of two cells, and can be only equal to 0, 0.5 or 1. 
+#' 
 #' To run a model once it is defined, the function \code{\link{run_camodel}} can be
 #' used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial
 #' landscape for a simulation can be created using \code{\link{generate_initmat}}.
-#'
+#' 
 #' You can update a model definition with new parameters (all of them or a subset)
 #' using the \code{\link[=update.ca_model]{update}} method. The model graph with the 
 #' different states and transitions can be displayed using the \code{plot} method 
-#' (this requires the igraph).
+#' (this requires the package igraph).
+#' 
+#' @returns 
 #'
+#NOTE: Also update the same section in ca_library() when changing this
+#'
+#' This function returns a \code{\link{list}} object with class \code{ca_model}, with 
+#' the following named components. Please note that most are for internal use and may 
+#' change with package updates. 
+#' 
+#' \describe{
+#'   \item{\code{transitions}}{the list of transitions of the model, as returned 
+#'       by \code{\link{transition}} }
+#' 
+#'   \item{\code{nstates}}{the number of states of the model}
+#' 
+#'   \item{\code{parms}}{the parameter values used for the model}
+#' 
+#'   \item{\code{beta_0},\code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
+#'     internal tables used to represent probabilities of transitions when running
+#'     simulations, these tables are for internal use and probably not interesting for 
+#'     end users, but more information is provided in the package source code}
+#'   
+#'   \item{\code{wrap}}{Whether the model uses a toric space that wraps around the edge}
+#' 
+#'   \item{\code{neighbors}}{The type of neighborhood (4 or 8)}
+#'   
+#'   \item{\code{epsilon}}{The \code{epsilon} values used in the model definition, below 
+#'     which transition probabilities are assumed to be zero}
+#'   
+#'   \item{\code{xpoints}}{(for internal use only) The number of values used to 
+#'      represent the proportion of neighbors of a cell in each state}
+#'   
+#'   \item{\code{max_error}, \code{max_rel_error}}{vector of numeric values containing 
+#'     the maximum error and maximum relative error on each transition probability}
+#' 
+#'   \item{\code{fixed_neighborhood}}{flag equal to \code{TRUE} when cells have
+#'     a fixed number of neighbors}
+#' 
+#' }
+#' 
+#' 
 #' @seealso run_camodel, run_meanfield, generate_initmat, run_meanfield,
 #'   update.ca_model, ca_library
 #'
@@ -287,14 +333,6 @@ camodel <- function(...,
   max_error <- plyr::laply(transitions_parsed, function(o) o[["max_error"]])
   max_rel_error <- plyr::laply(transitions_parsed, function(o) o[["max_rel_error"]])
 
-  # Identify absorbing states
-  tr <- lapply(transitions, function(o) cbind(o[["from"]], o[["to"]]))
-  tr <- do.call(rbind, tr)
-  is_absorb_state <- tr[ ,2][ ! (tr[ ,2] %in% tr[ ,1]) ]
-  is_fixed_state <- states[ ! states %in% tr ]
-  absorb_states <- states[states %in% c(is_absorb_state, is_fixed_state)]
-
-
 
   caobj <- list(transitions = transitions,
                 nstates = nstates,
@@ -305,7 +343,6 @@ camodel <- function(...,
                 beta_pp = beta_pp,
                 beta_pq = beta_pq,
                 beta_qq = beta_qq,
-                absorbing_states = absorb_states,
                 wrap = wrap,
                 neighbors = neighbors,
                 epsilon = epsilon,
@@ -408,11 +445,15 @@ pack_table_fromto <- function(tr, table) {
 #'    to update. In this case, old parameter values not specified in the call to
 #'    \code{update} will be re-used.
 #'
-#' @seealso camodel, run_camodel
+#' @seealso camodel, run_camodel...
+#'
+#' @returns 
+#'  
+#'  This function returns a list with class \code{ca_model} with the changes applied to 
+#'  the original model (see \code{\link{camodel}} for details about this type of objects). 
 #'
 #'@examples
 #'
-#' \dontrun{
 #'
 #' # Update the parameters of a model
 #' mussels <- ca_library("musselbed")
@@ -428,6 +469,8 @@ pack_table_fromto <- function(tr, table) {
 #'                       neighbors = 8)
 #' mussels_new
 #'
+#' \donttest{
+#' 
 #' # Run the model for different values of d, the death rate of mussels
 #' ds <- seq(0, 0.25, length.out = 12)
 #' initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nrow = 64, ncol = 64)
@@ -437,6 +480,7 @@ pack_table_fromto <- function(tr, table) {
 #'   data.frame(d = this_dvalue,
 #'              as.data.frame(tail(run[["output"]][["covers"]], 1)))
 #' })
+#' 
 #' results <- do.call(rbind, results)
 #' plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b",
 #'      xlab = "d", ylab = "Mussel cover")

@@ -2,184 +2,6 @@
 # This file contains functions that will initialize and run a model
 #
 
-#' @title Generate an initial matrix for a \code{chouca} model
-#'
-#' @description Helper function to create a spatially-random initial landscape (matrix)
-#'   with specified covers for a cellular automaton
-#'
-#' @param mod A stochastic cellular automaton model created by \code{\link{camodel}}
-#'
-#' @param pvec A numeric vector of covers for each state in the initial configuration,
-#'   possibly with named elements.
-#'
-#' @param nrow The number of rows of the output matrix
-#'
-#' @param ncol The number of columns of the output matrix
-#'
-#' @details
-#'
-#'   This function is a helper to build a starting configuration (matrix) for a
-#'     stochastic cellular automaton based on the definition of the model and the
-#'     specified starting covers (in \code{pvec}). It will produce a landscape with
-#'     expected global cover of each state equal to the covers in \code{pvec}, and a
-#'     completely random spatial structure.
-#'
-#'   The length of the \code{pvec} vector must match the number of possible cell states
-#'     in the model. If present, the names of \code{pvec} must match the states
-#'     defined in the model. In this case, they will be used to determine which state
-#'     gets which starting cover instead of the order of the values.
-#'
-#'   The \code{pvec} will be normalized to sum to one, emitting a warning if this
-#'     produces a meaningful change in covers.
-#'
-#'   If you already have a matrix you want to use as a starting configuration, we
-#'     recommend you to use \code{\link{as.camodel_initmat}} to convert it to an
-#'     object that \code{\link{run_camodel}} can use.
-#'
-#' @seealso as.camodel_initmat
-#'
-#' @examples
-#'
-#' # Run the Game of Life starting from a random grid
-#' game_of_life <- ca_library("gameoflife")
-#' grid <- generate_initmat(game_of_life, c(LIVE = .1, DEAD = .9), nrow = 64)
-#' out <- run_camodel(game_of_life, grid, times = seq(0, 128))
-#' image(out) # final configuration
-#'
-#' # Logistic growth of plants
-#' mod <- camodel(
-#'   transition(from = "empty", to = "plant", ~ r * p["plant"]),
-#'   transition(from = "plant", to = "empty", ~ m),
-#'   parms = list(r = 1, m = .03),
-#'   wrap = TRUE,
-#'   neighbors = 8
-#' )
-#' grid <- generate_initmat(mod, c(empty = .99, plant = .01), nrow = 128)
-#' image(grid) # initial state
-#' out <- run_camodel(mod, grid, times = seq(0, 30))
-#' image(out) # final state
-#' plot(out) #
-#'@export
-generate_initmat <- function(mod, pvec, nrow, ncol = nrow) {
-
-  if ( any(is.na(pvec)) ) {
-    stop("NAs in pvec are not supported")
-  }
-
-  ns <- mod[["nstates"]]
-  if ( length(pvec) != ns ) {
-    stop("the length of state covers does not match the number of states in the model definition")
-  }
-
-  if ( ! is.null(names(pvec)) ) {
-    diff <- setdiff(names(pvec), mod[["states"]])
-    if ( length(diff) > 0 ) {
-      stop("State names in 'pvec' do not match the states defined in the model")
-    }
-    # Make sure order is right. /!\ indexing with factors == indexing with integers !!!
-    pvec <- pvec[ as.character(mod[["states"]]) ]
-  }
-
-  spvec <- sum(pvec)
-  if ( sum(pvec) > 1.000001 | sum(pvec) < 0.99999 ) {
-    warning("The initial covers do not sum to one, they will be rescaled")
-  }
-  pvec <- pvec / spvec
-
-  # Generate the matrix
-  m <- matrix(sample(mod[["states"]],
-                     replace = TRUE, prob = pvec, size = nrow * ncol),
-              nrow = nrow, ncol = ncol)
-
-  # Adjust and set class
-  m <- as.camodel_initmat(m, levels = mod[["states"]])
-
-  return(m)
-}
-
-#'@title Convert a matrix to a CA model landscape
-#'
-#'@description Convert a matrix to a CA model landscape for later use with
-#'  \link{run_camodel} or \link{run_meanfield}.
-#'
-#'@param m The input matrix (numeric, character or factor)
-#'
-#'@param levels The levels to use in the resulting landscape. If \code{NULL}, the unique
-#'  values of the input matrix are used as levels. Set this manually if you want the
-#'  resulting landscape to have extra levels that are not present in the original matrix.
-#'
-#'@seealso generate_initmat, run_camodel, run_meanfield
-#'
-#'@examples
-#'
-#' # Simple conversion of a matrix with regular patterns
-#' x <- seq(0, 2 * pi, l = 256)
-#' z <- outer(x, x, function(x, y) as.numeric(sin(10*x) + cos(10*y) > 0.8))
-#' mat <- as.camodel_initmat(z)
-#' summary(mat)
-#' image(mat)
-#'
-#' \dontrun{
-#'
-#' # This is a character matrix. We need to convert it to use it as input to
-#' # run_camodel()
-#' size <- 64
-#' m <- matrix(ifelse(runif(size^2) < .5, "TREE", "EMPTY"), nrow = size, ncol = size)
-#' m <- as.camodel_initmat(m)
-#' summary(m) # this is a landscape object
-#' image(m)
-#'
-#' # Start a simulation using this matrix
-#' mod <- ca_library("forestgap")
-#' out <- run_camodel(mod, m, seq(0, 256))
-#' plot(out)
-#'
-#' # Run a glider in the game of life
-#' mod <- ca_library("gameoflife")
-#' init <- matrix(c(0, 0, 1, 0, 0, 0, 0,
-#'                  0, 0, 0, 1, 0, 0, 0,
-#'                  0, 1, 1, 1, 0, 0, 0,
-#'                  0, 0, 0, 0, 0, 0, 0,
-#'                  0, 0, 0, 0, 0, 0, 0,
-#'                  0, 0, 0, 0, 0, 0, 0),
-#'                 nrow = 6, ncol = 7, byrow = TRUE)
-#' init[] <- ifelse(init == 1, "LIVE", "DEAD")
-#' # image() does not work on init here without conversion by as.camodel_initmat
-#' init <- as.camodel_initmat(init)
-#' image(init)
-#'
-#' # Run the model and display simulation output as it is running
-#' ctrl <- list(custom_output_fun = landscape_plotter(mod, fps_cap = 5),
-#'              custom_output_every = 1)
-#' out <- run_camodel(mod, init, times = seq(0, 32), control = ctrl)
-#'
-#' }
-#'@export
-as.camodel_initmat <- function(m, levels = NULL) {
-
-  if ( inherits(m, "camodel_initmat") ) {
-    return(m)
-  }
-
-  if ( ! is.matrix(m) ) {
-    stop("This object cannot be converted into a camodel_initmat object")
-  }
-  ml <- m
-
-  if ( is.null(levels) ) {
-    levels <- unique(as.vector(m))
-  }
-
-  # If not a factor, convert to it -> this will create levels based on m
-  if ( ! is.factor(m) ) {
-    ml <- factor(m, levels = levels)
-    dim(ml) <- dim(m)
-  }
-
-  class(ml) <- c("camodel_initmat", "factor", "matrix")
-  ml
-}
-
 #' @title Run a cellular automata
 #'
 #' @description Run a pre-defined stochastic cellular automaton
@@ -291,25 +113,29 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #'
 #' }
 #'
-#' @return A \code{ca_model_result} objects, which is a list with the following
+#' @returns A \code{ca_model_result} objects, which is a list with the following
 #'   components:
 #'
 #' \enumerate{
 #'
-#'   \item \code{model} The original model used for the model run
+#'   \item \code{model} The original model used for the model run (see 
+#'     return value of \code{\link{camodel}} for more details about these objects).
 #'
-#'   \item \code{initmat} The initial landscape (matrix) used for the model run
+#'   \item \code{initmat} The initial landscape (matrix) used for the model run, 
+#'     such as what is returned by \code{\link{generate_initmat}}. 
 #'
-#'   \item \code{times} The times vector at which output is saved
+#'   \item \code{times} The time points vector at which output is saved
 #'
 #'   \item \code{control} The control list used for the model run, containing the options
 #'     used for the run
 #'
-#'   \item \code{output} A named list containing the model outputs. The 'covers'
+#'   \item \code{output} A named list containing the simulation outputs. The 'covers'
 #'     component contains a matrix with the first column containing the time step, and the
 #'     other columns the proportions of cells in a given state. The 'snapshots' component
-#'     contains the landscapes recorded as matrices, with a 't' attribute indicating
-#'     the corresponding time step of the model run.
+#'     contains the landscapes recorded as matrices(\code{camodel_initmat} objects), with 
+#'     a 't' attribute indicating the corresponding time step of the model run. The 
+#'     'custom' component contains the results from calling a custom function provided 
+#'     as 'custom_output_fun' in the control list (see examples below).
 #' }
 #'
 #' @examples
@@ -319,8 +145,14 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #' im  <- generate_initmat(mod, c(0.4, 0.6, 0), nrow = 100, ncol = 50)
 #' out <- run_camodel(mod, im, times = seq(0, 100))
 #' plot(out)
-#'
-#' \dontrun{
+#' 
+#' # Disable console output 
+#' opts <- list(console_output_every = 0) 
+#' out <- run_camodel(mod, im, times = seq(0, 100), control = opts)
+#' 
+#' # 
+#' 
+#' \donttest{
 #'
 #' # Run the same model with the 'compiled' engine, and save snapshots. This
 #' # requires a compiler on your computer (typically available by installing
@@ -329,7 +161,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
 #' plot(run)
 #' par(mfrow = c(1, 2))
-#' image(run, snapshot_time = 1)
+#' image(run, snapshot_time = 0)
 #' image(run, snapshot_time = 100)
 #'
 #' # Disable console output
@@ -359,7 +191,7 @@ as.camodel_initmat <- function(m, levels = NULL) {
 #' }
 #' ctrl <- list(custom_output_fun = fun, custom_output_every = 1)
 #'
-#' run <- run_camodel(mod, im, times = seq(0, 128), control = ctrl)
+#' run <- run_camodel(mod, im, times = seq(0, 256), control = ctrl)
 #' stats <- do.call(rbind, run[["output"]][["custom"]])
 #' plot(stats[ ,1], stats[ ,2], ylab = "DISTURB/MUSSEL ratio", xlab = "time", type = "l")
 #'
@@ -510,9 +342,6 @@ run_camodel <- function(mod, initmat, times,
     as.matrix(tab)
   })
 
-  # Convert list of absorbing states to internal representation (with integer)
-  absorb_states <- which(states %in% mod[["absorbing_states"]]) - 1
-
   # Construct the matrix of from/to states
   transition_mat <- matrix(FALSE, nrow = ns, ncol = ns)
   colnames(transition_mat) <- rownames(transition_mat) <- states
@@ -529,7 +358,6 @@ run_camodel <- function(mod, initmat, times,
                     list(init     = initmat,
                          times    = times,
                          nstates  = ns,
-                         absorb_states = absorb_states,
                          transition_mat = transition_mat,
                          console_callback       = console_callback,
                          cover_callback         = cover_callback,
@@ -695,5 +523,6 @@ is_positive <- function(x) {
 
 
 openmp_platform_check <- function(ncores) { 
-  return(ncores) # not implemented
+  # not implemented as things appear to run smoothly so far
+  return(ncores) 
 }

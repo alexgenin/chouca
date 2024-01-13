@@ -43,6 +43,11 @@ or in the default device (typically the plot panel in Rstudio)}
 \item{...}{other arguments passed to \code{\link[graphics]{matplot}}, which is used to
 display the trends.}
 }
+\value{
+This function returns another function, that will be called internally 
+  when simulating the model using \code{\link{run_camodel}}. The latter function 
+  returns NULL.
+}
 \description{
 This function creates an internal function to plot the model
   landscape during the simulation of a stochastic cellular automaton.
@@ -71,7 +76,7 @@ This function creates another function that is suitable for use with
 }
 \examples{
 
-\dontrun{ 
+\donttest{ 
 
 # Display covers of the rock/paper/scissor model as it is running
 mod <- ca_library("rock-paper-scissor")

@@ -48,6 +48,10 @@ definition.}
 
 \item{...}{extra arguments are ignored}
 }
+\value{
+This function returns a list with class \code{ca_model} with the changes applied to 
+ the original model (see \code{\link{camodel}} for details about this type of objects).
+}
 \description{
 Update the definition of a stochastic cellular automaton
   (SCA), using new parameters, type of wrapping, or any other parameters
@@ -66,7 +70,6 @@ This function updates some aspects of a pre-defined stochastic celullar
 }
 \examples{
 
-\dontrun{
 
 # Update the parameters of a model
 mussels <- ca_library("musselbed")
@@ -82,6 +85,8 @@ mussels_new <- update(mussels,
                       neighbors = 8)
 mussels_new
 
+\donttest{
+
 # Run the model for different values of d, the death rate of mussels
 ds <- seq(0, 0.25, length.out = 12)
 initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nrow = 64, ncol = 64)
@@ -91,6 +96,7 @@ results <- lapply(ds, function(this_dvalue) {
   data.frame(d = this_dvalue,
              as.data.frame(tail(run[["output"]][["covers"]], 1)))
 })
+
 results <- do.call(rbind, results)
 plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b",
      xlab = "d", ylab = "Mussel cover")
@@ -99,5 +105,5 @@ plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b",
 
 }
 \seealso{
-camodel, run_camodel
+camodel, run_camodel...
 }

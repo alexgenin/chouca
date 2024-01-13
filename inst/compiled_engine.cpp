@@ -124,11 +124,11 @@ inline void precompute_transition_probabilites(double tprobs[all_qs_nrow][ns][ns
     // I [Alex] worked out a math formula somewhere but lost it, I just remember the
     // problem simplified into some variant of the bars and stars problem, see
     // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics). 
-    if (all_qs[l][ns] > n_nb) {
+    if ( all_qs[l][ns] > n_nb ) {
       continue;
     }
 
-    for (uchar from = 0; from < ns; from++) {
+    for ( uchar from = 0; from < ns; from++ ) {
 
       uword qpointn_factorf; 
       if ( fixed_nb ) { 

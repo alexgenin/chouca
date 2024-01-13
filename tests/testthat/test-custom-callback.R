@@ -103,3 +103,83 @@ test_that("Landscape plotting works", {
   })
 
 })
+
+test_that("We can re-run plotting without redifining control list", { 
+  # This could produce errors when landscape_plotter or trace_plotter did not maintain
+  # their internal state correctly, so make sure it runs 
+  
+  # Close all devices 
+  while ( ! is.null(plyr::tryNULL(dev.off())) ) { 
+    1
+  }
+  
+  mod <- ca_library("rock-paper-scissor")
+  init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
+  
+  # Trace plotter
+  ctrl <- list(custom_output_every = 1,
+                custom_output_fun = trace_plotter(mod, init, new_window = FALSE))
+  run_camodel(mod, init, times = seq(0, 2), control = ctrl)
+  dev.off()
+  run_camodel(mod, init, times = seq(0, 2), control = ctrl)
+  
+  
+  # Landscape plotter
+  ctrl <- list(custom_output_every = 1,
+               custom_output_fun = landscape_plotter(mod, new_window = FALSE))
+  run_camodel(mod, init, times = seq(0, 2), control = ctrl)
+  dev.off()
+  run_camodel(mod, init, times = seq(0, 2), control = ctrl)
+  
+  expect_true(TRUE)
+})
+
+test_that("Graphical parameters are unchanged", { 
+  
+  par(mar = rep(1, 4))
+  plot(1:10, 1:10 + rnorm(10)*2)
+  opar <- par(no.readonly = TRUE)
+  odev <- dev.cur()
+  
+  mod <- ca_library("rock-paper-scissor")
+  init <- generate_initmat(mod, rep(1, 3)/3, nrow = 100, ncol = 178)
+  
+  # Display covers of the rock/paper/scissor model as it is running. Here we assume that 
+  # regardless of whether we use a new window or an old one, at the end of the
+  #  simulation, the active device should be the old one with its old pars
+  lapply(c(TRUE, FALSE), function(new_win) { 
+    
+    # Trace plotter
+    ctrl <- list(custom_output_every = 1,
+                 custom_output_fun = trace_plotter(mod, init, new_window = new_win))
+    run_camodel(mod, init, times = seq(0, 2), control = ctrl)
+    
+    npar <- par(no.readonly = TRUE)
+    ndev <- dev.cur()
+    expect_true({ 
+      all(c(all.equal(opar, npar), 
+            all.equal(odev, ndev)))
+    })
+    
+    ctrl <- list(custom_output_every = 1,
+                 custom_output_fun = landscape_plotter(mod, new_window = FALSE))
+    run_camodel(mod, init, times = seq(0, 2), control = ctrl)
+    
+    npar <- par(no.readonly = TRUE)
+    ndev <- dev.cur()
+    expect_true({ 
+      all(c(all.equal(opar, npar), 
+            all.equal(odev, ndev)))
+    })
+    
+  })
+  
+  expect_true({ 
+    all.equal(opar, par(no.readonly = TRUE))
+  })
+  
+  expect_true({ 
+    all.equal(odev, dev.cur())
+  })
+  
+})
