@@ -162,7 +162,7 @@ landscape_plotter <- function(mod,
       
     } else { 
       # We already created a drawing device, set output to go there
-      dev.set(drawing_dev)
+      grDevices::dev.set(drawing_dev)
     }
     
     # We setup graphic parameters, and open a new window if needed. Once we have done 
@@ -397,7 +397,7 @@ trace_plotter <- function(mod, initmat,
       
     } else { 
       # We already created a drawing device, set output to go there
-      dev.set(drawing_dev)
+      grDevices::dev.set(drawing_dev)
     }
     
     # We setup graphic parameters, and open a new window if needed. Once we have done 
