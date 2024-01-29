@@ -55,6 +55,8 @@
 #' 
 #' @returns 
 #'   
+#NOTE: Also update the same section in ca_library() when changing this
+#' 
 #' This function returns a \code{\link{list}} object with class \code{ca_model}, with 
 #' the following named components. Please note that most are for internal use and may 
 #' change with package updates. 

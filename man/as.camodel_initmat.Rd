@@ -14,10 +14,11 @@ values of the input matrix are used as levels. Set this manually if you want the
 resulting landscape to have extra levels that are not present in the original matrix.}
 }
 \value{
-This function returns a matrix containg values as factors, with levels
-  corresponding to the model states (defined in \code{mod} argument) and dimensions 
-  set by \code{nrow} and \code{ncol}. This matrix has the \code{\link{class}} 
-  \code{camodel_initmat} so that it can be displayed with the \code{image} function.
+This function returns a matrix containing values as factors, with levels
+  corresponding to the \code{levels} argument. This matrix has the
+  \code{\link{class}} \code{camodel_initmat} so that it can be displayed with the
+  \code{image} generic function and works well with CA-related functions 
+  (such as \code{\link{run_camodel}}).
 }
 \description{
 Convert a matrix to a CA model landscape for later use with

@@ -29,17 +29,20 @@
 #'     defined in the model. In this case, they will be used to determine which state
 #'     gets which starting cover instead of the order of the values.
 #'
-#'   The \code{pvec} will be normalized to sum to one, emitting a warning if this
-#'     produces a meaningful change in covers.
+#'   The \code{pvec} will be normalized to sum to one, and the function will produce a
+#'     warning if this produces a meaningful change in covers.
 #'
 #'   If you already have a matrix you want to use as a starting configuration, we
 #'     recommend you to use \code{\link{as.camodel_initmat}} to convert it to an
 #'     object that \code{\link{run_camodel}} can use.
 #' 
-#' @returns This function returns a matrix containg values as factors, with levels
-#'   corresponding to the model states (defined in \code{mod} argument) and dimensions 
-#'   set by \code{nrow} and \code{ncol}. This matrix has the \code{\link{class}} 
-#'   \code{camodel_initmat} so that it can be displayed with the \code{image} function. 
+#' @returns 
+#' 
+#'  This function returns a matrix containing values as factors, with levels
+#'    corresponding to the model states (defined in the \code{mod} argument) and
+#'    dimensions set by \code{nrow} and \code{ncol}. This matrix has the
+#'    \code{\link{class}} \code{camodel_initmat} so that it can be displayed with the
+#'    \code{image} generic function. 
 #' 
 #' @seealso as.camodel_initmat
 #' 
@@ -114,10 +117,11 @@ generate_initmat <- function(mod, pvec, nrow, ncol = nrow) {
 #'  values of the input matrix are used as levels. Set this manually if you want the
 #'  resulting landscape to have extra levels that are not present in the original matrix.
 #'
-#' @returns This function returns a matrix containg values as factors, with levels
-#'   corresponding to the model states (defined in \code{mod} argument) and dimensions 
-#'   set by \code{nrow} and \code{ncol}. This matrix has the \code{\link{class}} 
-#'   \code{camodel_initmat} so that it can be displayed with the \code{image} function. 
+#' @returns This function returns a matrix containing values as factors, with levels
+#'   corresponding to the \code{levels} argument. This matrix has the
+#'   \code{\link{class}} \code{camodel_initmat} so that it can be displayed with the
+#'   \code{image} generic function and works well with CA-related functions 
+#'   (such as \code{\link{run_camodel}}). 
 #'
 #'@seealso generate_initmat, run_camodel, run_meanfield
 #'

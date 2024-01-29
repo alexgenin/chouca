@@ -459,7 +459,8 @@ pack_table_fromto <- function(tr, table) {
 #' @returns 
 #'  
 #'  This function returns a list with class \code{ca_model} with the changes applied to 
-#'  the original model (see \code{\link{camodel}} for details about this type of objects). 
+#'  the original model (see \code{\link{camodel}} for details about this type of
+#'  object). 
 #'
 #'@examples
 #'

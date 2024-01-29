@@ -104,7 +104,7 @@ test_that("Landscape plotting works", {
 
 })
 
-test_that("We can re-run plotting without redifining control list", { 
+test_that("We can re-run plotting without redefining control list", { 
   # This could produce errors when landscape_plotter or trace_plotter did not maintain
   # their internal state correctly, so make sure it runs 
   
@@ -136,7 +136,7 @@ test_that("We can re-run plotting without redifining control list", {
 
 test_that("Graphical parameters are unchanged", { 
   
-  par(mar = rep(1, 4))
+  par(mar = rep(2, 4))
   plot(1:10, 1:10 + rnorm(10)*2)
   opar <- par(no.readonly = TRUE)
   odev <- dev.cur()
@@ -146,7 +146,7 @@ test_that("Graphical parameters are unchanged", {
   
   # Display covers of the rock/paper/scissor model as it is running. Here we assume that 
   # regardless of whether we use a new window or an old one, at the end of the
-  #  simulation, the active device should be the old one with its old pars
+  # simulation, the active device should be the old one with its old pars
   lapply(c(TRUE, FALSE), function(new_win) { 
     
     # Trace plotter

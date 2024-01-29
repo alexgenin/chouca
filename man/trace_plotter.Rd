@@ -44,9 +44,10 @@ or in the default device (typically the plot panel in Rstudio)}
 display the trends.}
 }
 \value{
-This function returns another function, that will be called internally 
-  when simulating the model using \code{\link{run_camodel}}. The latter function 
-  returns NULL.
+This function returns another function, which will be called internally 
+   when simulating the model using \code{\link{run_camodel}}, and has probably 
+   not much use outside of this context. The return function will display the 
+   simulation and returns NULL.
 }
 \description{
 This function creates an internal function to plot the model
@@ -66,9 +67,9 @@ This function creates another function that is suitable for use with
   you can pass any function as argument \code{fun} to compute something else, as long
   as \code{fun} returns a numeric vector of length at least 1.
 
-  \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but
-  if it is still too fast for your taste, you can cap the refresh rate by setting
-  the argument \code{fps_cap}.
+  \code{\link[graphics]{matplot}} is used internally, and tends to be quite slow at
+  displaying results, but if it is still too fast for your taste, you can cap the
+  refresh rate at a value given by the argument \code{fps_cap}.
 
   It is important to note that this function will probably massively slow down a
   simulation, so it is mostly here for exploratory analyses, or just to

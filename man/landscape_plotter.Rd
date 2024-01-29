@@ -36,9 +36,10 @@ or in the default device (typically the plot panel in Rstudio)}
 \item{...}{other arguments are passed to \code{\link[graphics]{image}}}
 }
 \value{
-This function returns another function, that will be called internally 
-  when simulating the model using \code{\link{run_camodel}}. The latter function 
-  returns NULL.
+This function returns another function, which will be called internally 
+   when simulating the model using \code{\link{run_camodel}}, and has probably 
+   not much use outside of this context. The return function will display the 
+   simulation and returns NULL.
 }
 \description{
 This function creates an internal function to plot the model
@@ -55,10 +56,9 @@ This function creates another function that is suitable for use with
   specifying simulation options before calling \code{\link{run_camodel}},
   see examples below.
 
-  \code{\link[graphics]{image}} tends to be quite slow at displaying matrices,
-  especially if the matrix is large, but if it is still too fast for you to
-  visualize your results, you can cap the number of landscapes displayed
-  per seconds by setting the argument \code{fps_cap}.
+  \code{\link[graphics]{image}} is used internally, and tends to be quite slow at
+  displaying results, but if it is still too fast for your taste, you can cap the
+  refresh rate at a value given by the argument \code{fps_cap}.
 
   It is important to note that this function will probably massively slow
   down a simulation, so this is most useful for exploratory analyses.

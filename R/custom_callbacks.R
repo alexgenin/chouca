@@ -41,17 +41,19 @@
 #'   specifying simulation options before calling \code{\link{run_camodel}},
 #'   see examples below.
 #'
-#'   \code{\link[graphics]{image}} tends to be quite slow at displaying matrices,
-#'   especially if the matrix is large, but if it is still too fast for you to
-#'   visualize your results, you can cap the number of landscapes displayed
-#'   per seconds by setting the argument \code{fps_cap}.
+#'   \code{\link[graphics]{image}} is used internally, and tends to be quite slow at
+#'   displaying results, but if it is still too fast for your taste, you can cap the
+#'   refresh rate at a value given by the argument \code{fps_cap}.
 #'
 #'   It is important to note that this function will probably massively slow
 #'   down a simulation, so this is most useful for exploratory analyses.
 #' 
-#' @returns This function returns another function, that will be called internally 
-#'   when simulating the model using \code{\link{run_camodel}}. The latter function 
-#'   returns NULL. 
+#' @returns 
+#'  
+#'  This function returns another function, which will be called internally 
+#'    when simulating the model using \code{\link{run_camodel}}, and has probably 
+#'    not much use outside of this context. The return function will display the 
+#'    simulation and returns NULL. 
 #'
 #' @seealso trace_plotter, run_camodel
 #' 
@@ -252,9 +254,9 @@ landscape_plotter <- function(mod,
 #'   you can pass any function as argument \code{fun} to compute something else, as long
 #'   as \code{fun} returns a numeric vector of length at least 1.
 #'
-#'   \code{\link[graphics]{matplot}} tends to be quite slow at displaying results, but
-#'   if it is still too fast for your taste, you can cap the refresh rate by setting
-#'   the argument \code{fps_cap}.
+#'   \code{\link[graphics]{matplot}} is used internally, and tends to be quite slow at
+#'   displaying results, but if it is still too fast for your taste, you can cap the
+#'   refresh rate at a value given by the argument \code{fps_cap}.
 #'
 #'   It is important to note that this function will probably massively slow down a
 #'   simulation, so it is mostly here for exploratory analyses, or just to
@@ -263,9 +265,12 @@ landscape_plotter <- function(mod,
 #'
 #' @seealso landscape_plotter, run_camodel
 #' 
-#' @returns This function returns another function, that will be called internally 
-#'   when simulating the model using \code{\link{run_camodel}}. The latter function 
-#'   returns NULL. 
+#' @returns 
+#' 
+#'  This function returns another function, which will be called internally 
+#'    when simulating the model using \code{\link{run_camodel}}, and has probably 
+#'    not much use outside of this context. The return function will display the 
+#'    simulation and returns NULL. 
 #' 
 #' @examples 
 #' 
