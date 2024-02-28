@@ -160,11 +160,13 @@ summary(out)
 
 ```{r display_plot, fig.width = 12, fig.height = 6}
 
-par(mfrow = c(1, 2))
+oldpar <- par(mfrow = c(1, 2))
 plot(out)
 title("Global covers over time")
 image(out)
 
+# Restore graphical parameters
+par(oldpar)
 ```
 
 

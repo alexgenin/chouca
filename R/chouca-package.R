@@ -131,15 +131,15 @@
 #'
 #' # Display the structure of the model
 #' plot(mod)
-#'
+#' 
 #' init_grid <- generate_initmat(mod, c(bare = 0.4, plant = 0.6),
 #'                               nrow = 128, ncol = 90)
 #' out <- run_camodel(mod, init_grid, times = seq(0, 128))
-#'
+#' 
 #' # Display results
 #' plot(out)
 #' image(out)
-#'
+#' 
 #' # Run the meanfield model (uses deSolve internally)
 #' if ( requireNamespace("deSolve", quietly = TRUE) ) {
 #'   out <- run_meanfield(mod, init_grid, times = seq(0, 1024))

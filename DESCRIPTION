@@ -1,11 +1,11 @@
 Package: chouca
 Title: A Stochastic Cellular Automaton Engine
-Version: 0.0.99
+Version: 0.0.999
 Authors@R: 
     person("Alexandre", "Genin", , "a.a.h.genin@uu.nl", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-3333-1338"))
-Description: An engine for stochastic cellular automata. It provides a high-level 
-  interface to declare a model, which can then be simulated by various backends 
+Description: An engine for stochastic cellular automata. It provides a high-level
+  interface to declare a model, which can then be simulated by various backends
   (Genin et al. (2023) <doi:10.1101/2023.11.08.566206>).
 License: GPL (>= 3)
 Encoding: UTF-8

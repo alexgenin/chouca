@@ -160,10 +160,13 @@
 #' ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
 #' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
 #' plot(run)
-#' par(mfrow = c(1, 2))
+#' 
+#' # 
+#' oldpar <- par(mfrow = c(1, 2))
 #' image(run, snapshot_time = 0)
 #' image(run, snapshot_time = 100)
-#'
+#' par(oldpar)
+#' 
 #' # Disable console output
 #' ctrl <- list(console_output_every = 0)
 #' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
