@@ -329,7 +329,10 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
       }
       
       export_n++;
-      next_export_t = times(export_n);
+      // Avoids an OOB read when on last iteration that is picked up by ASAN
+      if ( export_n < times.n_elem ) {
+        next_export_t = times(export_n);
+      }
     }
     
     for (arma::uword s = 0; s < substeps; s++) {
