@@ -34,3 +34,5 @@ Suggests:
     spatialwarnings
 Config/testthat/edition: 3
 VignetteBuilder: knitr
+URL: https://github.com/alexgenin/chouca
+BugReports: https://github.com/alexgenin/chouca/issues
