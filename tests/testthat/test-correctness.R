@@ -44,10 +44,12 @@ test_that("Multiple states in the f(q) functions work", {
   # At some point chouca was not computing right the transition probabilities
   # of the form P = f(q1) + f(q2) and would only consider the first state q1,
   # so we added a test here
-  mod <- camodel(transition(from = "a", to = "b", ~ 0.01 * q["b"] + 0.01 * q["c"] + 3*q["d"]),
-                 wrap = FALSE,
-                 all_states = c("a", "b", "c", "d"),
-                 neighbors = 8)
+  mod <- camodel(
+    transition(from = "a", to = "b", ~ 0.01 * q["b"] + 0.01 * q["c"] + 3*q["d"]),
+    wrap = FALSE,
+    all_states = c("a", "b", "c", "d"),
+    neighbors = 8
+  )
 
   initmm <- matrix(c("a", "b",
                      "c", "d"),
@@ -127,3 +129,30 @@ test_that("We can run a model with only one state", {
   })
 
 })
+
+test_that("The coral reef model is consistent across engines", { 
+  # The coral reef model had issues at some point with different engines, so make 
+  # sure that is fixed
+  mod <- ca_library("coralreef")
+  mod <- update(mod, parms = list(m_c = 10^(-3.5), d_0 = -0.5), 
+                wrap = FALSE, neighbors = 8)
+  
+  ctrl <- list(engine = "cpp", substeps = 4)
+  init <- generate_initmat(mod, rep(1/3, 3), nrow = 64, ncol = 64)
+  out_cpp <- run_camodel(mod, init, seq(1, 256), control = ctrl)
+  
+  ctrl <- list(engine = "compiled", force_compilation = TRUE, substeps = 4)
+  out_compiled <- run_camodel(mod, init, seq(1, 256), control = ctrl)
+  
+  # Compare output 
+  out_cpp_t <- out_cpp[["output"]][["covers"]]
+  out_compiled_t <- out_compiled[["output"]][["covers"]]
+  
+  plot(out_cpp_t[ ,"t"], out_cpp_t[ ,"CORAL"], type = "l")
+  lines(out_compiled_t[ ,"t"], out_compiled_t[ ,"CORAL"], type = "l", col = "red")
+  
+  expect_true({ 
+    all(abs(out_cpp_t[ ,"CORAL"] - out_compiled_t[ ,"CORAL"]) < 0.05)
+  })
+  
+}

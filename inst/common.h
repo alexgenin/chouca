@@ -575,8 +575,8 @@ inline void compute_rate(double tprob_line[ns],
         // will be known at compile time. 
         uchar qpointn = (xpoints - 1 ) / ( fixed_nb ? n_nb : total_nb ); 
         
-        uword qthis = qs[coef_tab_ints(kstart, _state_1)] * qpointn;
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
+          uword qthis = qs[coef_tab_ints(kstart + xpoints*coef, _state_1)] * qpointn;
           total += coef_tab_dbls(kstart + qthis + xpoints*coef);
         }
       }
