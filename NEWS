@@ -1,6 +1,22 @@
 
 
-chouca v0.0.99 (Release date: unknown)
+chouca v0.1.99 (Release date: unknown)
+==============================================
+
+Bug fixes: 
+
+ - Fix an out-of-bound read in cpp_engine.cpp
+
+Minor improvements: 
+ 
+ - The package now warns if igraph is not available on the platform and a model graph
+     cannot be displayed
+ - Minor formatting improvements in the documentation
+ - Added an URL/BugReports field in DESCRIPTION
+ - Add complete list of authors in DESCRIPTION
+
+chouca v0.0.999 (Release date: 2024-02-29)
 ==============================================
 
 Initial release
+

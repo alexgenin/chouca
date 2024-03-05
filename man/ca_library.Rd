@@ -102,20 +102,20 @@ run_camodel(forestgap_model, im, times = seq(0,100))
 \references{
 Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.
  "Indirect Facilitation Drives Species Composition and Stability in Drylands."
- Theoretical Ecology 14 (2): 189–203. doi: 10.1007/s12080-020-00489-0.
+ Theoretical Ecology 14 (2): 189–203. \doi{10.1007/s12080-020-00489-0}.
 
  Genin, A., S. A. Navarrete, A. Garcia-Mayor, and E. A. Wieters. in
  press (2023). Emergent spatial patterns can indicate upcoming regime
  shifts in a realistic model of coral community. The American Naturalist.
 
  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
- disturbance dynamics: signatures of oceanographic forcing from local interactions. The
- American Naturalist, 161, 889–904. doi: 10.1086/375300
+ disturbance dynamics: signatures of oceanographic forcing from local interactions.
+ The American Naturalist, 161, 889–904. \doi{10.1086/375300}
 
  Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P.
  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation
  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems."
- Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
+ Nature 449 (7159): 213–17. \doi{10.1038/nature06111}.
 
  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
  Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology
@@ -123,5 +123,5 @@ Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.
 
  Schneider, Florian D., and Sonia Kefi. 2016. "Spatially Heterogeneous Pressure Raises
  Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17.
- doi: 10.1007/s12080-015-0289-1.
+ \doi{10.1007/s12080-015-0289-1}.
 }

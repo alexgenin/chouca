@@ -96,20 +96,20 @@
 #'
 #'  Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.
 #'  "Indirect Facilitation Drives Species Composition and Stability in Drylands."
-#'  Theoretical Ecology 14 (2): 189–203. doi: 10.1007/s12080-020-00489-0.
+#'  Theoretical Ecology 14 (2): 189–203. \doi{10.1007/s12080-020-00489-0}.
 #'
 #'  Genin, A., S. A. Navarrete, A. Garcia-Mayor, and E. A. Wieters. in
 #'  press (2023). Emergent spatial patterns can indicate upcoming regime
 #'  shifts in a realistic model of coral community. The American Naturalist.
 #'
 #'  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
-#'  disturbance dynamics: signatures of oceanographic forcing from local interactions. The
-#'  American Naturalist, 161, 889–904. doi: 10.1086/375300
+#'  disturbance dynamics: signatures of oceanographic forcing from local interactions.
+#'  The American Naturalist, 161, 889–904. \doi{10.1086/375300}
 #'
 #'  Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P.
 #'  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation
 #'  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems."
-#'  Nature 449 (7159): 213–17. doi: 10.1038/nature06111.
+#'  Nature 449 (7159): 213–17. \doi{10.1038/nature06111}.
 #'
 #'  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
 #'  Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology
@@ -117,7 +117,7 @@
 #'
 #'  Schneider, Florian D., and Sonia Kefi. 2016. "Spatially Heterogeneous Pressure Raises
 #'  Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17.
-#'  doi: 10.1007/s12080-015-0289-1.
+#'  \doi{10.1007/s12080-015-0289-1}.
 #'
 #' @examples
 #'
@@ -277,19 +277,21 @@ ca_library <- function(model,
   #
   if ( model == "coralreef" || model == "coral-reef" || model == "coral reef") {
     if ( is.null(parms) ) {
-      parms <- list(r_a = 1.792032617,
-                    l_a = 0.016357009,
-                    alpha = 0.01,
-                    r_c = 0.001308055,
-                    d_0 = 1,
-                    m_a = 0.011323493,
-                    h_u = 2.000000000,
-                    g = 0.178133479,
-                    theta_b = 1.111260092,
-                    theta_c = 1.051433267,
-                    m_c     = 0.000100000)
+      parms <- list(r_a = 1.813037, 
+                    l_a = 0.029767236894167, 
+                    alpha = 0.01, 
+                    m_a = 0.0792644531506507, 
+                    r_c = 0.00130805533933221, 
+                    d_0 = 0, 
+                    m_c = 1e-04, 
+                    g = 0.203809923511696, 
+                    theta_b = 0.965518113386164, 
+                    theta_c = 1.04159074812267, 
+                    h_u = 2, 
+                    rate_bl = 0, 
+                    m_b = 0.0953125028179528)
     }
-
+    
     # Default neighbors = 4
     neighbors <- ifelse(is.null(neighbors), 4, neighbors)
     wrap <- ifelse(is.null(wrap), TRUE, wrap)

@@ -30,7 +30,7 @@
    would be something looking like this, for a simple model of plants growing over
    space:
 
-   \code{
+   \preformatted{
    mod <- camodel(
      transition(from = "bare", to = "plant", ~ r1 * p["plant"] + r2 * q["plant"]),
      transition(from = "plant", to = "bare", ~ m),
@@ -109,11 +109,8 @@ If you use and like \code{chouca}, we would appreciate you to cite our correspon
 publication:
 
  Genin A, Dupont G, Valencia D, Zucconi M, Avila-Thieme M, Navarrete
- S, Wieters E (2023). “Easy, fast and reproducible Stochastic Cellular
- Automata with 'chouca'.” _Biorxiv_. doi:10.1101/2023.11.08.566206
- <https://doi.org/10.1101/2023.11.08.566206>, R package version
- 0.0.99,
- <https://www.biorxiv.org/content/10.1101/2023.11.08.566206v1>.
+ S, Wieters E (2023). "Easy, fast and reproducible Stochastic Cellular
+ Automata with 'chouca'." \doi{10.1101/2023.11.08.566206}
 }
 \examples{
 

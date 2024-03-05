@@ -1,9 +1,14 @@
 Package: chouca
 Title: A Stochastic Cellular Automaton Engine
-Version: 0.1
-Authors@R: 
-    person("Alexandre", "Genin", , "a.a.h.genin@uu.nl", role = c("aut", "cre"),
-           comment = c(ORCID = "0000-0002-3333-1338"))
+Version: 0.1.99
+Authors@R: c(person("Alexandre", "Genin", , "a.a.h.genin@uu.nl", role = c("aut", "cre"),
+                    comment = c(ORCID = "0000-0002-3333-1338")), 
+             person("Guillaume", "Dupont", , "", role = c("aut")), 
+             person("Daniel", "Valencia", , "", role = c("aut")), 
+             person("Mauro", "Zucconi", , "", role = c("aut")), 
+             person("M. Isidora", "Ávila-Thieme", , "", role = c("aut")), 
+             person("Sergio A.", "Navarrete", , "", role = c("aut")), 
+             person("Evie A.", "Wieters", , "", role = c("aut")) )
 Description: An engine for stochastic cellular automata. It provides a high-level
   interface to declare a model, which can then be simulated by various backends
   (Genin et al. (2023) <doi:10.1101/2023.11.08.566206>).

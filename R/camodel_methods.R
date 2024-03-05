@@ -47,6 +47,8 @@ plot.ca_model <- function(x, y, ...) {
          vertex.color = grDevices::rgb(0, 0, 0, 0),
          vertex.size = 30, 
          ...)
+  } else { 
+    warning("Package igraph was not found, but is required to plot the model structure")
   }
 }
 

@@ -136,8 +136,9 @@ Possible options are the following:
      to run the model. This provides a moderate speedup in most cases, and
      is sometimes counter-productive on small landscapes. If you plan on
      running multiple simulations, you are probably better off parallelizing
-     at a higher level.
-
+     at a higher level. See also the 'Performance' section in the vignette, 
+     accessible using the command \code{vignette("chouca-package")}.
+     
 }
 }
 \examples{
