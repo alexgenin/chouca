@@ -25,11 +25,17 @@ if [ "$ACTION" == "check" ]; then
   R CMD check --as-cran ${PKG}*.gz
 fi
 
+if [ "$ACTION" == "check_valgrind" ]; then 
+  cd "$TMPDIR"
+  R CMD build "$PKG" 
+  R CMD check --use-valgrind --as-cran ${PKG}*.gz
+fi
+
 if [ "$ACTION" == "install" ]; then 
   cd "$TMPDIR"
   R CMD build "$PKG" 
   R -e "install.packages(dir(pattern = '^$PKG.*gz$'), repos = NULL)"
 fi
 
-rm -rf "$TMPDIR"
+# rm -rf "$TMPDIR"
 
