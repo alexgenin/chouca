@@ -134,15 +134,15 @@ test_that("The coral reef model is consistent across engines", {
   # The coral reef model had issues at some point with different engines, so make 
   # sure that is fixed
   mod <- ca_library("coralreef")
-  mod <- update(mod, parms = list(m_c = 10^(-3.5), d_0 = -0.5), 
+  mod <- update(mod, parms = list(m_c = 10^(-3.5), d_0 = -0.5, h_u = 10), 
                 wrap = FALSE, neighbors = 8)
   
-  ctrl <- list(engine = "cpp", substeps = 4)
+  ctrl <- list(engine = "cpp", substeps = 2)
   init <- generate_initmat(mod, rep(1/3, 3), nrow = 64, ncol = 64)
-  out_cpp <- run_camodel(mod, init, seq(1, 256), control = ctrl)
+  out_cpp <- run_camodel(mod, init, seq(1, 1024), control = ctrl)
   
   ctrl <- list(engine = "compiled", force_compilation = TRUE, substeps = 4)
-  out_compiled <- run_camodel(mod, init, seq(1, 256), control = ctrl)
+  out_compiled <- run_camodel(mod, init, seq(1, 1024), control = ctrl)
   
   # Compare output 
   out_cpp_t <- out_cpp[["output"]][["covers"]]
@@ -155,4 +155,4 @@ test_that("The coral reef model is consistent across engines", {
     all(abs(out_cpp_t[ ,"CORAL"] - out_compiled_t[ ,"CORAL"]) < 0.05)
   })
   
-}
+})
