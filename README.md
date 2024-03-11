@@ -2,6 +2,7 @@
 <!-- badges: start -->
 [![Codecov test coverage](https://codecov.io/gh/alexgenin/chouca/branch/master/graph/badge.svg)](https://app.codecov.io/gh/alexgenin/chouca?branch=master)
 [![R-CMD-check](https://github.com/alexgenin/chouca/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/alexgenin/chouca/actions/workflows/R-CMD-check.yaml)
+[![CRAN status](https://www.r-pkg.org/badges/version/chouca)](https://CRAN.R-project.org/package=chouca)
 <!-- badges: end -->
 
 # Chouca: a fast engine for stochastic cellular automata
@@ -80,8 +81,8 @@ allows making optimizations that would be impossible otherwise, and improves
 performance typically one or two orders of magnitude.
 
 Here are a few graphs that should help you judge what performance to expect from
-`chouca`. These curves represent the average performance across a few models
-taken from the literature:
+`chouca`. These curves represent the average single-thread performance across a 
+few models taken from the literature:
 
 ![benchmark_results](./benchmarks_last_commit.png)
 
@@ -89,7 +90,14 @@ taken from the literature:
 
 ## Installation
 
-`chouca` can be installed with the devtools `package` directly from github:
+`chouca` can be installed from CRAN: 
+
+```r
+install.packages("chouca")
+```
+
+The development version can be installed with the devtools `package` directly from
+github:
 
 ```r
 devtools::install_github("alexgenin/chouca")
