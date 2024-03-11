@@ -1,20 +1,20 @@
 
 
-chouca v0.1.99 (Release date: unknown)
+chouca v0.1.99 (Release date: 2024-03-07)
 ==============================================
 
 Bug fixes: 
 
  - Fix an out-of-bound read in cpp_engine.cpp
 
- - Fix a correctness bug when models have transitions that depend on 
-     multiple states in the cell neighborhoods
+ - Fix a bug where models with transitions that depend on multiple states in the cell
+     neighborhoods were not simulated correctly
 
 Minor improvements: 
  
- - The package now warns if igraph is not available on the platform and a model graph
-     cannot be displayed
-     
+ - The package now warns if igraph is not available on the current platform and a model
+     graph cannot be displayed
+
  - Minor formatting improvements in the documentation
  
  - Added an URL/BugReports field in DESCRIPTION
