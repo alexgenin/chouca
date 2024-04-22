@@ -371,7 +371,7 @@ run_camodel <- function(mod, initmat, times,
   engine <- control[["engine"]][1]
   if ( tolower(engine) %in% c("cpp", "c++") ) {
     camodel_cpp_engine_wrap(control_list)
-  } else if ( tolower(engine) %in% c("compiled") ) {
+  } else if ( tolower(engine) %in% "compiled" ) {
     camodel_compiled_engine_wrap(control_list)
   } else {
     stop(sprintf("%s is an unknown CA engine", engine))

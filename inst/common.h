@@ -26,9 +26,45 @@ static inline uint64_t rotl(const uint64_t x, int k) {
   return (x << k) | (x >> (64 - k));
 }
 
-// Seeds
-static uint64_t s[cores][4];
+// You can play with this value on your architecture
+#define XOSHIRO256_UNROLL (8)
 
+/* The current state of the generators. */
+static uint64_t s[cores][4][XOSHIRO256_UNROLL];
+
+// TODO: this assumes nc is divisible by 8
+constexpr arma::uword RN_ARRAY_LEN = nc; // XOSHIRO256_UNROLL * 8; 
+static double rn_pool[cores][RN_ARRAY_LEN]; 
+
+static inline double renew_rn_pool(uchar core) {
+ 	uint64_t t[XOSHIRO256_UNROLL];
+
+  for (int b = 0; b < RN_ARRAY_LEN; b += XOSHIRO256_UNROLL) {
+    
+    for (int i = 0; i < XOSHIRO256_UNROLL; i++) { 
+      const uint64_t tmp = s[core][0][i] + s[core][3][i];
+      rn_pool[core][b + i] = ( tmp >> 11 ) * 0x1.0p-53; 
+    }
+    
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) t[i] = s[core][1][i] << 17;
+
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) s[core][2][i] ^= s[core][0][i];
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) s[core][3][i] ^= s[core][1][i];
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) s[core][1][i] ^= s[core][2][i];
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) s[core][0][i] ^= s[core][3][i];
+
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) s[core][2][i] ^= t[i];
+
+    for(int i = 0; i < XOSHIRO256_UNROLL; i++) s[core][3][i] = rotl(s[core][3][i], 45);
+  }
+
+  // This is just to avoid dead-code elimination
+  return rn_pool[core][0] - rn_pool[core][RN_ARRAY_LEN - 1];
+}
+
+// Seeds
+// static uint64_t s[cores][4];
+/*
 static uint64_t nextr(uchar core) {
   const uint64_t result = s[core][0] + s[core][3];
   const uint64_t t = s[core][1] << 17;
@@ -50,6 +86,7 @@ static inline double randunif(uchar core) {
   double xf = (x >> 11) * 0x1.0p-53; // use upper 53 bits only
   return xf;
 }
+*/
 
 // Not very efficient integer power of another value. We should probably use
 // exponentiation by squaring, though since we almost always deal with powers <=5,
@@ -442,15 +479,15 @@ inline void adjust_nb_plines(uword pline[nr][nc],
   // go up in the table)
   arma::sword adj = intpow(max_nb+1, (ns-1) - to) - intpow(max_nb+1, (ns-1) - from);
   
-  // If we have a fixed number of neighbors, then we discard the combinations that 
-  // do not sum to this number of neighbors. In the table above for example, this is 
-  // not done so you have configurations with, for example, 3 neighbors, that do not 
-  // correspond to something that occurs in the grid. This effectively removes every 
-  // line but those that fall every 'nb' (the number of neighbors), so we need to divide
-  // the adjustment factor accordingly (i.e. instead of going nb-by-nb, we go one by
-  // one). 
+  // If we have a fixed number of neighbors (wrap = TRUE), then we discard the
+  // combinations that do not sum to this number of neighbors in all_qs. In the example
+  // above for example, this is not done so you have configurations with, for example,
+  // 3 neighbors, that do not correspond to something that occurs in the grid. When 
+  // these bogus combinations are removed, we only keep the lines in all_qs that fall
+  // every 'max_nb' (the fixed number of neighbors), so we need to divide the
+  // adjustment factor accordingly (i.e. instead of going nb-by-nb, we go one by one).
   adj = wrap ? adj / ( (sword) max_nb ) : adj;
-
+  
   // Get neighbors to the left
   if ( wrap ) {
 
@@ -566,13 +603,15 @@ inline void compute_rate(double tprob_line[ns],
         // corresponding coefficient for f(q_1), but also the one for f(q_2).
         // We know they are spaced xpoints apart from each other in the
         // coefficient table, so we just sum values every xpoints
-        
+        // 
         // qpointn is a number used to convert the number of neighbors into 
         // the point at which the value of f(q) is stored in the coefficient tables. 
         // all_qs[ ][ns] holds the total number of neighbors, and is passed as 
-        // total_nb. However, here fixed_nb is constexpr so this if() should be 
+        // total_nb. 
+        // 
+        // Note that here fixed_nb is constexpr so this if() should be 
         // optimized away when we use a fixed number of neighbors as qpointn
-        // will be known at compile time. 
+        // is then known at compile time. 
         uchar qpointn = (xpoints - 1 ) / ( fixed_nb ? n_nb : total_nb ); 
         
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
@@ -621,21 +660,24 @@ inline void compute_rate(double tprob_line[ns],
       }
     }
 
-    // NOTE: it seems like a good idea to cap probabilities to 0-1, but it
+    // NOTE: it seems like a good idea to cap probabilities to <=1, but it
     // is really not. The fact that things are above 1 should be handled
     // by increasing the number of substeps, otherwise the rates of
     // probabilities become unbalanced between transitions. For example,
     // if we have P(s -> a) = 2 and P(s -> b) = 0.4, then by setting
     // P(s -> a) to 1.0, we reduce its relative probability compared to
     // P(s -> b) when using substeps >= 2.
-    // Cap the proba to 0-1 range
+    // 
+    // Cap the proba to <=1 
     // total = total > 1.0 ? 1.0 : total;
+    // 
+    // Cap the proba to >=0 
     total = total < 0.0 ? 0.0 : total;
     
     // Total contains the probability for this transition.
     tprob_line[to] = total;
   }
-
+  
   // Compute cumsum of probabilities
   for ( ushort k=1; k<ns; k++ ) {
     tprob_line[k] += tprob_line[k-1];
