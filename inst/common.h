@@ -612,7 +612,7 @@ inline void compute_rate(double tprob_line[ns],
         // Note that here fixed_nb is constexpr so this if() should be 
         // optimized away when we use a fixed number of neighbors as qpointn
         // is then known at compile time. 
-        uchar qpointn = (xpoints - 1 ) / ( fixed_nb ? n_nb : total_nb ); 
+        const uchar qpointn = ( xpoints - 1 ) / ( fixed_nb ? n_nb : total_nb ); 
         
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
           uword qthis = qs[coef_tab_ints(kstart + xpoints*coef, _state_1)] * qpointn;

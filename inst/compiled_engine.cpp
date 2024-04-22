@@ -265,7 +265,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   compute_rate(ptrans,
                old_qs[0][0], // qs
                old_ps, // ps
-               number_of_neighbors(0, 0), // number of neighbors
+               number_of_neighbors(0, 0), // number of neighbors of cell at (0, 0)
                old_mat[0][0]); // from (current) state
   *last_nb = old_qs[0][0]; 
   last_state = old_mat[0][0]; 
@@ -337,6 +337,8 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else
       for (uword i = 0; i < nr; i++) {
 #endif
+        renew_rn_pool(0); 
+        
         for (uword j = 0; j < nc; j++) {
 
           const uchar from = old_mat[i][j];
