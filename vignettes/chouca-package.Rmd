@@ -213,11 +213,11 @@ function of $q_s$. $\zeta(\boldsymbol x, \boldsymbol y)$ is, for two vectors of
 length $n$ $\boldsymbol x = (x_1, x_2, ..., x_n)$ and 
 $\boldsymbol y = (y_1, y_2, ..., y_n)$, the sum of $K$ terms 
 $$
- \zeta(\boldsymbol x, \boldsymbol y) = \beta_1 x_1^{a_0} x_2^{b_0} + 
-   \beta_2 x_2^{a_1} x_1^{b_1} + 
-   \beta_3 x_3^{a_2} x_1^{b_1} + 
+ \zeta(\boldsymbol x, \boldsymbol y) = \beta_1 x_1^{a_0} y_2^{b_0} + 
+   \beta_2 x_2^{a_1} y_1^{b_1} + 
+   \beta_3 x_3^{a_2} y_1^{b_1} + 
    ...
-   \beta_K x_n^{a_K} x_1^{b_K} 
+   \beta_K x_n^{a_K} y_n^{b_K} 
 $$
 
 All the $(\beta_i)_{i \in [1:K]}$, $(a)_{i \in [1:K]}$, $(b)_{i \in [1:K]}$ 
@@ -487,7 +487,7 @@ the current time of the simulation (an integer), and the second should be
 
 For example, we can compute how the spatial autocorrelation changes in the
 landscape as the simulation is running, measured by the Moran's I index
-(available in package [spatialwarnings](https://cran.r-project.org/package=spatialwarnings):
+(available in package [spatialwarnings](https://cran.r-project.org/package=spatialwarnings)):
 
 ```{r}
 
