@@ -243,14 +243,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // is defined as integers (uint64_t)
   for (uword i = 0; i < 4; i++) {
     for (uword thread = 0; thread < cores; thread++) {
-      for (uword r = 0; r < XOSHIRO256_UNROLL; r++) {
-        // randu returns 64-bit double precision numbers used to seed xoshiro256+
-        double rn = arma::randn<double>();
-        memcpy(&s[thread][i][XOSHIRO256_UNROLL], &rn, sizeof(double));
-      }
+      // randu returns 64-bit double precision numbers
+      double rn = arma::randn<double>();
+      memcpy(&s[thread][i], &rn, sizeof(double));
     }
   }
-  
+
   // Allocate some things we will reuse later. We always need to define this when using
   // multiple cores as otherwise the omp pragma will complain it's undefined when
   // using multiple threads.
@@ -267,7 +265,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
                old_ps, // ps
                number_of_neighbors(0, 0), // number of neighbors of cell at (0, 0)
                old_mat[0][0]); // from (current) state
-  *last_nb = old_qs[0][0]; 
+  last_nb = old_qs[0][0]; 
   last_state = old_mat[0][0]; 
 #endif
 
@@ -275,7 +273,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   uword last_t = times(times.n_elem - 1);
   uword export_n = 0;
   uword next_export_t = times(export_n);
-  
+
   while (current_t <= last_t) {
 
     // Call callbacks
@@ -297,7 +295,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       }
 
       export_n++;
-      // The if() avoids an OOB read when on last iteration
+      // Avoids an OOB read when on last iteration
       if ( export_n < times.n_elem ) {
         next_export_t = times(export_n);
       }
@@ -320,7 +318,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       // time not trying to step on each others' toes, but when there is a significant 
       // amount of work to do per line (complex model, no memoization of probas), 
       // this works well.
-      // 
+      //
       // Note that this probably assumes that nr >> cores, but it would be a bit of a 
       // pathological case if this was not true.
       // 
@@ -328,7 +326,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
       // inside blocks with the non-parallel version
       for (uword c = 0; c < (nr / cores); c++) {
 #pragma omp parallel num_threads(cores) default(shared) \
-  firstprivate(ptrans) firstprivate(last_nb) firstprivate(last_state) reduction(+:new_ps)
+  private(ptrans) reduction(+:new_ps)
       {
       uword i = omp_get_thread_num() * (nr / cores) + c;
       // Make sure we never run the loop if the number of rows is beyond the number
@@ -337,7 +335,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else
       for (uword i = 0; i < nr; i++) {
 #endif
-        renew_rn_pool(0); 
         
         for (uword j = 0; j < nc; j++) {
 
@@ -346,7 +343,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #if PRECOMPUTE_TRANS_PROBAS
 #else
           // Normalized local densities to proportions
-          const uword qs_total = number_of_neighbors(i, j);
+          uword qs_total = number_of_neighbors(i, j);
           
           // Check if neighborhood changed since the last considered cell. If not, then 
           // pchange already holds the required numbers so we skip updating the 
@@ -362,13 +359,13 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             last_state = from; 
           }
 #endif
-/*
+
 #if USE_OMP
           double rn = randunif(omp_get_thread_num());
 #else
           double rn = randunif(0);
 #endif
-          */
+
           // Check if we actually transition. We compute the cumulative sum of
           // probabilities, then draw a random number (here 'rn'), to see if the
           // transition occurs or not.
@@ -380,16 +377,15 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           // Of course the sum of probabilities must be lower than one, otherwise we are
           // making an approximation and may never consider a given transition.
           uchar new_cell_state = from;
-          for (signed char k=(ns-1); k>=0; k--) {
+          for (signed char k = (ns - 1); k >= 0; k--) {
 #if PRECOMPUTE_TRANS_PROBAS
             uword line = old_pline[i][j];
-            const double rn = rn_pool[0][j]; // assumes one core
             new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state;
 #else
             new_cell_state = rn < ptrans[k] ? k : new_cell_state;
 #endif
           }
-          
+
           if ( new_cell_state != from ) {
             new_ps[new_cell_state]++;
             new_ps[from]--;
@@ -398,7 +394,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             adjust_nb_plines(new_pline, i, j, from, new_cell_state);
 #else
             adjust_local_density(new_qs, i, j, from, new_cell_state);
-#endif  
+#endif
           }
 
         } // end of loop on j (columns)
