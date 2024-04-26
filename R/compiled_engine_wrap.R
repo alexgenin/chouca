@@ -112,6 +112,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
           betas_index[from+1, to+1, 1 + 2*(i-1) ] <- min(which_rows) - 1
           betas_index[from+1, to+1, 1 + 2*(i-1)+1 ] <- max(which_rows) - 1
         } else {
+          # When no transition, we put kend before kstart, so we don't enter for loops 
           betas_index[from+1, to+1, 1 + 2*(i-1) ] <- -1
           betas_index[from+1, to+1, 1 + 2*(i-1)+1 ] <- -2
         }
@@ -122,7 +123,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # Trim coef table and write it to c++
   coef_tab_ints <- as.matrix(coef_table[ ,c("from", "to", "state_1", "state_2",
                                             "expo_1", "expo_2", "qs")])
-  coef_tab_ints[is.na(coef_tab_ints)] <- 99
+  coef_tab_ints[is.na(coef_tab_ints)] <- -1 # default value 
   coef_tab_dbls <- as.matrix(coef_table[ ,"coef", drop = FALSE])
   ctrl[["coef_tab_dbls"]] <- coef_tab_dbls
   ctrl[["coef_tab_ints"]] <- coef_tab_ints
@@ -162,7 +163,13 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   hash <- digest::digest(list(clines, ctrl[["cores"]]), algo = "md5")
   clines <- gsub("__FPREFIX__", hash, clines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
-
+  
+  # Maximum degree we will need for power function. The degree is often quite low so 
+  # there is room for optimization when it is only one or two 
+  clines <- gsub("__MAX_POW_DEGREE__", 
+                 max(ctrl[["coef_tab_ints"]][ ,c("expo_1", "expo_2")]), 
+                 clines)
+  
   # Make the table with all combinations of qs. If we wrap, then we can discard
   # combinations that are not multiples of the number of neighbors (this is what the
   # 'filter' argument does below)
@@ -193,7 +200,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
                       rebuild = TRUE, # always force rebuild has we have our own cache
                       env = function_envir)
   }
-
+  
   runf <- get(fname, envir = function_envir)
   runf(all_qs, ctrl)
 }

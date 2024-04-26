@@ -60,61 +60,63 @@ if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) {
   models <- models[4]
 }
 
-plyr::llply(models, function(modinfo) { 
+test_that("Model results match regardless of engine", { 
   
-  mod <- modinfo[[1]]
-  initmat <- modinfo[[2]]
-  
-  control <- list(console_output_every = 0, 
-                  save_covers_every = 1, 
-                  save_snapshots_every = 0, 
-                  engine = "cpp")
-  
-  # Check that we reproduce well the variance and mean of time series between the two 
-  # engines. Somehow setti the seed does not 
-  engines_ts <- replicate(19, { 
-    niter <- seq(0, 10)
-    modcompiled <- run_camodel(mod, initmat, niter, control = { 
-      control[["engine"]] <- "compiled" ; control
-    })
-    modcpp <- run_camodel(mod, initmat, niter, control = { 
-      control[["engine"]] <- "cpp" ; control
+  plyr::llply(models, function(modinfo) { 
+    
+    mod <- modinfo[[1]]
+    initmat <- modinfo[[2]]
+    
+    control <- list(console_output_every = 0, 
+                    save_covers_every = 1, 
+                    save_snapshots_every = 0, 
+                    engine = "cpp")
+    
+    # Check that we reproduce well the variance and mean of time series between the two 
+    # engines. Somehow setti the seed does not 
+    engines_ts <- replicate(19, { 
+      niter <- seq(0, 10)
+      modcompiled <- run_camodel(mod, initmat, niter, control = { 
+        control[["engine"]] <- "compiled" ; control
+      })
+      modcpp <- run_camodel(mod, initmat, niter, control = { 
+        control[["engine"]] <- "cpp" ; control
+      })
+      
+      # Time series 
+      cbind(modcompiled[["output"]][["covers"]][ ,2:3], 
+            modcpp[["output"]][["covers"]][ ,2:3])
     })
     
-    # Time series 
-    cbind(modcompiled[["output"]][["covers"]][ ,2:3], 
-          modcpp[["output"]][["covers"]][ ,2:3])
-  })
-  
-  emeans <- apply(engines_ts, c(1, 2), mean)
-  evars <- apply(engines_ts, c(1, 2), var)
-  
-  par(mfrow = c(1, 2))
-  # Display results 
-  plot(emeans[ ,1], type = "n")
-  lines(emeans[ ,1], col = "red")
-  lines(emeans[ ,3], col = "black")
-  
-  # Display variance results
-  plot(evars[ ,1], type = "n")
-  lines(evars[ ,1], col = "red")
-  lines(evars[ ,3], col = "black")
-  
-  expect_true({ 
-    all( abs( emeans[ ,1] - emeans[ ,3] ) < tolerance )
-  })
+    emeans <- apply(engines_ts, c(1, 2), mean)
+    evars <- apply(engines_ts, c(1, 2), var)
+    
+    par(mfrow = c(1, 2))
+    # Display results 
+    plot(emeans[ ,1], type = "n")
+    lines(emeans[ ,1], col = "red")
+    lines(emeans[ ,3], col = "black")
+    
+    # Display variance results
+    plot(evars[ ,1], type = "n")
+    lines(evars[ ,1], col = "red")
+    lines(evars[ ,3], col = "black")
+    
+    expect_true({ 
+      all( abs( emeans[ ,1] - emeans[ ,3] ) < tolerance )
+    })
 
-  expect_true({ 
-    all( abs( emeans[ ,2] - emeans[ ,4] ) < tolerance )
-  })
+    expect_true({ 
+      all( abs( emeans[ ,2] - emeans[ ,4] ) < tolerance )
+    })
 
-  expect_true({ 
-    all( abs( evars[ ,1] - evars[ ,3] ) < tolerance )
-  })
-  
-  expect_true({ 
-    all( abs( evars[ ,2] - evars[ ,4] ) < tolerance )
+    expect_true({ 
+      all( abs( evars[ ,1] - evars[ ,3] ) < tolerance )
+    })
+    
+    expect_true({ 
+      all( abs( evars[ ,2] - evars[ ,4] ) < tolerance )
+    })
   })
   
 })
-

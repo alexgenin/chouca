@@ -27,7 +27,7 @@ static inline uint64_t rotl(const uint64_t x, int k) {
 // Seeds
 static uint64_t s[CORES][4];
 
-static uint64_t nextr(uchar core) {
+static uint64_t nextr(arma::uword core) {
   const uint64_t result = s[core][0] + s[core][3];
   const uint64_t t = s[core][1] << 17;
 
@@ -43,7 +43,7 @@ static uint64_t nextr(uchar core) {
   return result;
 }
 
-static inline double randunif(uchar core) {
+static inline double randunif(arma::uword core) {
   uint64_t x = nextr(core);
   double xf = (x >> 11) * 0x1.0p-53; // use upper 53 bits only
   return xf;
@@ -54,8 +54,8 @@ static inline double randunif(uchar core) {
 // typically 1-2, this may be overkill.
 // Note that we know at compile time the maximum value for b, so there may be
 // some optimization we are missing, especially when max(b) <= 1.
-inline uword intpow(const u_nbcount a,
-                    const u_nbcount b) {
+inline arma::uword intpow(const u_nbcount a,
+                          const u_nbcount b) {
   uword p = 1;
   for ( uchar k=0; k<b; k++ ) {
     p *= a;
@@ -68,19 +68,16 @@ inline uword intpow(const u_nbcount a,
 // not memoization probas of transition.
 static inline double fintpow(const pfloat a,
                              const u_nbcount b) {
+  // Here we make available to the compiler the maximum value for b, this enables nice 
+  // optimizations. 
+  u_nbcount bmax = b <= MAX_POW_DEGREE ? b : MAX_POW_DEGREE; 
   
-  switch ( b ) {
-    case 0: return 1.0;
-    case 1: return a;
-    case 2: return a*a;
-    case 3: return a*a*a;
-    case 4: return a*a*a*a;
-    case 5: return a*a*a*a*a;
-    case 6: return a*a*a*a*a*a;
-    case 7: return a*a*a*a*a*a*a;
+  pfloat ans = 1.0; 
+  for ( u_nbcount i=0; i<bmax; i++ ) { 
+    ans *= a; 
   }
 
-  return 1.0;
+  return ans;
 }
 
 // Initalize the count of local densities for each cell in the landscape
@@ -439,9 +436,11 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
   // to the old state, and add the term corresponding to the new state, hence the 
   // following adjustment factor: 
   // 
-  // NOTE: we use a signed integer here because the pline adjustment can be negative (we 
-  // go up in the table)
-  s_pline adj = intpow(max_nb+1, (NS-1) - to) - intpow(max_nb+1, (NS-1) - from);
+  // NOTE: we use signed integers here because the pline adjustment can be negative (we 
+  // go up in the table). Note that we convert *before* we carry out the difference, 
+  // otherwise the integers wrap around 
+  s_pline adj = (s_pline) intpow(max_nb+1, (NS-1) - to) - 
+                  (s_pline) intpow(max_nb+1, (NS-1) - from);
   
   // If we have a fixed number of neighbors, then we discard the combinations that 
   // do not sum to this number of neighbors. In the table above for example, this is 
@@ -520,30 +519,34 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
     }
 
   }
-
+  
 }
 
 // Compute probability of transitions to other states, and store in tprob_line
-inline void compute_rate(pfloat tprob_line[NS],
-                         const u_nbcount qs[NS],
-                         const u_pscount ps[NS],
-                         const u_nbcount & total_nb,
-                         const u_state & from) {
+void compute_rate(pfloat tprob_line[NS],
+                  const u_nbcount qs[NS],
+                  const u_pscount ps[NS],
+                  const u_nbcount & total_nb,
+                  const u_state & from) {
 
   // Set all probs to zero
   memset(tprob_line, 0, sizeof(pfloat)*NS);
-
-  for ( u_state to=0; to<NS; to++ ) {
-
+  
+  double total = 0.0; 
+  u_state to = 0; 
+  while ( to < NS ) { 
+    
     // Check if we will ever transition into the state. This assumes
     // probability is set to zero above, otherwise tprob_line contains undefined or
-    // wrong values.
+    // wrong values. This adds a branch but it is usally worth it, especially with 
+    // very sparse models. 
     if ( ! transition_matrix[from][to] ) {
+      to++; 
       continue;
     }
 
     // double total = 0.0. 
-    pfloat total = 0.0; 
+    // pfloat total = 0.0; 
     s_pline kstart, kend;
 
     // constant component
@@ -559,7 +562,6 @@ inline void compute_rate(pfloat tprob_line[NS],
     if ( BETA_Q_NROW > 0 ) {
       kstart = betas_index[_beta_q_start][from][to];
       kend = betas_index[_beta_q_end][from][to];
-      uword n_coef_to_sum = (kend - kstart + 1) / XPOINTS;
       if ( kstart >= 0 ) {
         // qthis holds the current point at which to extract the value of the coefficient
         // for q. When a transition depends on multiple neighbor expressions, i.e.
@@ -567,6 +569,7 @@ inline void compute_rate(pfloat tprob_line[NS],
         // corresponding coefficient for f(q_1), but also the one for f(q_2).
         // We know they are spaced xpoints apart from each other in the
         // coefficient table, so we just sum values every xpoints
+        uword n_coef_to_sum = (kend - kstart + 1) / XPOINTS;
         
         // qpointn is a number used to convert the number of neighbors into 
         // the point at which the value of f(q) is stored in the coefficient tables. 
@@ -588,8 +591,8 @@ inline void compute_rate(pfloat tprob_line[NS],
       kstart = betas_index[_beta_pp_start][from][to];
       kend   = betas_index[_beta_pp_end][from][to];
       for ( s_pline k=kstart; k<=kend; k++ ) {
-        const pfloat p1 = ps[ coef_tab_ints[k][_state_1] ] / FNCELLS;
-        const pfloat p2 = ps[ coef_tab_ints[k][_state_2] ] / FNCELLS;
+        const pfloat p1 = (pfloat) ps[ coef_tab_ints[k][_state_1] ] / FLOAT_NCELLS;
+        const pfloat p2 = (pfloat) ps[ coef_tab_ints[k][_state_2] ] / FLOAT_NCELLS;
         total += coef_tab_flts[k] *
           fintpow(p1, coef_tab_ints[k][_expo_1]) *
           fintpow(p2, coef_tab_ints[k][_expo_2]);
@@ -614,7 +617,7 @@ inline void compute_rate(pfloat tprob_line[NS],
       kstart = betas_index[_beta_pq_start][from][to];
       kend   = betas_index[_beta_pq_end][from][to];
       for ( s_pline k=kstart; k<=kend; k++ ) {
-        const pfloat p1 = ps[ coef_tab_ints[k][_state_1] ] / FNCELLS;
+        const pfloat p1 = (pfloat) ps[ coef_tab_ints[k][_state_1] ] / FLOAT_NCELLS;
         const pfloat q1 = (pfloat) qs[ coef_tab_ints[k][_state_2] ] / total_nb;
         total += coef_tab_flts[k] *
           fintpow(p1, coef_tab_ints[k][_expo_1]) *
@@ -635,14 +638,17 @@ inline void compute_rate(pfloat tprob_line[NS],
     
     // Total contains the probability for this transition. We do the cumsum right away, 
     // while we used to do it seperately below. 
-    tprob_line[to] = total + ( to == 0 ? 0 : tprob_line[to-1] );
+    tprob_line[to] = total; 
+    
+    to++; 
   }
 
-  // Compute cumsum of probabilities. This is already included when saving the 
-  // resulting value in the code line above. 
+  // Compute cumsum of probabilities. This is already by using a while loop above, 
+  // instead of computing the rate of transition to every state, then computing the
+  // cumsum separately. 
   // for ( u_state k=1; k<NS; k++ ) {
   //  tprob_line[k] += tprob_line[k-1];
-  //}
+  // }
 
 }
 
@@ -657,7 +663,7 @@ void console_callback_wrap(const u_tstep iter,
   for ( u_state k=0; k<NS; k++ ) {
     ps_arma(k) = (arma::uword) ps[k];
   }
-  console_callback(iter, ps_arma, FNCELLS);
+  console_callback(iter, ps_arma, FLOAT_NCELLS);
 }
 
 void snapshot_callback_wrap(const u_tstep t,
@@ -698,5 +704,5 @@ void cover_callback_wrap(const u_tstep t,
     ps_arma(k) = ps[k];
   }
   
-  cover_callback(t, ps_arma, FNCELLS);
+  cover_callback(t, ps_arma, FLOAT_NCELLS);
 }

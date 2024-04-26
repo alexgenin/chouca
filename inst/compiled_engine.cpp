@@ -8,7 +8,6 @@
 #define ARMA_NO_DEBUG
 #endif
 
-
 // This is required for portability 
 #ifdef _OPENMP
 #define USE_OMP __USE_OMP__
@@ -31,15 +30,14 @@ typedef signed char schar;
 typedef unsigned short ushort;
 
 // Some typedefs used for model quantities
-typedef uchar       u_state;   // value holding a state 
-typedef schar       s_state;   // value holding a state, but signed
-typedef uchar       u_nbcount; // count of neighbors in given config
-typedef arma::uword u_xyint;   // coordinates in matrix
-typedef arma::uword u_pscount; // count of cells in given state
-typedef unsigned long u_pline; // line in all_qs
-typedef signed long s_pline;   // line in all_qs, signed version
-typedef arma::uword u_tstep;   // integer representing time step
-typedef double      pfloat;    // floating point values used in probabilities
+typedef uchar       u_state;     // value holding a state 
+typedef uchar       u_nbcount;   // count of neighbors in given config
+typedef arma::uword u_xyint;     // coordinates in matrix
+typedef unsigned long u_pscount; // count of cells in given state
+typedef unsigned long u_pline;   // line in all_qs
+typedef signed long s_pline;     // line in all_qs, signed version
+typedef unsigned long u_tstep;   // integer representing time step
+typedef double      pfloat;      // floating point values used in probabilities
 
 // These strings will be replaced by their values
 constexpr uword NR = __NR__;
@@ -51,7 +49,7 @@ constexpr u_state N_NB = USE_8_NB ? 8 : 4;
 constexpr bool FIXED_NB = __FIXED_NEIGHBOR_NUMBER__;
 constexpr uword SUBSTEPS = __SUBSTEPS__;
 constexpr uword XPOINTS = __XPOINTS__;
-constexpr double FNCELLS = NR * NC;
+constexpr double FLOAT_NCELLS = NR * NC;
 constexpr uword BETA_0_NROW = __BETA_0_NROW__;
 constexpr uword BETA_Q_NROW = __BETA_Q_NROW__;
 constexpr uword BETA_PP_NROW = __BETA_PP_NROW__;
@@ -59,11 +57,13 @@ constexpr uword BETA_QQ_NROW = __BETA_QQ_NROW__;
 constexpr uword BETA_PQ_NROW = __BETA_PQ_NROW__;
 constexpr uword ALL_QS_NROW = __ALL_QS_NROW__;
 constexpr uword CORES = __CORES__;
+constexpr uword MAX_POW_DEGREE = __MAX_POW_DEGREE__; 
 
 // Transition matrix (true when transition can be done, false when not)
 constexpr bool transition_matrix[NS][NS] = __TMATRIX_ARRAY__;
+
 // 5*2 because we have 5 packed tables of coefficients, each of which needing 2
-// (where to start, and where to stop for this transition)
+// (where to start, and where to stop for this transition). 
 constexpr sword betas_index[5 * 2][NS][NS] = __BETAS_INDEX__;
 
 // Whether we want to precompute probabilities or not
@@ -205,7 +205,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 
 #if PRECOMPUTE_TRANS_PROBAS
   // Convert all_qs to c-style char array
-  auto all_qs = new u_state[ALL_QS_NROW][NS + 1];
+  auto all_qs = new u_nbcount[ALL_QS_NROW][NS + 1];
   for (u_pline i = 0; i < ALL_QS_NROW; i++) {
     for (u_state k = 0; k < (NS + 1); k++) {
       all_qs[i][k] = (u_state) all_qs_arma(i, k);
@@ -391,7 +391,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           // making an approximation and may never consider a given transition.
           u_state new_cell_state = from;
           // Note the signedness so that the lopp does not WRAP around
-          for (s_state k = (NS - 1); k >= 0; k--) { 
+          
+          // Generate an interrupt
+          // std::raise(SIGINT);
+          
+          for (signed char k = (NS - 1); k >= 0; k--) { 
 #if PRECOMPUTE_TRANS_PROBAS
             u_pline line = old_pline[i][j];
             new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state;
