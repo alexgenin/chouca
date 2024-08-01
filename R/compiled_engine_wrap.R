@@ -141,7 +141,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   ctrl[["coef_tab_dbls"]] <- coef_tab_dbls
   ctrl[["coef_tab_ints"]] <- coef_tab_ints
   clines <- gsubf("__COEF_TAB_NROW__", nrow(coef_tab_ints), clines)
-
+  
   # Write it as c++ array in the file
   betas_index_str <- write_cpp_array_3d(betas_index)
   clines <- gsubf("__BETAS_INDEX__", betas_index_str, clines)

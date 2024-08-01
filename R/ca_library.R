@@ -56,8 +56,8 @@
 #'       (e.g. "rock beats scissors"). This deterministic model produces nice spirals.
 #'      
 #'     \item \code{"stepping-stone"} The stepping-stone model (a.k.a. "voter" model) , as
-#'       defined in Durret and Richard (1994), whic corresponds to the stepping stone 
-#'       model defined in 
+#'       defined as in Durret and Richard (1994), and first proposed earlier by Kimura
+#'       and Weiss (1964)
 #'   }
 #' 
 #' @returns 
@@ -127,7 +127,11 @@
 #'  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation
 #'  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems."
 #'  Nature 449 (7159): 213–17. \doi{10.1038/nature06111}.
-#'
+#'  
+#'  Kimura, Motoo, and George H Weiss. 1964. “The Stepping Stone Model of Population
+#'  Structure and the Decrease of Genetic Correlation with Distance.” Genetics 49 (4):
+#'  561–76. https://doi.org/10.1093/genetics/49.4.561.
+#'  
 #'  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
 #'  Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology
 #'  180 (3): 229–46.
@@ -355,12 +359,11 @@ ca_library <- function(model,
       parms = parms, 
       neighbors = neighbors,
       wrap = wrap,
-      parms = parms,
       all_states = c("EMPTY", "HOST", "PARASITE"),
       check_model = "quick"
     )
   }
-
+  
   # Conway's Game of life
   # https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
   if ( model == "gameoflife" || model == "game-of-life" ) {

@@ -33,25 +33,15 @@ typedef signed char schar;
 typedef unsigned short ushort;
 
 // Some typedefs used for model quantities
-// typedef uchar       u_state;     // value holding a state 
-// typedef schar       s_state;     // value holding a state (signed)
-// typedef uchar       u_nbcount;   // count of neighbors in given config
-// typedef arma::uword u_xyint;     // coordinates in matrix
-// typedef arma::sword s_xyint;     // coordinates in matrix (signed)
-// typedef unsigned long u_pscount; // count of cells in given state
-// typedef unsigned long u_pline;   // line in all_qs
-// typedef signed long s_pline;     // line in all_qs, signed version
-// typedef unsigned long u_tstep;   // integer representing time step
-// typedef double      pfloat;      // floating point values used in probabilities
-typedef sword       u_state;     // value holding a state 
-typedef sword       s_state;     // value holding a state (signed)
-typedef sword       u_nbcount;   // count of neighbors in given config
-typedef arma::sword u_xyint;     // coordinates in matrix
+typedef uchar       u_state;     // value holding a state 
+typedef schar       s_state;     // value holding a state (signed)
+typedef uchar       u_nbcount;   // count of neighbors in given config
+typedef arma::uword u_xyint;     // coordinates in matrix
 typedef arma::sword s_xyint;     // coordinates in matrix (signed)
-typedef signed long u_pscount; // count of cells in given state
-typedef signed long u_pline;   // line in all_qs
-typedef signed long s_pline;     // line in all_qs, signed version
-typedef signed long u_tstep;   // integer representing time step
+typedef unsigned int u_pscount; // count of cells in given state
+typedef unsigned int u_pline;   // line in all_qs
+typedef signed int s_pline;     // line in all_qs, signed version
+typedef unsigned long u_tstep;   // integer representing time step
 typedef double      pfloat;      // floating point values used in probabilities
 
 // These strings will be replaced by their values
@@ -290,19 +280,21 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // Initialize random number generator. All values in s must be overwritten with
   // 64 bits. We use doubles, but use memcpy to overwrite the raw bits into s which
   // is defined as integers (uint64_t)
-  for (uchar i = 0; i < 4; i++) {
-    for (uchar thread = 0; thread < CORES; thread++) {
+  for (uchar thread = 0; thread < CORES; thread++) {
+    for (uchar i = 0; i < 4; i++) {
       // randn returns 64-bit double precision numbers
-      double rn = arma::randn<double>();
+      double rn = exp( arma::randu<double>()*10 );
+      // Rcpp::Rcout << "rn: " << rn << "\n"; 
       memcpy(&s[thread][i], &rn, sizeof(double));
-      // Draw a random number to warm up the rng 
-      rn = randunif(thread); 
     }
+    
+    // Draw a random number to warm up the rng. The first number seems to be biased
+    // otherwise. 
+    randunif(thread); 
   }
-
+  
   // Allocate some things we will reuse later. We always need to define this when using
-  // multiple CORES as otherwise the omp pragma will complain it's undefined when
-  // using multiple threads.
+  // multiple threads as otherwise the omp pragma will complain it's undefined.
 #if ( ! PRECOMPUTE_TRANS_PROBAS ) || USE_OMP
   pfloat ptrans[NS];
 #endif 
@@ -317,6 +309,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
                old_mat[0][0]); // from (current) state
 #endif
 
+  
   u_tstep current_t = 0;
   u_tstep last_t = times(times.n_elem - 1);
   u_tstep export_n = 0;
@@ -442,18 +435,18 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           
           // Generate an interrupt for gdb
           // std::raise(SIGINT);
-          if ( current_t == 0 && i == 0 && j == 0 && from == 0 ) { 
-            Rcpp::Rcout << 
-              "t=" << current_t << " " << 
-              "ptrans[0]:" << ptrans[0] << " " << 
-              "ptrans[1]:" << ptrans[1] << " " << 
-              "rn: " << rn << " " << 
-              "old_mat[0][0]:" << (int) old_mat[0][0] << " " << 
-              "new_mat[0][0]:" << (int) new_mat[0][0] << " " << 
-              "ps:" << (int) old_ps[0] << "/" << (int) old_ps[1] << " " << 
-              "qs_next:" << (int) old_qs[0][1][0] << "/" << (int) old_qs[0][1][1] << " " << 
-              "\n"; 
-          }
+          // if ( current_t == 0 && i == 0 && j == 0 && from == 0 ) { 
+          //   Rcpp::Rcout << 
+          //     "t=" << current_t << " " << 
+          //     "ptrans[0]:" << ptrans[0] << " " << 
+          //     "ptrans[1]:" << ptrans[1] << " " << 
+          //     "rn: " << rn << " " << 
+          //     "old_mat[0][0]:" << (int) old_mat[0][0] << " " << 
+          //     "new_mat[0][0]:" << (int) new_mat[0][0] << " " << 
+          //     "ps:" << (int) old_ps[0] << "/" << (int) old_ps[1] << " " << 
+          //     "qs_next:" << (int) old_qs[0][1][0] << "/" << (int) old_qs[0][1][1] << " " << 
+          //     "\n"; 
+          // }
           
 
         } // end of loop on j (columns)
@@ -464,7 +457,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #endif
       } // for loop on i
 
-      // Copy old matrix to new, etc.
+      // Copy old matrix to new and other bookkeeping arrays 
       memcpy(old_ps, new_ps, sizeof(u_pscount) * NS);
       memcpy(old_mat, new_mat, sizeof(u_state) * NR * NC);
 #if PRECOMPUTE_TRANS_PROBAS

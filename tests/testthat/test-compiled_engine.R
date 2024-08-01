@@ -3,8 +3,8 @@
 # whether we precompute the probabilities or not, and respects the R seed. 
 # 
 
-ncols <- 32
-nrows <- ncols * (9/16)
+ncols <- 16
+nrows <- round(ncols * (9/16))
 
 # RPC model. We use it because it is deterministic
 mod <- ca_library("rockpaperscissor")
@@ -18,6 +18,7 @@ test_that("Compiled model produces OK results regardless of proba precomputation
   control <- list(save_covers_every = 1, 
                   console_output_every = 0, 
                   engine = "compiled", 
+                  save_snapshots_every = 1, 
                   force_compilation = TRUE, 
                   precompute_probas = TRUE)
   
@@ -31,6 +32,9 @@ test_that("Compiled model produces OK results regardless of proba precomputation
   matplot(ts1[ ,1], ts1[ ,-1], type = "l")
   ts2 <- o2[["output"]][["covers"]]
   matplot(ts2[ ,1], ts2[ ,-1], type = "l")
+  
+  matrix(o[["output"]][["snapshots"]][[3]] == o2[["output"]][["snapshots"]][[3]], 
+         nrow = nrows, ncol = ncols)
   
   # This should give exactly the same result 
   expect_true({ 

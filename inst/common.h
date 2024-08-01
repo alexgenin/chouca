@@ -18,30 +18,21 @@ constexpr uword _beta_pq_end   = 9;
 #define _expo_2 5
 
 // Define some things known at compile time
-const s_xyint kernel_semiheight = (NB_KERNEL_NR - 1) / 2; 
-const s_xyint kernel_semiwidth  = (NB_KERNEL_NC - 1) / 2; 
-
-// Define a maximum function
-inline s_xyint MAX(s_xyint a, 
-                   s_xyint b) { 
-  if ( b <= a ) { 
-    return a; 
-  } else { 
-    return b; 
-  }
-}
+const s_xyint KERNEL_SEMIHEIGHT = (NB_KERNEL_NR - 1) / 2; 
+const s_xyint KERNEL_SEMIWIDTH  = (NB_KERNEL_NC - 1) / 2; 
 
 /* This is xoshiro256+
  * https://prng.di.unimi.it/xoshiro256plus.c
  */
-static inline uint64_t rotl(const uint64_t x, int k) {
+static inline uint64_t rotl(const uint64_t x, 
+                            const int k) {
   return (x << k) | (x >> (64 - k));
 }
 
 // Seeds
 static uint64_t s[CORES][4];
 
-static uint64_t nextr(arma::uword core) {
+static uint64_t nextr(const arma::uword core) {
   const uint64_t result = s[core][0] + s[core][3];
   const uint64_t t = s[core][1] << 17;
 
@@ -80,8 +71,8 @@ inline arma::uword intpow(const u_nbcount a,
 // Another try at fast power. Remarks above also apply, this is probably not very
 // efficient. for information tests seem to say ~10% cpu time spent in here when
 // probas of transition are not memoized.
-static inline double fintpow(const pfloat x,
-                             const u_nbcount b) {
+static inline double fintpow(const pfloat& x,
+                             const u_nbcount& b) {
   // Here we make available to the compiler the maximum value for b, this may 
   // enable some optimizations. 
   const u_nbcount bmax = b <= MAX_POW_DEGREE ? b : MAX_POW_DEGREE; 
@@ -95,29 +86,28 @@ static inline double fintpow(const pfloat x,
 }
 
 // Return the product x^a * y^b, while enabling some optimizations when possible
-static inline double xy_ab_product(const pfloat x, 
-                                   const pfloat y, 
-                                   const u_nbcount a,   // aka EXPO_1
-                                   const u_nbcount b) { // aka EXPO_2
+static double xy_ab_product(const pfloat x, 
+                            const u_nbcount a,   // aka EXPO_1
+                            const pfloat y, 
+                            const u_nbcount b) { // aka EXPO_2
   
   pfloat ans; 
   
   // If we will never call this function with b > 0, then discard that part of 
   // the multiplication
-  // if ( MAX_PP_EXPO_2 == 0 && MAX_PQ_EXPO_2 == 0 && MAX_QQ_EXPO_2 == 0 ) { 
-  //   
-  //   // If the exponents for a are one or zero, then this function will be always called 
-  //   // with a == 1, so we just return x. Note that a is guaranteed to be above zero, 
-  //   // because the corresponding coefficients are removed from the tables when expo_1 is 
-  //   // zero
-  //   if ( MAX_PP_EXPO_1 == 1 && MAX_PQ_EXPO_1 == 1 && MAX_QQ_EXPO_1 == 1 ) {
-  //     return x; 
-  //   }
-  //   
-  //   ans = fintpow(x, a); 
-  //   return ans; 
-  // } 
-  
+  if ( MAX_PP_EXPO_2 == 0 && MAX_PQ_EXPO_2 == 0 && MAX_QQ_EXPO_2 == 0 ) { 
+    
+    // If the exponents for a are one or zero, then this function will be always called 
+    // with a == 1, so we just return x. Note that a is guaranteed to be strictly 
+    // above zero, because the corresponding coefficients are removed from the tables
+    // when expo_1 is zero
+    if ( MAX_PP_EXPO_1 == 1 && MAX_PQ_EXPO_1 == 1 && MAX_QQ_EXPO_1 == 1 ) {
+      return x; 
+    }
+    
+    ans = fintpow(x, a); 
+    return ans; 
+  } 
   ans = fintpow(x, a) * fintpow(y, b); 
   
   return ans; 
@@ -147,14 +137,14 @@ inline u_nbcount number_of_neighbors(const u_xyint i,
   // the numer of neighbors is fixed (but FIXED_NB is not necessarily true). 
   if ( ! FIXED_NB && ! WRAP ) {
     nnb = 0; 
-    for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
-      for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+    for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
+      for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
         // If we don't wrap, then we need to add a bound check to make sure 
         // we are in the matrix
-        const s_xyint i_target = i + o_r; 
-        const s_xyint j_target = j + o_c; 
+        const u_xyint i_target = i + o_r; 
+        const u_xyint j_target = j + o_c; 
         if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
-          nnb += NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          nnb += NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
         }
       }
     }
@@ -173,23 +163,23 @@ void inline count_qs(u_state this_qs[NS],
   memset(this_qs, 0, sizeof(u_state) * NS); 
   
   // We loop over the required offsets
-  for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
-    for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
+    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
       
       if ( WRAP ) { 
         u_state state = m[(NR + i + o_r) % NR][(NC + j + o_c) % NC]; 
         this_qs[state] += 
-          NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
       
       } else { 
         // If we don't wrap, then we need to add a bound check to make sure 
         // we are in the matrix
-        const s_xyint i_target = i + o_r; 
-        const s_xyint j_target = j + o_c; 
+        const u_xyint i_target = i + o_r; 
+        const u_xyint j_target = j + o_c; 
         if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
           u_state state = m[i_target][j_target]; 
           this_qs[state] += 
-            NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
         }
       }
     }
@@ -257,25 +247,25 @@ inline void adjust_local_density(u_nbcount qs[NR][NC][NS],
                                  const u_state to) {
   
   // We loop over the required offsets
-  for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
-    for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
+    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
         
       if ( WRAP ) { 
         qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][to] += 
-          NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
         qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][from] -= 
-          NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
         
       } else { 
         // If we don't wrap, then we need to add a bound check to make sure 
         // we are in the matrix
-        const s_xyint i_target = i + o_r; 
-        const s_xyint j_target = j + o_c; 
-        if ( i_target >= 0 && j_target >= 0 && i_target < NR & j_target < NC ) { 
+        const u_xyint i_target = i + o_r; 
+        const u_xyint j_target = j + o_c; 
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
           qs[i_target][j_target][to] += 
-            NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
           qs[i_target][j_target][from] -= 
-            NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
         }
         
       }
@@ -345,21 +335,21 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
   adj = WRAP ? adj / ( (s_pline) MAX_NB ) : adj;
   
   // We loop over the required offsets
-  for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
-    for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
+    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
         
       if ( WRAP ) { 
         pline[(NR + i + o_r) % NR][(NC + j + o_c) % NC] += 
-          adj * NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
           
       } else { 
         // If we don't wrap, then we need to add a bound check to make sure 
         // we are in the matrix
-        const s_xyint i_changed = i + o_r; 
-        const s_xyint j_changed = j + o_c; 
-        if ( i_changed > 0 && j_changed > 0 && i_changed < NR & j_changed < NC ) { 
+        const u_xyint i_changed = i + o_r; 
+        const u_xyint j_changed = j + o_c; 
+        if ( i_changed > 0 && j_changed > 0 && i_changed < NR && j_changed < NC ) { 
           pline[i_changed][j_changed] += 
-            adj * NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+            adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
         }
         
       }
@@ -372,8 +362,8 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
 void compute_rate(pfloat tprob_line[NS],
                   const u_nbcount qs[NS],
                   const u_pscount ps[NS],
-                  const u_nbcount & total_nb,
-                  const u_state & from) {
+                  const u_nbcount& total_nb,
+                  const u_state& from) {
   
   // Set all probs to zero
   memset(tprob_line, 0, sizeof(pfloat)*NS);
@@ -515,8 +505,8 @@ static u_nbcount prev_from = 0;
 void compute_rate_memo(pfloat tprob_line[NS],
                        const u_nbcount qs[NS],
                        const u_pscount ps[NS],
-                       const u_nbcount & total_nb,
-                       const u_state & from) {
+                       const u_nbcount& total_nb,
+                       const u_state& from) {
   
   // Test if all arguments are the same
   if ( prev_from == from && 

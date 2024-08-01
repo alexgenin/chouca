@@ -392,7 +392,7 @@ transition <- function(from, to, prob) {
 pack_table_fromto <- function(tr, table, states) {
 
   if ( nrow(tr[[table]]) == 0 ) {
-    data.frame(from = integer(0), to = integer(0), tr[[table]])
+    data.frame(from = character(0), to = character(0), tr[[table]])
   } else {
     data.frame(from = tr[["from"]], to = tr[["to"]], tr[[table]])
   }

@@ -12,10 +12,16 @@ mtest <- matrix(c(0, 1, 2, 3,
 nstates <- 4
 
 testnb <- function(i, j, wrap, use_8_nb) { 
-  local_dens(mtest, nstates, i, j, wrap, use_8_nb)
+  testnbcol(j, wrap, use_8_nb)[i, ]
 }
+
 testnbcol <- function(j, wrap, use_8_nb) { 
-  local_dens_col(mtest, nstates, j, wrap, use_8_nb)
+  if ( use_8_nb ) { 
+    kernel <- nb_kernel_moore 
+  } else { 
+    kernel <- nb_kernel_von_neumann
+  }
+  local_dens_col(mtest, nstates, j, wrap, kernel)
 }
 
 
@@ -57,7 +63,6 @@ expect_true(all(
 # Test the computation of neighbors by columns 
 for ( wrap in c(TRUE, FALSE) ) { 
   for ( use_8_nb in c(TRUE, FALSE) ) { 
-      
   cols <- testnbcol(1, wrap, use_8_nb)
   for ( row in seq(1, nrow(mtest)) ) { 
     expect_true( all(cols[row, ] == testnb(row, 1, wrap, use_8_nb)) )

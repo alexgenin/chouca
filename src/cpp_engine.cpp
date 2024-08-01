@@ -23,107 +23,10 @@ typedef unsigned short ushort;
 #define _qs 3 // only in beta_q, so no overlap with _state_2 above
 #define _coef 0
 
-inline void get_local_densities(arma::Col<arma::uword>& qs,
-                                const arma::Mat<unsigned short>& m,
-                                const arma::uword i,
-                                const arma::uword j,
-                                const bool wrap,
-                                const bool use_8_nb) {
-  qs.fill(0);
-  arma::uword nc = m.n_cols;
-  arma::uword nr = m.n_rows;
-  
-  // Get neighbors to the left
-  if ( wrap ) {
-    
-    ushort state_left = m(i, (nc + j - 1) % nc);
-    qs(state_left)++; // left
-    
-    ushort state_right = m(i, (nc + j + 1) % nc);
-    qs(state_right)++; // right
-    
-    ushort state_up = m((nr + i - 1) % nr, j);
-    qs(state_up)++; // up
-    
-    ushort state_down = m((nr + i + 1) % nr, j);
-    qs(state_down)++; // down
-    
-    if (use_8_nb) {
-      
-      ushort state_upleft = m((nr + i - 1) % nr, (nc + j - 1) % nc);
-      qs(state_upleft)++; // upleft
-      
-      ushort state_upright = m((nr + i - 1) % nr, (nc + j + 1) % nc);
-      qs(state_upright)++; // upright
-      
-      ushort state_downleft = m((nr + i + 1) % nr, (nc + j - 1) % nc);
-      qs(state_downleft)++; // downleft
-      
-      ushort state_downright = m((nr + i + 1) % nr, (nc + j + 1) % nc);
-      qs(state_downright)++; // downright
-    }
-      
-  } else {
-    
-    if (j > 0) {
-      ushort state_left = m(i, j - 1);
-      qs(state_left)++; // left
-    }
-    if (j < (nc - 1)) {
-      ushort state_right = m(i, j + 1);
-      qs(state_right)++; // right
-    }
-    if (i > 0) {
-      ushort state_up = m(i - 1, j);
-      qs(state_up)++; // up
-    }
-    if (i < (nr - 1)) {
-      ushort state_down = m(i + 1, j);
-      qs(state_down)++; // down
-    }
-    
-    if (use_8_nb) {
-      if (i > 0 && j > 0) {
-        ushort state_upleft = m(i - 1, j - 1);
-        qs(state_upleft)++; // upleft
-      }
-      if (i > 0 && j < (nc - 1)) {
-        ushort state_upright = m(i - 1, j + 1);
-        qs(state_upright)++; // upright
-      }
-      if (i < (nr - 1) && j > 0) {
-        ushort state_downleft = m(i + 1, j - 1);
-        qs(state_downleft)++; // downleft
-      }
-      if (i < (nr - 1) && j < (nc - 1)) {
-        ushort state_downright = m(i + 1, j + 1);
-        qs(state_downright)++; // downright
-      }
-    }
-  }
-}
-
-// This is a function that returns the local state counts to R. i and j must be indexed
-// the R-way (1-indexing)
-// [[Rcpp::export]]
-arma::Col<arma::uword> local_dens(const arma::Mat<unsigned short> m,
-                                  const arma::uword nstates,
-                                  const arma::uword i,
-                                  const arma::uword j,
-                                  const bool wrap,
-                                  const bool use_8_nb) {
-  arma::Col<arma::uword> newq(nstates);
-  newq.fill(0);
-  // m, i and j must be adjusted to take into account the way things are stored in R
-  get_local_densities(newq, m, i - 1, j - 1, wrap, use_8_nb);
-  
-  return (newq);
-}
-
 inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
                                        const arma::Mat<unsigned short>& m,
-                                       const arma::uword j,
-                                       const bool wrap,
+                                       const arma::uword& j,
+                                       const bool& wrap,
                                        const arma::Mat<ushort>& kernel) {
                                       
   qs.fill(0);
@@ -167,11 +70,11 @@ inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
 // This is a function that returns the local state counts to R, for the full column of
 // a matrix. j must be indexed the R-way (1-indexing)
 //[[Rcpp::export]]
-arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m,
-                                      const arma::uword nstates,
-                                      const arma::uword j,
-                                      const bool wrap,
-                                      const arma::Mat<unsigned short> kernel) {
+arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort>& m,
+                                      const arma::uword& nstates,
+                                      const arma::uword& j,
+                                      const bool& wrap,
+                                      const arma::Mat<ushort>& kernel) {
   arma::Mat<arma::uword> newq(m.n_rows, nstates);
   newq.fill(0);
   // m, i and j must be adjusted to take into account the way things are stored in R
@@ -191,7 +94,6 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   const arma::Mat<ushort> init = ctrl["init"];
   const ushort ns = ctrl["nstates"];
   const ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
-  const bool use_8_nb = nbs == 8 ? true : false;
   const arma::uword substeps = ctrl["substeps"];
   const arma::Col<arma::uword> times = ctrl["times"];
   

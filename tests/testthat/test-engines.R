@@ -32,7 +32,7 @@ model <- ca_library("forestgap")
 imat <- generate_initmat(model, c(0.5, 0.5), nr, nc)
 models[[1]] <- list(model, imat)
 
-# Model with quadratice dependence on q and p
+# Model with quadratic dependence on q and p
 model <- camodel(transition(from = "A", to = "B", ~ r * ( 1 + p["A"]^2 + q["A"]^2 )), 
                  transition(from = "B", to = "A", ~ r * ( 0.1 + p["B"]^2 + q["B"]^2 )), 
                  parms = list(r = 0.1), 
@@ -60,6 +60,8 @@ if ( ! exists("EXTENDED_TESTS") || ( ! EXTENDED_TESTS ) ) {
   models <- models[4]
 }
 
+
+
 test_that("Model results match regardless of engine", { 
   
   plyr::llply(models, function(modinfo) { 
@@ -73,8 +75,8 @@ test_that("Model results match regardless of engine", {
                     engine = "cpp")
     
     # Check that we reproduce well the variance and mean of time series between the two 
-    # engines. Somehow setti the seed does not 
-    engines_ts <- replicate(19, { 
+    # engines. 
+    engines_ts <- replicate(99, { 
       niter <- seq(0, 10)
       modcompiled <- run_camodel(mod, initmat, niter, control = { 
         control[["engine"]] <- "compiled" ; control

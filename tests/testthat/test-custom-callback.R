@@ -6,7 +6,7 @@
 test_that("Trace plotting works", {
 
   nrows <- ncols <- 16
-  niters <- 64
+  niters <- 128
 
   # Test compiled engine against cpp engine. Here it works because the model is
   # deterministic so the values are exactly equal. We only check that spatial
@@ -34,7 +34,12 @@ test_that("Trace plotting works", {
   out_compiled <- run_camodel(mod, initmm, seq(0, niters), ctrl)[["output"]][["custom"]]
   out_compiled <- plyr::rbind.fill(out_compiled)
 
+  print(max(out_cpp - out_compiled))  
+  
   expect_true( all( abs(out_cpp - out_compiled) < 1e-10 ) )
+
+  with(out_compiled, plot(t, cover))
+  with(out_cpp, lines(t, cover))
 
 })
 
