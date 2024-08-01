@@ -94,8 +94,8 @@ This function gives access to different stochastic cellular automata models. You
       (e.g. "rock beats scissors"). This deterministic model produces nice spirals.
      
     \item \code{"stepping-stone"} The stepping-stone model (a.k.a. "voter" model) , as
-      defined in Durret and Richard (1994), whic corresponds to the stepping stone 
-      model defined in 
+      defined as in Durret and Richard (1994), and first proposed earlier by Kimura
+      and Weiss (1964)
   }
 }
 \examples{
@@ -137,7 +137,11 @@ Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.
  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation
  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems."
  Nature 449 (7159): 213–17. \doi{10.1038/nature06111}.
-
+ 
+ Kimura, Motoo, and George H Weiss. 1964. “The Stepping Stone Model of Population
+ Structure and the Decrease of Genetic Correlation with Distance.” Genetics 49 (4):
+ 561–76. https://doi.org/10.1093/genetics/49.4.561.
+ 
  Kubo, Takuya, Yoh Iwasa, and Naoki Furumoto. 1996. "Forest Spatial Dynamics with Gap
  Expansion: Total Gap Area and Gap Size Distribution." Journal of Theoretical Biology
  180 (3): 229–46.

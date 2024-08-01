@@ -7,7 +7,10 @@
 nb_kernel(type, distance)
 }
 \arguments{
-\item{The}{distance (sometimes called "order") over which the neighborhood should
+\item{type}{The type of neighborhood kernel, either "von_neumann", "moore", or
+"circular"}
+
+\item{distance}{The distance (sometimes called "order") that the neighborhood should
 span. A value of 1 for example will only consider neighbors directly adjacent to a
 focal cell, and a value of 3 will consider neighbors that are up to three cells away 
 from a focal cell.}
