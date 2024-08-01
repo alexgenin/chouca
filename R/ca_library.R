@@ -43,7 +43,10 @@
 #'       with assymetric facilitation (Danet et al. 2021)
 #'
 #'     \item \code{"coralreef"} A model of coral reef with local feedbacks of corals and
-#'       macroalgae (Génin, in prep)
+#'       macroalgae (Génin et al., 2024)
+#'
+#'     \item \code{"epidemy"} A simple model for a parasite spreading through a forest or 
+#'       similar organism (Keeling, 2000)
 #'
 #'     \item \code{"gameoflife"} The famous Game of Life by Conway, a deterministic
 #'       model.
@@ -51,6 +54,10 @@
 #'     \item \code{"rockpaperscissor"} A rock-paper-scissor model with three states, in
 #'       which a cell changes state depending on its neighbors according the game rules
 #'       (e.g. "rock beats scissors"). This deterministic model produces nice spirals.
+#'      
+#'     \item \code{"stepping-stone"} The stepping-stone model (a.k.a. "voter" model) , as
+#'       defined in Durret and Richard (1994), whic corresponds to the stepping stone 
+#'       model defined in 
 #'   }
 #' 
 #' @returns 
@@ -97,15 +104,25 @@
 #'  Danet, Alain, Florian Dirk Schneider, Fabien Anthelme, and Sonia Kéfi. 2021.
 #'  "Indirect Facilitation Drives Species Composition and Stability in Drylands."
 #'  Theoretical Ecology 14 (2): 189–203. \doi{10.1007/s12080-020-00489-0}.
-#'
-#'  Genin, A., S. A. Navarrete, A. Garcia-Mayor, and E. A. Wieters. in
-#'  press (2023). Emergent spatial patterns can indicate upcoming regime
-#'  shifts in a realistic model of coral community. The American Naturalist.
+#'  
+#'  Durrett, Richard, and Simon A. Levin. 1994. “Stochastic Spatial Models: A User’s
+#'  Guide to Ecological Applications.” Philosophical Transactions of the Royal Society of
+#'  London. Series B: Biological Sciences 343 (1305): 329–50. 
+#'  \doi{10.1098/rstb.1994.0028}.
+#'  
+#'  Genin, A., S. A. Navarrete, A. Garcia-Mayor, and E. A. Wieters. 2024. Emergent
+#'  spatial patterns can indicate upcoming regime shifts in a realistic model of coral
+#'  community. The American Naturalist.
 #'
 #'  Guichard, F., Halpin, P.M., Allison, G.W., Lubchenco, J. & Menge, B.A. (2003). Mussel
 #'  disturbance dynamics: signatures of oceanographic forcing from local interactions.
 #'  The American Naturalist, 161, 889–904. \doi{10.1086/375300}
-#'
+#'  
+#'  Keeling, Matthew J. 2000. Evolutionary Dynamics in Spatial Host–Parasite Systems.
+#'  in The Geometry of Ecological Interactions, edited by Ulf Dieckmann, Richard Law, 
+#'  and Johan A. J. Metz, 1st ed., 271–91. Cambridge University Press. 
+#'  \doi{10.1017/CBO9780511525537.018}.
+#   
 #'  Kefi, Sonia, Max Rietkerk, Concepción L. Alados, Yolanda Pueyo, Vasilios P.
 #'  Papanastasis, Ahmed ElAich, and Peter C. de Ruiter. 2007. "Spatial Vegetation
 #'  Patterns and Imminent Desertification in Mediterranean Arid Ecosystems."
@@ -118,14 +135,19 @@
 #'  Schneider, Florian D., and Sonia Kefi. 2016. "Spatially Heterogeneous Pressure Raises
 #'  Risk of Catastrophic Shifts." Theoretical Ecology 9 (2): 207-17.
 #'  \doi{10.1007/s12080-015-0289-1}.
-#'
+#' 
 #' @examples
-#'
+#' 
 #' # Import a model, create an initial landscape and run it for ten iterations
 #' forestgap_model <- ca_library("forestgap")
 #' im <- generate_initmat(forestgap_model, c(0.5, 0.5), nrow = 64, ncol = 100)
 #' run_camodel(forestgap_model, im, times = seq(0,100))
-#'
+#' 
+#' # You can check out model parameters by calling the function without specifying 
+#' # the 'parms' argument 
+#' stepping_stone_model <- ca_library("stepping-stone")
+#' 
+#' 
 #'@export
 ca_library <- function(model,
                        parms = NULL,
@@ -313,6 +335,31 @@ ca_library <- function(model,
     )
   }
 
+  # Keeling (2000) Parasite model 
+  if ( model == "epidemy" ) {
+    if ( is.null(parms) ) {
+      parms <- list(g = 0.05, T = 0.5)
+    }
+    
+    # Default neighbors = 4
+    neighbors <- ifelse(is.null(neighbors), 4, neighbors)
+    wrap <- ifelse(is.null(wrap), TRUE, wrap)
+    
+    mod <- camodel(
+      transition(from = "EMPTY", to = "HOST",
+                 ~ 1 - ( 1 - g )^( 4 * q["host"] ) ),
+      transition(from = "HOST", to = "PARASITE",
+                 ~ 1 - ( 1 - T )^( 4 * q["parasitized"] ) ),
+      transition(from = "PARASITE", to = "EMPTY",
+                 ~ 1),
+      parms = parms, 
+      neighbors = neighbors,
+      wrap = wrap,
+      parms = parms,
+      all_states = c("EMPTY", "HOST", "PARASITE"),
+      check_model = "quick"
+    )
+  }
 
   # Conway's Game of life
   # https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life
@@ -356,12 +403,37 @@ ca_library <- function(model,
     )
 
   }
-
+  
+  # Stepping-stone/Kimura model 
+  if ( model == "voter" || model == "stepping-stone" || model == "steppingstone" ) {
+    
+    # Voter model 
+    if ( is.null(parms) ) {
+      parms <- list(gamma = 1, kappa = 10)
+    }
+    
+    coefs <- array(0, dim = rep(parms[["kappa"]], 3))
+    for ( state in seq.int(parms[["kappa"]]) ) { 
+      coefs[ , state, state] <- parms[["gamma"]]
+      coefs[state, state, ] <- 0
+    }
+    
+    mod <- camodel_mat(
+      beta_q = coefs, 
+      wrap = TRUE, 
+      all_states = as.character(seq.int(parms[["kappa"]])), 
+      neighbors = 8, 
+      build_transitions = TRUE
+    )
+    
+  }
+  
 
   if ( is.null(mod) ) {
     all_models <- c("forestgap", "musselbed",  "coralreef", "aridvege",
                     "aridvege-danet",
-                    "gameoflife", "rockpaperscissor")
+                    "gameoflife", "rockpaperscissor", 
+                    "stepping-stone")
     stop(paste0(model, " is an unknown model. Available models:\n",
                 paste(" - ", all_models, collapse = "\n")))
   }

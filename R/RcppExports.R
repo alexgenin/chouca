@@ -5,8 +5,8 @@ local_dens <- function(m, nstates, i, j, wrap, use_8_nb) {
     .Call(`_chouca_local_dens`, m, nstates, i, j, wrap, use_8_nb)
 }
 
-local_dens_col <- function(m, nstates, j, wrap, use_8_nb) {
-    .Call(`_chouca_local_dens_col`, m, nstates, j, wrap, use_8_nb)
+local_dens_col <- function(m, nstates, j, wrap, kernel) {
+    .Call(`_chouca_local_dens_col`, m, nstates, j, wrap, kernel)
 }
 
 camodel_cpp_engine <- function(ctrl) {

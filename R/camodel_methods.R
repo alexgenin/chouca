@@ -21,7 +21,9 @@ print.ca_model <- function(x, ...) {
   }
   
   cat0("")
-  cat0("Neighborhood: ", x[["neighbors"]], "x", x[["neighbors"]])
+  cat0("Neighborhood kernel: ", nrow(x[["neighbors"]]), "x", ncol(x[["neighbors"]]), 
+         " (", sum(x[["neighbors"]]), " counted)")
+  
   cat0("Wrap: ", x[["wrap"]])
   
   cat0("Max error: ", format(max(x[["max_error"]])), " (", 

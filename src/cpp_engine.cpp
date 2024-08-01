@@ -34,7 +34,7 @@ inline void get_local_densities(arma::Col<arma::uword>& qs,
   arma::uword nr = m.n_rows;
   
   // Get neighbors to the left
-  if (wrap) {
+  if ( wrap ) {
     
     ushort state_left = m(i, (nc + j - 1) % nc);
     qs(state_left)++; // left
@@ -124,85 +124,44 @@ inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
                                        const arma::Mat<unsigned short>& m,
                                        const arma::uword j,
                                        const bool wrap,
-                                       const bool use_8_nb) {
+                                       const arma::Mat<ushort>& kernel) {
                                       
   qs.fill(0);
   arma::uword nc = m.n_cols;
   arma::uword nr = m.n_rows;
   
-  if (wrap) {
-    for (arma::uword i = 0; i < nr; i++) {
-      // left column
-      ushort state_left = m(i, (nc + j - 1) % nc);
-      qs(i, state_left)++;
-      
-      // right column
-      ushort state_right = m(i, (nc + j + 1) % nc);
-      qs(i, state_right)++;
-      
-      ushort state_up = m((nr + i - 1) % nr, j);
-      qs(i, state_up)++; // up
-      
-      ushort state_down = m((nr + i + 1) % nr, j);
-      qs(i, state_down)++; // down
-    }
-      
-    if (use_8_nb) {
-      for (arma::uword i = 0; i < nr; i++) {
-        ushort state_upleft = m((nr + i - 1) % nr, (nc + j - 1) % nc);
-        qs(i, state_upleft)++; // upleft
-        
-        ushort state_upright = m((nr + i - 1) % nr, (nc + j + 1) % nc);
-        qs(i, state_upright)++; // upright
-        
-        ushort state_downleft = m((nr + i + 1) % nr, (nc + j - 1) % nc);
-        qs(i, state_downleft)++; // downleft
-        
-        ushort state_downright = m((nr + i + 1) % nr, (nc + j + 1) % nc);
-        qs(i, state_downright)++; // downright
-      }
-    }
-      
-  } else { // no wrap
+  const arma::sword kernel_semiheight = ( kernel.n_rows - 1 ) / 2;
+  const arma::sword kernel_semiwidth  = ( kernel.n_cols - 1 ) / 2;
+  
+  for ( arma::uword i = 0; i < nr; i++ ) {
     
-    for (arma::uword i = 0; i < nr; i++) {
-      if (j > 0) {
-        ushort state_left = m(i, j - 1);
-        qs(i, state_left)++; // left
-      }
-      if (j < (nc - 1)) {
-        ushort state_right = m(i, j + 1);
-        qs(i, state_right)++; // right
-      }
-      if (i > 0) {
-        ushort state_up = m(i - 1, j);
-        qs(i, state_up)++; // up
-      }
-      if (i < (nr - 1)) {
-        ushort state_down = m(i + 1, j);
-        qs(i, state_down)++; // down
-      }
-      
-      if (use_8_nb) {
-        if (i > 0 && j > 0) {
-            ushort state_upleft = m(i - 1, j - 1);
-            qs(i, state_upleft)++; // upleft
-        }
-        if (i > 0 && j < (nc - 1)) {
-            ushort state_upright = m(i - 1, j + 1);
-            qs(i, state_upright)++; // upright
-        }
-        if (i < (nr - 1) && j > 0) {
-            ushort state_downleft = m(i + 1, j - 1);
-            qs(i, state_downleft)++; // downleft
-        }
-        if (i < (nr - 1) && j < (nc - 1)) {
-            ushort state_downright = m(i + 1, j + 1);
-            qs(i, state_downright)++; // downright
+    // We loop over the required offsets
+    for ( arma::sword o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
+      for ( arma::sword o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+        // Rcpp::Rcout << "o_r: " << o_r << " o_c: " << o_c << "\n"; 
+        
+        if ( wrap ) { 
+          const ushort state = m( (nr + i + o_r) % nr, 
+                                  (nc + j + o_c) % nc ); 
+          qs(i, state) += kernel(o_r + kernel_semiheight, 
+                                 o_c + kernel_semiwidth); 
+          
+        } else { 
+          // If we don't wrap, then we need to add a bound check to make sure 
+          // we are in the matrix
+          const arma::uword i_target = i + o_r; 
+          const arma::uword j_target = j + o_c; 
+          if ( i_target >= 0 && j_target >= 0 && i_target < nr && j_target < nc ) { 
+            const ushort state = m(i_target, j_target); 
+            qs(i, state) += kernel(o_r + kernel_semiheight, 
+                                   o_c + kernel_semiwidth); 
+          }
         }
       }
     }
+    
   }
+  
 }
 
 // This is a function that returns the local state counts to R, for the full column of
@@ -212,11 +171,11 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short> m,
                                       const arma::uword nstates,
                                       const arma::uword j,
                                       const bool wrap,
-                                      const bool use_8_nb) {
+                                      const arma::Mat<unsigned short> kernel) {
   arma::Mat<arma::uword> newq(m.n_rows, nstates);
   newq.fill(0);
   // m, i and j must be adjusted to take into account the way things are stored in R
-  get_local_densities_column(newq, m, j - 1, wrap, use_8_nb);
+  get_local_densities_column(newq, m, j - 1, wrap, kernel);
   
   return (newq);
 }
@@ -271,10 +230,13 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   const arma::Mat<ushort> beta_qq_index = ctrl["beta_qq_index"];
   const arma::Mat<double> beta_qq_vals = ctrl["beta_qq_vals"];
   
+  // Extract the kernel from the control list 
+  const arma::Mat<ushort> kernel = ctrl["kernel"];
+  
   // Some constants about the simulation
   const arma::uword nr = init.n_rows;
   const arma::uword nc = init.n_cols;
-  const double ncells = (double)nr * (double)nc;
+  const double ncells = (double) nr * (double) nc;
   
   // We need to versions of the matrix 
   arma::Mat<ushort> omat = init;
@@ -297,8 +259,8 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   
   // Allocate some things we will reuse later
   arma::Mat<arma::uword> qs(nr, ns); // number of neighbors in each state for a column
-  // arma::Col<double> qs_prop(ns);     // proportion of neighbors in each state
-  arma::Col<double> ptrans(ns);      // vector of transition probas
+  // arma::Col<double> qs_prop(ns); // proportion of neighbors in each state
+  arma::Col<double> ptrans(ns); // vector of transition probas
   
   // Allocate essentials things to keep track of time. We use an uword here for time, 
   // which means that the max time step is 2^64 on 64-bits systems (~10e19)
@@ -336,20 +298,22 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
     }
     
     for (arma::uword s = 0; s < substeps; s++) {
-        
+      
       for (arma::uword j = 0; j < nc; j++) {
         
         // Get local state counts for the column. Getting it for a column at once is
         // slightly more cache-friendly, and a simple optimization worth going for. 
-        get_local_densities_column(qs, omat, j, wrap, use_8_nb);
+        get_local_densities_column(qs, omat, j, wrap, kernel);
         
         for (arma::uword i = 0; i < nr; i++) {
           
           // Normalized local densities to proportions
           arma::uword total_nb = accu(qs.row(i));
+          // Rcpp::Rcout << qs.row(i) << "\n"; 
           
           // Factor to convert the number of neighbors into the point at which the
           // dependency on q is to be found.
+          // TODO: this will crash when there is no neighbors
           arma::uword qpointn = (xpoints - 1) / total_nb;
           
           // Get current state

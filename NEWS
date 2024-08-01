@@ -1,3 +1,21 @@
+chouca v0.2.99 (Release date: unknown)
+==============================================
+
+Major improvements: 
+
+  - Neighborhoods can now be specified using logical matrices, allowing for arbitrary
+      types of neighborhood and not only the nearest cells
+
+  - A new function, camodel_mat, can be used to specify models using matrices and arrays
+      of real numbers, instead of symbolic expressions. This is much faster for models 
+      with many states and transitions, but simple mathematical forms of transition
+      probabilities
+  
+Minor improvements: 
+
+  - Make sure the 'times' vector is well-formatted in run_camodel(), and return 
+      an informative error if this is not the case. This helps dealing with cases where 
+      the 'times' argument and 'initmat' arguments of run_camodel() are inverted. 
 
 
 chouca v0.1.99 (Release date: 2024-03-07)

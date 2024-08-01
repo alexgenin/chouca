@@ -17,6 +17,20 @@ constexpr uword _beta_pq_end   = 9;
 #define _expo_1 4
 #define _expo_2 5
 
+// Define some things known at compile time
+const s_xyint kernel_semiheight = (NB_KERNEL_NR - 1) / 2; 
+const s_xyint kernel_semiwidth  = (NB_KERNEL_NC - 1) / 2; 
+
+// Define a maximum function
+inline s_xyint MAX(s_xyint a, 
+                   s_xyint b) { 
+  if ( b <= a ) { 
+    return a; 
+  } else { 
+    return b; 
+  }
+}
+
 /* This is xoshiro256+
  * https://prng.di.unimi.it/xoshiro256plus.c
  */
@@ -65,102 +79,51 @@ inline arma::uword intpow(const u_nbcount a,
 
 // Another try at fast power. Remarks above also apply, this is probably not very
 // efficient. for information tests seem to say ~10% cpu time spent in here when
-// not memoization probas of transition.
-static inline double fintpow(const pfloat a,
+// probas of transition are not memoized.
+static inline double fintpow(const pfloat x,
                              const u_nbcount b) {
-  // Here we make available to the compiler the maximum value for b, this enables nice 
-  // optimizations. 
-  u_nbcount bmax = b <= MAX_POW_DEGREE ? b : MAX_POW_DEGREE; 
+  // Here we make available to the compiler the maximum value for b, this may 
+  // enable some optimizations. 
+  const u_nbcount bmax = b <= MAX_POW_DEGREE ? b : MAX_POW_DEGREE; 
   
   pfloat ans = 1.0; 
   for ( u_nbcount i=0; i<bmax; i++ ) { 
-    ans *= a; 
+    ans *= x; 
   }
 
   return ans;
 }
 
-// Initalize the count of local densities for each cell in the landscape
-void init_local_densities(u_nbcount qs[NR][NC][NS],
-                          const u_state m[NR][NC]) {
-
-  // Set all counts to zero
-  memset(qs, 0, sizeof(u_nbcount)*NR*NC*NS);
-
-  for ( uword i=0; i<NR; i++ ) {
-    for ( uword j=0; j<NC; j++ ) {
-      // Get neighbors to the left
-      if ( WRAP ) {
-
-        u_state state_left = m[i][(NC + j - 1) % NC];
-        qs[i][j][state_left]++; // left
-
-        u_state state_right = m[i][(NC + j + 1) % NC];
-        qs[i][j][state_right]++; // right
-
-        u_state state_up = m[(NR + i - 1) % NR][j];
-        qs[i][j][state_up]++; // up
-
-        u_state state_down = m[(NR + i + 1) % NR][j];
-        qs[i][j][state_down]++; // down
-
-        if ( USE_8_NB ) {
-
-          u_state state_upleft = m[(NR + i - 1) % NR][(NC + j - 1) % NC];
-          qs[i][j][state_upleft]++; // upleft
-
-          u_state state_upright = m[(NR + i - 1) % NR][(NC + j + 1) % NC];
-          qs[i][j][state_upright]++; // upright
-
-          u_state state_downleft = m[(NR + i + 1) % NR][(NC + j - 1) % NC];
-          qs[i][j][state_downleft]++; // downleft
-
-          u_state state_downright = m[(NR + i + 1) % NR][(NC + j + 1) % NC];
-          qs[i][j][state_downright]++; // downright
-        }
-
-      } else {
-
-        if ( i > 0 ) {
-          u_state state_up = m[i-1][j];
-          qs[i][j][state_up]++; // up
-        }
-        if ( i < (NR-1) ) {
-          u_state state_down = m[i+1][j];
-          qs[i][j][state_down]++; // down
-        }
-        if ( j > 0 ) {
-          u_state state_left = m[i][j-1];
-          qs[i][j][state_left]++; // left
-        }
-        if ( j < (NC-1) ) {
-          u_state state_right = m[i][j+1];
-          qs[i][j][state_right]++; // right
-        }
-
-        if ( USE_8_NB ) {
-          if ( i > 0 && j > 0 ) {
-            u_state state_upleft = m[i-1][j-1];
-            qs[i][j][state_upleft]++; // upleft
-          }
-          if ( i > 0 && j < (NC-1) ) {
-            u_state state_upright = m[i-1][j+1];
-            qs[i][j][state_upright]++; // upright
-          }
-          if ( i < (NR-1) && j > 0 ) {
-            u_state state_downleft = m[i+1][j-1];
-            qs[i][j][state_downleft]++; // downleft
-          }
-          if ( i < (NR-1) && j < (NC-1) ) {
-            u_state state_downright = m[i+1][j+1];
-            qs[i][j][state_downright]++; // downright
-          }
-        }
-
-      }
-    }
-  }
+// Return the product x^a * y^b, while enabling some optimizations when possible
+static inline double xy_ab_product(const pfloat x, 
+                                   const pfloat y, 
+                                   const u_nbcount a,   // aka EXPO_1
+                                   const u_nbcount b) { // aka EXPO_2
+  
+  pfloat ans; 
+  
+  // If we will never call this function with b > 0, then discard that part of 
+  // the multiplication
+  // if ( MAX_PP_EXPO_2 == 0 && MAX_PQ_EXPO_2 == 0 && MAX_QQ_EXPO_2 == 0 ) { 
+  //   
+  //   // If the exponents for a are one or zero, then this function will be always called 
+  //   // with a == 1, so we just return x. Note that a is guaranteed to be above zero, 
+  //   // because the corresponding coefficients are removed from the tables when expo_1 is 
+  //   // zero
+  //   if ( MAX_PP_EXPO_1 == 1 && MAX_PQ_EXPO_1 == 1 && MAX_QQ_EXPO_1 == 1 ) {
+  //     return x; 
+  //   }
+  //   
+  //   ans = fintpow(x, a); 
+  //   return ans; 
+  // } 
+  
+  ans = fintpow(x, a) * fintpow(y, b); 
+  
+  return ans; 
 }
+
+// TODO: what happens when there is no neighbors set in the neighborhood kernel? 
 
 inline u_nbcount number_of_neighbors(const u_xyint i,
                                      const u_xyint j) {
@@ -171,40 +134,72 @@ inline u_nbcount number_of_neighbors(const u_xyint i,
   //
   // The compiler will remove the if{} statements below at compile time if we are
   // wrapping, making this function return a constant, defined on the line below:
-  u_nbcount nnb = USE_8_NB ? 8 : 4;
+  u_nbcount nnb = NB_KERNEL_MAXN; 
 
-  // If we use a fixed number of neighbors, then return early. In this case, cells on
-  // the edges will have a lower chance of switching, but this may be an approximation
-  // we are willing to make for better performance.
-  if ( FIXED_NB ) {
-    return( nnb );  
-  }
-
-  // If we do not wrap and we use 8 neighbors, then we just need to substract from the
-  // total (maximum) counts.
-  if ( ! WRAP && ! USE_8_NB ) {
-    if ( i == 0 || i == (NR-1) ) { nnb--; }  // First or last row
-    if ( j == 0 || j == (NC-1) ) { nnb--; }  // First or last column
-  }
-
-  // If we do not wrap and we use 8 neighbors, then it is a bit more subtle because we
-  // also need to check we are not in a corner
-  if ( ! WRAP && USE_8_NB ) {
-    if ( i == 0 || i == (NR-1) ) { nnb = nnb-3; }  // First or last row
-    if ( j == 0 || j == (NC-1) ) { nnb = nnb-3; }  // First or last column
-
-    // If we are in the corners, then one removed neighbor is being counted twice, so we
-    // need to add it back
-    if ( (i == 0 && j == 0) ||
-         (i == 0 && j == (NC-1)) ||
-         (i == (NR-1) && j == 0) ||
-         (i == (NR-1) && j == (NC-1)) ) {
-      nnb++;
+  // If we use a fixed number of neighbors, then things are fine with just the 
+  // compile time-value. We can assume this is what we want as an approximation, even 
+  // if we don't wrap. In this case, cells on the edges will have a lower chance of
+  // switching, but this may be an approximation we are willing to make for better
+  // performance.
+  // 
+  // If we don't assume fixed number of neighbors, then we need to count them for 
+  // real. This is what we do below. Note that if we wraparound, then by definition 
+  // the numer of neighbors is fixed (but FIXED_NB is not necessarily true). 
+  if ( ! FIXED_NB && ! WRAP ) {
+    nnb = 0; 
+    for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
+      for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+        // If we don't wrap, then we need to add a bound check to make sure 
+        // we are in the matrix
+        const s_xyint i_target = i + o_r; 
+        const s_xyint j_target = j + o_c; 
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
+          nnb += NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+        }
+      }
     }
-
   }
-
+  
+  // Rcpp::Rcout << "i: " << (int) i << " j: " << (int) j << " nbs: " << (int) nnb << "\n"; 
   return nnb;
+}
+
+// Build the q vector for a given cell
+void inline count_qs(u_state this_qs[NS], 
+                     u_xyint i, 
+                     u_xyint j, 
+                     const u_state m[NR][NC]) { 
+  
+  memset(this_qs, 0, sizeof(u_state) * NS); 
+  
+  // We loop over the required offsets
+  for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
+    for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+      
+      if ( WRAP ) { 
+        u_state state = m[(NR + i + o_r) % NR][(NC + j + o_c) % NC]; 
+        this_qs[state] += 
+          NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+      
+      } else { 
+        // If we don't wrap, then we need to add a bound check to make sure 
+        // we are in the matrix
+        const s_xyint i_target = i + o_r; 
+        const s_xyint j_target = j + o_c; 
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
+          u_state state = m[i_target][j_target]; 
+          this_qs[state] += 
+            NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+        }
+      }
+    }
+  }
+    // if ( i == 0 && j == 0 ) { 
+    //   for ( int k=0; k<NS; k++ ) { 
+    //     Rcpp::Rcout << "this_qs[" << (int) k << "]: " << (int) this_qs[k] << "\n";
+    //   }
+    // }
+  
 }
 
 // This function will set the "probability lines", ie fill in the array that contains
@@ -215,98 +210,43 @@ void initialize_prob_line(u_pline prob_lines[NR][NC],
   for ( u_xyint i=0; i<NR; i++ ) {
     for ( u_xyint j=0; j<NC; j++ ) {
       
-      u_nbcount this_qs[NS];
-      memset(this_qs, 0, sizeof(this_qs));
-
-      // Get neighbors to the left
-      if ( WRAP ) {
-
-        u_state state_left = m[i][(NC + j - 1) % NC];
-        this_qs[state_left]++; // left
-
-        u_state state_right = m[i][(NC + j + 1) % NC];
-        this_qs[state_right]++; // right
-
-        u_state state_up = m[(NR + i - 1) % NR][j];
-        this_qs[state_up]++; // up
-
-        u_state state_down = m[(NR + i + 1) % NR][j];
-        this_qs[state_down]++; // down
-
-        if ( USE_8_NB ) {
-
-          u_state state_upleft = m[(NR + i - 1) % NR][(NC + j - 1) % NC];
-          this_qs[state_upleft]++; // upleft
-
-          u_state state_upright = m[(NR + i - 1) % NR][(NC + j + 1) % NC];
-          this_qs[state_upright]++; // upright
-
-          u_state state_downleft = m[(NR + i + 1) % NR][(NC + j - 1) % NC];
-          this_qs[state_downleft]++; // downleft
-
-          u_state state_downright = m[(NR + i + 1) % NR][(NC + j + 1) % NC];
-          this_qs[state_downright]++; // downright
-        }
-
-      } else {
-
-        if ( i > 0 ) {
-          u_state state_up = m[i-1][j];
-          this_qs[state_up]++; // up
-        }
-        if ( i < (NR-1) ) {
-          u_state state_down = m[i+1][j];
-          this_qs[state_down]++; // down
-        }
-        if ( j > 0 ) {
-          u_state state_left = m[i][j-1];
-          this_qs[state_left]++; // left
-        }
-        if ( j < (NC-1) ) {
-          u_state state_right = m[i][j+1];
-          this_qs[state_right]++; // right
-        }
-
-        if ( USE_8_NB ) {
-          if ( i > 0 && j > 0 ) {
-            u_state state_upleft = m[i-1][j-1];
-            this_qs[state_upleft]++; // upleft
-          }
-          if ( i > 0 && j < (NC-1) ) {
-            u_state state_upright = m[i-1][j+1];
-            this_qs[state_upright]++; // upright
-          }
-          if ( i < (NR-1) && j > 0 ) {
-            u_state state_downleft = m[i+1][j-1];
-            this_qs[state_downleft]++; // downleft
-          }
-          if ( i < (NR-1) && j < (NC-1) ) {
-            u_state state_downright = m[i+1][j+1];
-            this_qs[state_downright]++; // downright
-          }
-        }
-
-      }
+      u_nbcount this_qs[NS]; 
+      count_qs(this_qs, i, j, m); 
 
       // Get line in pre-computed transition probability table
       u_pline line = 0;
-      for ( u_state k = 0; k<NS; k++ ) {
-        line = line * (1+max_nb) + this_qs[k];
+      for ( u_state k=0; k<NS; k++ ) {
+        // Rcpp::Rcout << "this_qs[" << (int) k << "]: " << (int) this_qs[k] << "\n"; 
+        line = line * (1+MAX_NB) + this_qs[k];
       }
       line -= 1;
 
       // If we have constant number of neighbors, then all_qs only contains the
-      // values at each max_nb values, so we need to divide by max_nb here to fall on the
+      // values at each MAX_NB values, so we need to divide by MAX_NB here to fall on the
       // right line in the table of probabilities.
       if ( WRAP ) {
-        line = (line+1) / max_nb - 1;
+        line = (line+1) / MAX_NB - 1;
       }
 
       prob_lines[i][j] = line;
+      // Rcpp::Rcout << "line: " << (int) line << " pline: " << (int) prob_lines[i][j] << "\n"; 
     }
   }
-
+  
 }
+
+// Initialize the count of local densities for each cell in the landscape
+void init_local_densities(u_nbcount qs[NR][NC][NS],
+                          const u_state m[NR][NC]) {
+
+  for ( uword i=0; i<NR; i++ ) {
+    for ( uword j=0; j<NC; j++ ) { 
+      count_qs(qs[i][j], i, j, m); 
+    }
+  }
+  
+}
+  
 
 // Adjust the local densities of the neighboring cells of a cell that changed state
 // from state 'from' to state 'to' at position 'i', 'j'.
@@ -315,78 +255,31 @@ inline void adjust_local_density(u_nbcount qs[NR][NC][NS],
                                  const u_xyint j,
                                  const u_state from,
                                  const u_state to) {
-
-  // Get neighbors to the left
-  if ( WRAP ) {
-
-    // left
-    qs[i][(NC + j - 1) % NC][to]++;
-    qs[i][(NC + j - 1) % NC][from]--;
-
-    // right
-    qs[i][(NC + j + 1) % NC][to]++;
-    qs[i][(NC + j + 1) % NC][from]--;
-
-    // up
-    qs[(NR + i - 1) % NR][j][to]++;
-    qs[(NR + i - 1) % NR][j][from]--;
-
-    // down
-    qs[(NR + i + 1) % NR][j][to]++;
-    qs[(NR + i + 1) % NR][j][from]--;
-
-    if ( USE_8_NB ) {
-      qs[(NR + i - 1) % NR][(NC + j - 1) % NC][to]++; // upleft
-      qs[(NR + i - 1) % NR][(NC + j - 1) % NC][from]--;
-
-      qs[(NR + i - 1) % NR][(NC + j + 1) % NC][to]++; // upright
-      qs[(NR + i - 1) % NR][(NC + j + 1) % NC][from]--;
-
-      qs[(NR + i + 1) % NR][(NC + j - 1) % NC][to]++; // downleft
-      qs[(NR + i + 1) % NR][(NC + j - 1) % NC][from]--;
-
-      qs[(NR + i + 1) % NR][(NC + j + 1) % NC][to]++; // downright
-      qs[(NR + i + 1) % NR][(NC + j + 1) % NC][from]--;
-    }
-
-  } else {
-
-    if ( i > 0 ) {
-      qs[i-1][j][to]++; // up
-      qs[i-1][j][from]--;
-    }
-    if ( i < (NR-1) ) {
-      qs[i+1][j][to]++; // down
-      qs[i+1][j][from]--;
-    }
-    if ( j > 0 ) {
-      qs[i][j-1][to]++; // left
-      qs[i][j-1][from]--;
-    }
-    if ( j < (NC-1) ) {
-      qs[i][j+1][to]++; // right
-      qs[i][j+1][from]--;
-    }
-
-    if ( USE_8_NB ) {
-      if ( i > 0 && j > 0 ) {
-        qs[i-1][j-1][to]++; // upleft
-        qs[i-1][j-1][from]--;
-      }
-      if ( i > 0 && j < (NC-1) ) {
-        qs[i-1][j+1][to]++; // upright
-        qs[i-1][j+1][from]--;
-      }
-      if ( i < (NR-1) && j > 0 ) {
-        qs[i+1][j-1][to]++; // downleft
-        qs[i+1][j-1][from]--;
-      }
-      if ( i < (NR-1) && j < (NC-1) ) {
-        qs[i+1][j+1][to]++; // downright
-        qs[i+1][j+1][from]--;
+  
+  // We loop over the required offsets
+  for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
+    for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+        
+      if ( WRAP ) { 
+        qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][to] += 
+          NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+        qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][from] -= 
+          NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+        
+      } else { 
+        // If we don't wrap, then we need to add a bound check to make sure 
+        // we are in the matrix
+        const s_xyint i_target = i + o_r; 
+        const s_xyint j_target = j + o_c; 
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR & j_target < NC ) { 
+          qs[i_target][j_target][to] += 
+            NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          qs[i_target][j_target][from] -= 
+            NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+        }
+        
       }
     }
-
   }
 
 }
@@ -439,8 +332,8 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
   // NOTE: we use signed integers here because the pline adjustment can be negative (we 
   // go up in the table). Note that we convert *before* we carry out the difference, 
   // otherwise the integers wrap around 
-  s_pline adj = (s_pline) intpow(max_nb+1, (NS-1) - to) - 
-                  (s_pline) intpow(max_nb+1, (NS-1) - from);
+  s_pline adj = (s_pline) intpow(MAX_NB+1, (NS-1) - to) - 
+                  (s_pline) intpow(MAX_NB+1, (NS-1) - from);
   
   // If we have a fixed number of neighbors, then we discard the combinations that 
   // do not sum to this number of neighbors. In the table above for example, this is 
@@ -449,75 +342,28 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
   // line but those that fall every 'nb' (the number of neighbors), so we need to divide
   // the adjustment factor accordingly (i.e. instead of going nb-by-nb, we go one by
   // one). 
-  adj = WRAP ? adj / ( (s_pline) max_nb ) : adj;
-
-  // Get neighbors to the left
-  if ( WRAP ) {
-
-    // left
-    pline[i][(NC + j - 1) % NC] += adj;
-
-    // right
-    pline[i][(NC + j + 1) % NC] += adj;
-
-    // up
-    pline[(NR + i - 1) % NR][j] += adj;
-
-    // down
-    pline[(NR + i + 1) % NR][j] += adj;
-
-    if ( USE_8_NB ) {
-      // upleft
-      pline[(NR + i - 1) % NR][(NC + j - 1) % NC] += adj;
-
-      // upright
-      pline[(NR + i - 1) % NR][(NC + j + 1) % NC] += adj;
-
-      // downleft
-      pline[(NR + i + 1) % NR][(NC + j - 1) % NC] += adj;
-
-      // downright
-      pline[(NR + i + 1) % NR][(NC + j + 1) % NC] += adj;
-    }
-
-  } else {
-
-    // left
-    if ( i > 0 ) {
-      pline[i-1][j] += adj;
-    }
-    // right
-    if ( i < (NR-1) ) {
-      pline[i+1][j] += adj;
-    }
-    // up
-    if ( j > 0 ) {
-      pline[i][j-1] += adj;
-    }
-    // down
-    if ( j < (NC-1) ) {
-      pline[i][j+1] += adj;
-    }
-
-    if ( USE_8_NB ) {
-      // upleft
-      if ( i > 0 && j > 0 ) {
-        pline[i-1][j-1] += adj;
-      }
-      // upright
-      if ( i > 0 && j < (NC-1) ) {
-        pline[i-1][j+1] += adj;
-      }
-      // downleft
-      if ( i < (NR-1) && j > 0 ) {
-        pline[i+1][j-1] += adj;
-      }
-      // downrighgt
-      if ( i < (NR-1) && j < (NC-1) ) {
-        pline[i+1][j+1] += adj;
+  adj = WRAP ? adj / ( (s_pline) MAX_NB ) : adj;
+  
+  // We loop over the required offsets
+  for ( s_xyint o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
+    for ( s_xyint o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+        
+      if ( WRAP ) { 
+        pline[(NR + i + o_r) % NR][(NC + j + o_c) % NC] += 
+          adj * NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+          
+      } else { 
+        // If we don't wrap, then we need to add a bound check to make sure 
+        // we are in the matrix
+        const s_xyint i_changed = i + o_r; 
+        const s_xyint j_changed = j + o_c; 
+        if ( i_changed > 0 && j_changed > 0 && i_changed < NR & j_changed < NC ) { 
+          pline[i_changed][j_changed] += 
+            adj * NB_KERNEL[o_r + kernel_semiheight][o_c + kernel_semiwidth]; 
+        }
+        
       }
     }
-
   }
   
 }
@@ -528,7 +374,7 @@ void compute_rate(pfloat tprob_line[NS],
                   const u_pscount ps[NS],
                   const u_nbcount & total_nb,
                   const u_state & from) {
-
+  
   // Set all probs to zero
   memset(tprob_line, 0, sizeof(pfloat)*NS);
   
@@ -551,17 +397,17 @@ void compute_rate(pfloat tprob_line[NS],
 
     // constant component
     if ( BETA_0_NROW > 0 ) {
-      kstart = betas_index[_beta_0_start][from][to];
-      kend   = betas_index[_beta_0_end][from][to];
+      kstart = betas_index[from][to][_beta_0_start];
+      kend   = betas_index[from][to][_beta_0_end];
       for ( s_pline k=kstart; k<=kend; k++ ) {
         total += coef_tab_flts[k];
       }
     }
 
     // q component
-    if ( BETA_Q_NROW > 0 ) {
-      kstart = betas_index[_beta_q_start][from][to];
-      kend = betas_index[_beta_q_end][from][to];
+    if ( BETA_Q_NROW > 0 && total_nb > 0 ) {
+      kstart = betas_index[from][to][_beta_q_start];
+      kend = betas_index[from][to][_beta_q_end];
       if ( kstart >= 0 ) {
         // qthis holds the current point at which to extract the value of the coefficient
         // for q. When a transition depends on multiple neighbor expressions, i.e.
@@ -577,8 +423,8 @@ void compute_rate(pfloat tprob_line[NS],
         // total_nb. However, here fixed_nb is constexpr so this if() should be 
         // optimized away when we use a fixed number of neighbors as qpointn
         // is then known at compile time. 
-        const u_nbcount qpointn = ( XPOINTS - 1 ) / ( FIXED_NB ? N_NB : total_nb ); 
-        
+        const u_nbcount qpointn = ( XPOINTS - 1 ) / ( FIXED_NB ? MAX_NB : total_nb ); 
+          
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
           uword qthis = qs[ coef_tab_ints[kstart + XPOINTS*coef][_state_1] ] * qpointn;
           total += coef_tab_flts[kstart + qthis + XPOINTS*coef];
@@ -588,40 +434,43 @@ void compute_rate(pfloat tprob_line[NS],
 
     // pp
     if ( BETA_PP_NROW > 0 ) {
-      kstart = betas_index[_beta_pp_start][from][to];
-      kend   = betas_index[_beta_pp_end][from][to];
+      kstart = betas_index[from][to][_beta_pp_start];
+      kend   = betas_index[from][to][_beta_pp_end];
       for ( s_pline k=kstart; k<=kend; k++ ) {
         const pfloat p1 = (pfloat) ps[ coef_tab_ints[k][_state_1] ] / FLOAT_NCELLS;
         const pfloat p2 = (pfloat) ps[ coef_tab_ints[k][_state_2] ] / FLOAT_NCELLS;
-        total += coef_tab_flts[k] *
-          fintpow(p1, coef_tab_ints[k][_expo_1]) *
-          fintpow(p2, coef_tab_ints[k][_expo_2]);
+        
+        total += coef_tab_flts[k] * 
+          xy_ab_product(p1, coef_tab_ints[k][_expo_1], 
+                        p2, coef_tab_ints[k][_expo_2]);
       }
     }
 
     // qq
-    if ( BETA_QQ_NROW > 0 ) {
-      kstart = betas_index[_beta_qq_start][from][to];
-      kend   = betas_index[_beta_qq_end][from][to];
+    if ( BETA_QQ_NROW > 0 && total_nb > 0 ) {
+      kstart = betas_index[from][to][_beta_qq_start];
+      kend   = betas_index[from][to][_beta_qq_end];
       for ( s_pline k=kstart; k<=kend; k++ ) {
         const pfloat q1 = (pfloat) qs[ coef_tab_ints[k][_state_1] ] / total_nb;
         const pfloat q2 = (pfloat) qs[ coef_tab_ints[k][_state_2] ] / total_nb;
-        total += coef_tab_flts[k] *
-          fintpow(q1, coef_tab_ints[k][_expo_1]) *
-          fintpow(q2, coef_tab_ints[k][_expo_2]);
+        
+        total += coef_tab_flts[k] * 
+          xy_ab_product(q1, coef_tab_ints[k][_expo_1], 
+                        q2, coef_tab_ints[k][_expo_2]);; 
       }
     }
 
     // pq
-    if ( BETA_PQ_NROW > 0 ) {
-      kstart = betas_index[_beta_pq_start][from][to];
-      kend   = betas_index[_beta_pq_end][from][to];
+    if ( BETA_PQ_NROW > 0 && total_nb > 0 ) {
+      kstart = betas_index[from][to][_beta_pq_start];
+      kend   = betas_index[from][to][_beta_pq_end];
       for ( s_pline k=kstart; k<=kend; k++ ) {
         const pfloat p1 = (pfloat) ps[ coef_tab_ints[k][_state_1] ] / FLOAT_NCELLS;
         const pfloat q1 = (pfloat) qs[ coef_tab_ints[k][_state_2] ] / total_nb;
-        total += coef_tab_flts[k] *
-          fintpow(p1, coef_tab_ints[k][_expo_1]) *
-          fintpow(q1, coef_tab_ints[k][_expo_2]);
+        
+        total += coef_tab_flts[k] * 
+          xy_ab_product(p1, coef_tab_ints[k][_expo_1], 
+                        q1, coef_tab_ints[k][_expo_2]);; 
       }
     }
 
@@ -637,7 +486,7 @@ void compute_rate(pfloat tprob_line[NS],
     total = total < 0.0 ? 0.0 : total;
     
     // Total contains the probability for this transition. We do the cumsum right away, 
-    // while we used to do it seperately below. 
+    // while we used to do it separately below. 
     tprob_line[to] = total; 
     
     to++; 
@@ -650,6 +499,40 @@ void compute_rate(pfloat tprob_line[NS],
   //  tprob_line[k] += tprob_line[k-1];
   // }
 
+}
+
+
+// These memory slots should be contiguous, but maybe the compiler does this already
+constexpr u_nbcount empty_vec_qs[NS] = {0}; 
+constexpr u_pscount empty_vec_ps[NS] = {0}; 
+static const u_nbcount *prev_qs = empty_vec_qs; 
+static const u_pscount *prev_ps = empty_vec_ps; 
+static u_nbcount prev_total_nb = 0; 
+static u_nbcount prev_from = 0; 
+
+// Same as compute_rate, but the last call is memoised, i.e. we will not recompute the 
+// probabilities if arguments are the same by updating tprob_line
+void compute_rate_memo(pfloat tprob_line[NS],
+                       const u_nbcount qs[NS],
+                       const u_pscount ps[NS],
+                       const u_nbcount & total_nb,
+                       const u_state & from) {
+  
+  // Test if all arguments are the same
+  if ( prev_from == from && 
+       ( memcmp(qs, prev_qs, sizeof(u_nbcount)*NS) == 0 ) && 
+       ( memcmp(ps, prev_ps, sizeof(u_nbcount)*NS) == 0 ) && 
+       prev_total_nb == total_nb ) { 
+    // Do nothing and return, tprob_line holds the right thing already
+    return; 
+  }
+  
+  prev_qs = qs; 
+  prev_ps = ps; 
+  prev_total_nb = total_nb; 
+  prev_from = from; 
+  
+  compute_rate(tprob_line, qs, ps, total_nb, from);
 }
 
 
@@ -699,9 +582,9 @@ void custom_callback_wrap(const u_tstep t,
 void cover_callback_wrap(const u_tstep t,
                          const u_pscount ps[NS],
                          Rcpp::Function cover_callback) {
-  uvec ps_arma(NS);
+  arma::Col<arma::uword> ps_arma(NS);
   for ( u_state k=0; k<NS; k++ ) {
-    ps_arma(k) = ps[k];
+    ps_arma(k) = (arma::uword) ps[k];
   }
   
   cover_callback(t, ps_arma, FLOAT_NCELLS);

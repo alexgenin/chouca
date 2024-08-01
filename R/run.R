@@ -210,7 +210,11 @@ run_camodel <- function(mod, initmat, times,
   if ( ! all(levels(initmat) %in% states) ) {
     stop("States in the initial matrix do not match the model states")
   }
-
+  
+  if ( ! is.numeric(times) && prod(dim(times) == length(times)) ) {
+    stop("The output time steps must be a numeric vector")
+  }
+  
   if ( ! all(round(times) == times) && all(times >= 0) ) {
     stop("Time steps must be non-negative integers")
   }
@@ -346,22 +350,37 @@ run_camodel <- function(mod, initmat, times,
     as.matrix(tab)
   })
 
-  # Construct the matrix of from/to states
+  # Construct the matrix of from/to states. This matrix holds TRUE when a transition 
+  # from this state to another exists. 
   transition_mat <- matrix(FALSE, nrow = ns, ncol = ns)
   colnames(transition_mat) <- rownames(transition_mat) <- states
-  for (i  in seq_along(mod[["transitions"]]) ) {
-    transition_mat[ mod[["transitions"]][[i]][["from"]],
-                    mod[["transitions"]][[i]][["to"]] ] <- TRUE
+  all_transitions <- lapply(betas, function(o) unique(o[ ,c("from", "to")]))
+  all_transitions <- unique(do.call(rbind, all_transitions))
+  
+  # Mind the +1 because states are coded from 0 to (ns-1) at this stage
+  for ( i in seq.int(nrow(all_transitions)) ) {
+    transition_mat[ all_transitions[i, "from"] + 1, 
+                    all_transitions[i, "to"]   + 1 ] <- TRUE
   }
-
+  
+  # Make sure the center cell in the kernel is set to 0/FALSE
+  kern <- mod[["kernel"]]
+  if ( is.logical(kern) ) { 
+    kern[ceiling(nrow(kern)/2), ceiling(ncol(kern)/2)] <- FALSE
+  } else { 
+    kern[ceiling(nrow(kern)/2), ceiling(ncol(kern)/2)] <- 0
+  }
+  
   # Adjust the control list to add some components
   control_list <- c(control,
                     mod[c("wrap",
-                          "neighbors", "xpoints", "fixed_neighborhood")],
+                          "neighbors", 
+                          "xpoints", "fixed_neighborhood")],
                     betas,
                     list(init     = initmat,
                          times    = times,
                          nstates  = ns,
+                         kernel = kern, 
                          transition_mat = transition_mat,
                          console_callback       = console_callback,
                          cover_callback         = cover_callback,

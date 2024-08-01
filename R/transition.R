@@ -14,7 +14,7 @@ ERROR_REL_MAX <- 0.001 # 0.1 % error is the limit to produce a warning
 # qp, pp, qq (see full description in the vignette vignette("chouca-package")). This is 
 # very much an internal function. 
 # 
-parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors,
+parse_transition <- function(tr, state_names, parms, xpoints, epsilon, 
                              check_model) {
 
   if ( ! inherits(tr, "camodel_transition") ) {
@@ -44,14 +44,17 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     }
 
     if ( prob < 0 ) {
-      m <- paste0("Transition probabilities may go below zero. Problematic transition:\n",
-                 "  ", tr[["from"]], " -> ", tr[["to"]])
+      m <- paste0("Transition probabilities may go below zero. ", 
+                  "Problematic transition:\n",
+                  "  ", tr[["from"]], " -> ", tr[["to"]])
       warn <<- c(warn, m)
     }
 
     prob
   }
-
+  
+  # TODO: put big comment here to explain how the things are being computed
+  
   # Get intercept for this transition. Note that beta_0 always has one line, but
   # we use a df here because we are going to pack multiple values into a df later
   # (using plyr::ldply).
@@ -76,17 +79,45 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
 
     data.frame(state_1 = s, qs = nqs, coef = ys)
   })
-
+  
+  # If the dependency on q can be explained fully by a polynomial of order below 
+  # getOption("chouca.degmax", default = DEGMAX), then we drop that and will use 
+  # coefficients of beta_qq, which makes for faster computations most of the time. 
+  has_continuous_dependency_on_q <- plyr::daply(beta_q, ~ state_1, function(df) {
+    degmax <- min(getOption("chouca.degmax", default = DEGMAX), nrow(df) - 1)
+    a <- lm(coef ~ poly(qs, degmax), data = df)
+    maxerr <- max( abs(predict(a) - df[ ,"coef"] ) )
+    ifelse(maxerr < epsilon, df[1, "state_1"], "")
+  })
+  continuous_q <- FALSE
+  if ( all(beta_q[ ,"state_1"] %in% has_continuous_dependency_on_q) ) {
+    continuous_q <- TRUE 
+    beta_q <- data.frame(state_1 = character(0), 
+                         qs = integer(0), 
+                         coef = numeric(0))
+  }
+  
   # We need to fit a sparse polynomial to get alpha * q_i^k * q_j^l. Level of sparsity 
-  # is obtained by cross-validation in fitprod
-  beta_qq <- fitprod(function(q) {
-    prob_with(p = zero, q = q) - beta0dbl -
-      sum(sapply(seq_along(q), function(i) {
-        q[-i] <- 0
-        prob_with(p = zero, q = q) - beta0dbl
-      }))
-  }, state_names, epsilon, tr, parms, no_zero_exponent = TRUE)
-
+  # is obtained by cross-validation in fitprod. If there is a discontinuity in g(q), then 
+  # we need to take that into account, if g(q) is well-approximated by a polynomial, 
+  # then we just discard beta_q (see above), and fit the continuous product of qq terms.
+  if ( ! continuous_q ) {
+    beta_qq <- fitprod(function(q) {
+      prob_with(p = zero, q = q) - beta0dbl -
+        sum(sapply(seq_along(q), function(i) {
+          q[-i] <- 0
+          prob_with(p = zero, q = q) - beta0dbl
+        }))
+    }, state_names, epsilon, tr, parms, no_zero_exponent = TRUE)
+    
+  } else {
+    
+    beta_qq <- fitprod(function(q) {
+      prob_with(p = zero, q = q) - beta0dbl # -
+    }, state_names, epsilon, tr, parms, no_zero_exponent = FALSE)
+  
+  }
+  
   # We need to fit a sparse polynomial to get alpha * p_i^k * p_j^l. Level of sparsity 
   # is obtained by cross-validation in fitprod
   beta_pp <- fitprod(function(p) {
@@ -119,8 +150,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   beta_qq  <- beta_qq[notzero(beta_qq[ ,"coef"]), , drop = FALSE]
 
   # For beta_q, we do not subset things that are zero, because this allows doing
-  # pointer/line arithmetic to directly fetch the corresponding value in the table, without
-  # having to 'scan' for values.
+  # pointer/line arithmetic to directly fetch the corresponding value in the table
   beta_q <- plyr::ddply(beta_q, ~ state_1, function(df) {
     if ( any(notzero(df[ ,"coef"])) ) {
       df
@@ -133,7 +163,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
   # expo_1, and set expo_2 to zero. This is clearer and probably faster.
   beta_pp <- normalize_coefs(beta_pp)
   beta_qq <- normalize_coefs(beta_qq)
-
+  
   # Check if we reconstruct the probabilities correctly
   max_error <- mean_error <- max_rel_error <- NA_real_
   if ( check_model %in% c("full", "quick") ) {
@@ -142,9 +172,8 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     # cap is the maximum number of lines in all_qss, as a full test can test some
     # time since it scales horribly with the number of states
     cap <- ifelse(check_model == "quick", 256, 0)
-    all_qss <- generate_all_qs(neighbors, ns, filter = 2,
+    all_qss <- generate_all_qs(xpoints - 1, ns, filter = 2,
                                line_cap = cap)[ ,1:ns, drop = FALSE]
-
     colnames(all_qss) <- state_names
     ps <- matrix(stats::runif(ns * nrow(all_qss)), 
                  nrow = nrow(all_qss), 
@@ -153,7 +182,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
     colnames(ps) <- state_names
 
     p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) {
-      prob_with(q = all_qss[i, ] / neighbors, p = ps[i, ])
+      prob_with(q = all_qss[i, ] / (xpoints - 1), p = ps[i, ])
     })
 
     p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) {
@@ -169,7 +198,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
         qslong <- data.frame(state_1 = state_names,
                              # this gets the qs point corresponding to this proportion
                              # of neighbors.
-                             qs = all_qss[i, ] / neighbors * (xpoints - 1))
+                             qs = all_qss[i, ])
 
         qslong <- plyr::join(qslong, beta_q, type = "left", by = names(qslong),
                              match = "first")
@@ -192,7 +221,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       pqssum <- sum(
         beta_pq[ ,"coef"] *
           beta_pq[ ,"ps"] ^ beta_pq[ ,"expo_1"] *
-          (beta_pq[ ,"qs"] / neighbors) ^ beta_pq[ ,"expo_2"]
+          (beta_pq[ ,"qs"] / (xpoints - 1)) ^ beta_pq[ ,"expo_2"]
       )
 
       # qq component
@@ -200,8 +229,8 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon, neighbors
       beta_qq[ ,"qs2"] <- all_qss[i, beta_qq[ ,"state_2"]]
       qqssum <- sum(
         beta_qq[ ,"coef"] *
-          (beta_qq[ ,"qs1"] / neighbors) ^ beta_qq[ ,"expo_1"] *
-          (beta_qq[ ,"qs2"] / neighbors) ^ beta_qq[ ,"expo_2"]
+          (beta_qq[ ,"qs1"] / (xpoints - 1)) ^ beta_qq[ ,"expo_1"] *
+          (beta_qq[ ,"qs2"] / (xpoints - 1)) ^ beta_qq[ ,"expo_2"]
       )
       
       # Total probability expression is the sum of all components
@@ -267,7 +296,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
                         expo_1  = seq(0, deg),
                         expo_2  = seq(0, deg))
     vals <- vals[vals[ ,"expo_1"] > 0 & vals[ ,"expo_2"] > 0, ]
-
+  
     # Clamp to low degree
     # vals <- subset(vals, expo_1 + expo_2 <= deg)
 
@@ -287,11 +316,11 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     # Differentiate over p, over q, if both are zero, then the coef is zero.
     delta_yp <- lapply(seq.int(nrow(vals)), function(i) {
       p1 <- q1 <- p0
-      p1[ vals[i, "state_1"] ] <- 1 - (0.01 + 1/ns )
+      p1[ vals[i, "state_1"] ] <- 1 - ( 0.01 + 1/ns )
       yp <- yfun(p1, q1)
       dp <- yp - y0
 
-      q1[ vals[i, "state_2"] ] <- 1 - (0.01 + 1/ns )
+      q1[ vals[i, "state_2"] ] <- 1 - ( 0.01 + 1/ns )
       yq <- yfun(p0, q1)
       dq <- yq - y0
 
@@ -394,7 +423,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
 
 fitprod <- function(yfun, state_names, epsilon, tr, parms,
                     no_zero_exponent = FALSE) {
-
+  
   ns <- length(state_names)
 
   new_max_abs_error <- 1e10
@@ -405,6 +434,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
   while ( new_max_abs_error > epsilon &&
           new_max_abs_error < old_max_abs_error &&
           deg <= getOption("chouca.degmax", default = DEGMAX) ) {
+    
     old_max_abs_error <- new_max_abs_error
 
     vals <- expand.grid(state_1 = seq.int(ns),
@@ -434,14 +464,14 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     p1 <- p0
     y0 <- yfun(p0)
 
-    # Differentiate over p, over q, if both are zero, then the coef is zero.
+    # Differentiate over the two states if both are zero, then the coef is zero.
     delta_yp <- lapply(seq.int(nrow(vals)), function(i) {
       p1 <- p0
-      p1[ vals[i, "state_1"] ] <- 1 - (0.01 + 1/ns )
+      p1[ vals[i, "state_1"] ] <- 1 - ( 0.01 + 1/ns )
       dpa <- yfun(p1) - y0
 
       p1 <- p0
-      p1[ vals[i, "state_2"] ] <- 1 - (0.01 + 1/ns )
+      p1[ vals[i, "state_2"] ] <- 1 - ( 0.01 + 1/ns )
       dpb <- yfun(p1) - y0
 
       c(dpa, dpb)
@@ -456,7 +486,9 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
                          abs(delta_yp[ ,1]) > epsilon & abs(delta_yp[ ,2]) > epsilon)
 
     vals <- vals[keep_lines, , drop = FALSE]
-
+    
+    # If the probabiility does not depend on any values of other states, we just 
+    # return an empty table
     if ( nrow(vals) == 0 ) {
       best_final_mat <- cbind(vals, coef = numeric(0))
       break
@@ -541,7 +573,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
   for ( col in c("state_1", "state_2") ) {
     final_mat[ ,col] <- state_names[final_mat[ ,col]]
   }
-
+  
   return(final_mat)
 }
 
@@ -630,3 +662,18 @@ primes <- c(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 
 7573, 7577, 7583, 7589, 7591, 7603, 7607, 7621, 7639, 7643, 7649, 7669, 7673, 7681, 7687,
 7691, 7699, 7703, 7717, 7723, 7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823, 7829,
 7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919)
+
+dummy_beta_q <- data.frame(from = character(0), 
+                           to = character(0), 
+                           state_1 = character(0), 
+                           qs = integer(0), 
+                           coef = numeric(0))
+
+dummy_beta_pp <- dummy_beta_pq <- dummy_beta_qq <- 
+  data.frame(from = character(0), 
+             to = character(0), 
+             state_1 = character(0), 
+             state_2 = character(0), 
+             expo_1 = integer(0), 
+             expo_2 = integer(0), 
+             coef = numeric(0))

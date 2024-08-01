@@ -24,19 +24,34 @@
 
 using namespace arma;
 
+// TODO: remove me
+#include <csignal>
+
 // Some typedefs for better legibility
 typedef unsigned char uchar;
 typedef signed char schar;
 typedef unsigned short ushort;
 
 // Some typedefs used for model quantities
-typedef uchar       u_state;     // value holding a state 
-typedef uchar       u_nbcount;   // count of neighbors in given config
-typedef arma::uword u_xyint;     // coordinates in matrix
-typedef unsigned long u_pscount; // count of cells in given state
-typedef unsigned long u_pline;   // line in all_qs
+// typedef uchar       u_state;     // value holding a state 
+// typedef schar       s_state;     // value holding a state (signed)
+// typedef uchar       u_nbcount;   // count of neighbors in given config
+// typedef arma::uword u_xyint;     // coordinates in matrix
+// typedef arma::sword s_xyint;     // coordinates in matrix (signed)
+// typedef unsigned long u_pscount; // count of cells in given state
+// typedef unsigned long u_pline;   // line in all_qs
+// typedef signed long s_pline;     // line in all_qs, signed version
+// typedef unsigned long u_tstep;   // integer representing time step
+// typedef double      pfloat;      // floating point values used in probabilities
+typedef sword       u_state;     // value holding a state 
+typedef sword       s_state;     // value holding a state (signed)
+typedef sword       u_nbcount;   // count of neighbors in given config
+typedef arma::sword u_xyint;     // coordinates in matrix
+typedef arma::sword s_xyint;     // coordinates in matrix (signed)
+typedef signed long u_pscount; // count of cells in given state
+typedef signed long u_pline;   // line in all_qs
 typedef signed long s_pline;     // line in all_qs, signed version
-typedef unsigned long u_tstep;   // integer representing time step
+typedef signed long u_tstep;   // integer representing time step
 typedef double      pfloat;      // floating point values used in probabilities
 
 // These strings will be replaced by their values
@@ -44,8 +59,8 @@ constexpr uword NR = __NR__;
 constexpr uword NC = __NC__;
 constexpr u_state NS = __NS__;
 constexpr bool WRAP = __WRAP__;
-constexpr bool USE_8_NB = __USE_8_NB__;
-constexpr u_state N_NB = USE_8_NB ? 8 : 4;
+// constexpr bool USE_8_NB = __USE_8_NB__;
+constexpr u_state MAX_NB = __MAX_NB__; 
 constexpr bool FIXED_NB = __FIXED_NEIGHBOR_NUMBER__;
 constexpr uword SUBSTEPS = __SUBSTEPS__;
 constexpr uword XPOINTS = __XPOINTS__;
@@ -59,18 +74,30 @@ constexpr uword ALL_QS_NROW = __ALL_QS_NROW__;
 constexpr uword CORES = __CORES__;
 constexpr uword MAX_POW_DEGREE = __MAX_POW_DEGREE__; 
 
+// We get some information on the degrees used to compute the coefficients, this is 
+// used to implement some optimizations when computing rates
+constexpr uword MAX_PP_EXPO_1 = __MAX_PP_EXPO_1__; 
+constexpr uword MAX_PP_EXPO_2 = __MAX_PP_EXPO_2__; 
+constexpr uword MAX_QQ_EXPO_1 = __MAX_QQ_EXPO_1__; 
+constexpr uword MAX_QQ_EXPO_2 = __MAX_QQ_EXPO_2__; 
+constexpr uword MAX_PQ_EXPO_1 = __MAX_PQ_EXPO_1__; 
+constexpr uword MAX_PQ_EXPO_2 = __MAX_PQ_EXPO_2__; 
+
+// Neighborhood kernel
+constexpr uword NB_KERNEL_NR = __NB_KERNEL_NROW__; 
+constexpr uword NB_KERNEL_NC = __NB_KERNEL_NCOL__; 
+constexpr uword NB_KERNEL_MAXN = __NB_KERNEL_MAXN__; 
+constexpr bool NB_KERNEL[__NB_KERNEL_NROW__][__NB_KERNEL_NCOL__] = __NB_KERNEL__; 
+
 // Transition matrix (true when transition can be done, false when not)
 constexpr bool transition_matrix[NS][NS] = __TMATRIX_ARRAY__;
 
 // 5*2 because we have 5 packed tables of coefficients, each of which needing 2
 // (where to start, and where to stop for this transition). 
-constexpr sword betas_index[5 * 2][NS][NS] = __BETAS_INDEX__;
+constexpr sword betas_index[NS][NS][5 * 2] = __BETAS_INDEX__;
 
 // Whether we want to precompute probabilities or not
 #define PRECOMPUTE_TRANS_PROBAS __PRECOMP_PROBA_VALUE__
-
-// The maximum number of neighbors
-constexpr arma::uword max_nb = USE_8_NB ? 8 : 4;
 
 // Declare rows of coef_tab
 constexpr arma::uword COEF_TAB_NROW = __COEF_TAB_NROW__;
@@ -139,7 +166,7 @@ inline void precompute_transition_probabilites(pfloat tprobs[ALL_QS_NROW][NS][NS
     // I [Alex] worked out a math formula somewhere but lost it, I just remember the
     // problem simplified into some variant of the bars and stars problem, see
     // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics). 
-    if ( all_qs[l][NS] > N_NB ) {
+    if ( all_qs[l][NS] > MAX_NB ) {
       continue;
     }
 
@@ -265,9 +292,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // is defined as integers (uint64_t)
   for (uchar i = 0; i < 4; i++) {
     for (uchar thread = 0; thread < CORES; thread++) {
-      // randu returns 64-bit double precision numbers
+      // randn returns 64-bit double precision numbers
       double rn = arma::randn<double>();
       memcpy(&s[thread][i], &rn, sizeof(double));
+      // Draw a random number to warm up the rng 
+      rn = randunif(thread); 
     }
   }
 
@@ -280,6 +309,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   
 #if ( ! PRECOMPUTE_TRANS_PROBAS ) 
   // We initialize ptrans with something
+  // Rcpp::Rcout << "nnb(0, 0):" << (uword) number_of_neighbors(0, 0) << "\n"; 
   compute_rate(ptrans,
                old_qs[0][0], // qs
                old_ps, // ps
@@ -292,7 +322,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   u_tstep export_n = 0;
   u_tstep next_export_t = times(export_n);
 
-  while (current_t <= last_t) {
+  while ( current_t <= last_t ) {
 
     // Call callbacks
     if (console_callback_active && current_t % console_callback_every == 0) {
@@ -361,11 +391,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #if PRECOMPUTE_TRANS_PROBAS
 #else
           // Normalized local densities to proportions
-          u_nbcount qs_total = number_of_neighbors(i, j);
+          const u_nbcount qs_total = number_of_neighbors(i, j);
           
-          // Check if neighborhood changed since the last considered cell. If not, then 
-          // pchange already holds the required numbers so we skip updating the 
-          // probabilities of transition
+          // Compute the rate of change for this cell
           compute_rate(ptrans,
                        old_qs[i][j], // qs
                        old_ps, // ps
@@ -376,7 +404,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #if USE_OMP
           pfloat rn = (pfloat) randunif(omp_get_thread_num());
 #else
-          pfloat rn = (pfloat) randunif(0);
+          pfloat rn = (pfloat) randunif(0); 
 #endif
 
           // Check if we actually transition. We compute the cumulative sum of
@@ -390,12 +418,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           // Of course the sum of probabilities must be lower than one, otherwise we are
           // making an approximation and may never consider a given transition.
           u_state new_cell_state = from;
-          // Note the signedness so that the lopp does not WRAP around
           
-          // Generate an interrupt
-          // std::raise(SIGINT);
-          
-          for (signed char k = (NS - 1); k >= 0; k--) { 
+          // Note the signedness so that the loop does NOT wrap around
+          for (s_state k = (NS - 1); k >= 0; k--) { 
 #if PRECOMPUTE_TRANS_PROBAS
             u_pline line = old_pline[i][j];
             new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state;
@@ -403,7 +428,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             new_cell_state = rn < ptrans[k] ? k : new_cell_state;
 #endif
           }
-
+          
           if ( new_cell_state != from ) {
             new_ps[new_cell_state]++;
             new_ps[from]--;
@@ -414,6 +439,22 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             adjust_local_density(new_qs, i, j, from, new_cell_state);
 #endif
           }
+          
+          // Generate an interrupt for gdb
+          // std::raise(SIGINT);
+          if ( current_t == 0 && i == 0 && j == 0 && from == 0 ) { 
+            Rcpp::Rcout << 
+              "t=" << current_t << " " << 
+              "ptrans[0]:" << ptrans[0] << " " << 
+              "ptrans[1]:" << ptrans[1] << " " << 
+              "rn: " << rn << " " << 
+              "old_mat[0][0]:" << (int) old_mat[0][0] << " " << 
+              "new_mat[0][0]:" << (int) new_mat[0][0] << " " << 
+              "ps:" << (int) old_ps[0] << "/" << (int) old_ps[1] << " " << 
+              "qs_next:" << (int) old_qs[0][1][0] << "/" << (int) old_qs[0][1][1] << " " << 
+              "\n"; 
+          }
+          
 
         } // end of loop on j (columns)
 

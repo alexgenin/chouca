@@ -15,12 +15,12 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
 
   # Unwrap elements of the ctrl list that we need here
   wrap       <- ctrl[["wrap"]]
-  use_8_nb   <- ctrl[["neighbors"]] == 8
+#   use_8_nb   <- ctrl[["neighbors"]] == 8
   fixed_neighborhood <- ctrl[["fixed_neighborhood"]]
   init       <- ctrl[["init"]]
   ns         <- ctrl[["nstates"]]
-  max_nb <- ifelse(use_8_nb, 8, 4)
-
+  max_nb <- sum(ctrl[["kernel"]])
+  
   # Read cpp file that we will compile
   cppfile <- system.file("compiled_engine.cpp", package = "chouca")
   clines <- readLines(cppfile)
@@ -44,7 +44,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   clines <- gsubf("__NC__", format(ncol(init)), clines)
   clines <- gsubf("__NS__", format(ns), clines)
   clines <- gsubf("__WRAP__", boolstr(wrap), clines)
-  clines <- gsubf("__USE_8_NB__", boolstr(use_8_nb), clines)
+  clines <- gsubf("__MAX_NB__", sum(ctrl[["kernel"]]), clines)
   clines <- gsubf("__SUBSTEPS__", format(ctrl[["substeps"]]), clines)
   clines <- gsubf("__XPOINTS__", format(ctrl[["xpoints"]]), clines)
   clines <- gsubf("__BETA_0_NROW__",  format(nrow(ctrl[["beta_0"]])),  clines)
@@ -54,13 +54,27 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   clines <- gsubf("__BETA_PQ_NROW__", format(nrow(ctrl[["beta_pq"]])), clines)
   clines <- gsubf("__COMMON_HEADER__",
                      system.file("common.h", package = "chouca"), clines)
-
-
+  
+  # These values are used to enable compiler optimizations 
+  fmaxzero <- function(X) { if ( length(X) == 0 ) "0" else format(max(X)) }
+  clines <- gsubf("__MAX_PP_EXPO_1__", fmaxzero(ctrl[["beta_pp"]][ ,"expo_1"]), clines)
+  clines <- gsubf("__MAX_PP_EXPO_2__", fmaxzero(ctrl[["beta_pp"]][ ,"expo_2"]), clines)
+  clines <- gsubf("__MAX_QQ_EXPO_1__", fmaxzero(ctrl[["beta_qq"]][ ,"expo_1"]), clines)
+  clines <- gsubf("__MAX_QQ_EXPO_2__", fmaxzero(ctrl[["beta_qq"]][ ,"expo_2"]), clines)
+  clines <- gsubf("__MAX_PQ_EXPO_1__", fmaxzero(ctrl[["beta_pq"]][ ,"expo_1"]), clines)
+  clines <- gsubf("__MAX_PQ_EXPO_2__", fmaxzero(ctrl[["beta_pq"]][ ,"expo_2"]), clines)
+  
+  # Write neighborhood kernel 
+  kernelstr <- write_cpp_array_2d(ctrl[["kernel"]])
+  clines <- gsubf("__NB_KERNEL__", kernelstr, clines)
+  clines <- gsubf("__NB_KERNEL_NROW__", format(nrow(ctrl[["kernel"]])), clines)
+  clines <- gsubf("__NB_KERNEL_NCOL__", format(ncol(ctrl[["kernel"]])), clines)
+  clines <- gsubf("__NB_KERNEL_MAXN__", format(sum(ctrl[["kernel"]])), clines)
+  
   # Write transition matrix. This contains 1/0 depending on whether the transition
   # from one state to another exists.
   tmat_array <- write_cpp_array_2d(ctrl[["transition_mat"]])
   clines <- gsubf("__TMATRIX_ARRAY__", tmat_array, clines)
-
   # Write indices over which to iterate for each transition. These small matrices
   # contains where to jump in the big table for each transition
 
@@ -119,7 +133,6 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
       }
     }
   }
-
   # Trim coef table and write it to c++
   coef_tab_ints <- as.matrix(coef_table[ ,c("from", "to", "state_1", "state_2",
                                             "expo_1", "expo_2", "qs")])
@@ -142,12 +155,12 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   cores <- ctrl[["cores"]]
   clines <- gsubf("__CORES__", format(cores), clines)
   clines <- gsubf("__USE_OMP__", ifelse(cores > 1, 1, 0), clines)
-
+  
   # Set #define on whether to precompute transition probabilities or not
   precompute_probas <- ctrl[["precompute_probas"]]
 
   if ( precompute_probas == "auto" ) {
-    precompute_probas <- ns^ifelse(use_8_nb, 8, 4) < prod(dim(init)) &
+    precompute_probas <- ns^max_nb < prod(dim(init)) &
                            ( max_nb^ns < 1e8 )
   }
   if ( precompute_probas && ( max_nb^ns > 1e8 ) ) {
@@ -216,7 +229,14 @@ write_cpp_array_2d <- function(m) {
   m <- matrix(as.integer(m), nrow = nrow(m), ncol = ncol(m))
   write_cpp_array_1d(apply(m, 1, write_cpp_array_1d))
 }
+# write_cpp_array_3d <- function(m) {
+#   write_cpp_array_1d(apply(m, 3, write_cpp_array_2d))
+# }
+
 write_cpp_array_3d <- function(m) {
-  write_cpp_array_1d(apply(m, 3, write_cpp_array_2d))
+  # We want to access the values in m[i, j, k] (R) as m[i][j][k] in C, which requires 
+  # some reordering of the R array
+  depth_vectors <- apply(m, c(1, 2), write_cpp_array_1d)
+  write_cpp_array_1d(apply(depth_vectors, 1, write_cpp_array_1d))
 }
 

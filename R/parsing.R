@@ -290,7 +290,7 @@ camodel <- function(...,
 
   # Check that they are all transitions
   if ( ! all(sapply(transitions, inherits, "camodel_transition")) ) {
-    stop("One of the model transition was not processed by the transition() function. Please check your function arguments and the ?camodel help on how to define model state transitions.")
+    stop("One of the model transition was not processed by the transition() function. Please check your function arguments and the ?camodel help on how to define state transitions.")
   }
 
   states <- plyr::ldply(transitions, function(o) as.data.frame(o[c("from", "to")]) )
@@ -302,7 +302,7 @@ camodel <- function(...,
     nstates <- length(all_states)
     states <- all_states
     if ( ! all(uniqstates %in% states) ) {
-      stop("Some cell states defined in transitions are not defined in 'all_states'")
+      stop("Some cell states defined in transitions are not present in 'all_states'")
     }
   }
 
@@ -320,16 +320,11 @@ camodel <- function(...,
   msg(sprintf("Using %s transitions\n", length(transitions)))
 
   # Parse transitions
-  # In the worst case scenario, we need 25 points, so that the number of neighbors is
-  # always divisible by 2, 3, 4 or 8. (25 because zero included)
-  xpoints <- 1 + ifelse(wrap, neighbors, ifelse(neighbors == 8, 120, 24))
-
-  # If we want a fixed neighborhood, regardless of whether if wrap or not, then
-  # overwrite xpoints with the fixed value.
-  xpoints <- ifelse(fixed_neighborhood, 1+neighbors, xpoints)
-
+  kernel <- build_neighbor_kernel(neighbors)
+  xpoints <- get_q_npoints(wrap, kernel, fixed_neighborhood)
+  
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
-                               epsilon, neighbors, check_model)
+                               epsilon, check_model)
 
   # Pack transitions into matrices
   beta_q  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_q")
@@ -342,18 +337,18 @@ camodel <- function(...,
   max_error <- plyr::laply(transitions_parsed, function(o) o[["max_error"]])
   max_rel_error <- plyr::laply(transitions_parsed, function(o) o[["max_rel_error"]])
 
-
   caobj <- list(transitions = transitions,
                 nstates = nstates,
                 states = factor(states, levels = states), # convert explicitely to factor
                 parms = parms,
-                beta_0 = beta_0,
-                beta_q = beta_q,
-                beta_pp = beta_pp,
-                beta_pq = beta_pq,
-                beta_qq = beta_qq,
+                beta_0 = ord_by_state(beta_0, states),
+                beta_q = ord_by_state(beta_q, states),
+                beta_pp = ord_by_state(beta_pp, states), 
+                beta_pq = ord_by_state(beta_pq, states), 
+                beta_qq = ord_by_state(beta_qq, states), 
                 wrap = wrap,
                 neighbors = neighbors,
+                kernel = kernel, 
                 epsilon = epsilon,
                 xpoints = xpoints,
                 max_error = max_error,
@@ -394,13 +389,21 @@ transition <- function(from, to, prob) {
 }
 
 # Helper function to pack transitions into model-level tables
-pack_table_fromto <- function(tr, table) {
+pack_table_fromto <- function(tr, table, states) {
 
   if ( nrow(tr[[table]]) == 0 ) {
     data.frame(from = integer(0), to = integer(0), tr[[table]])
   } else {
     data.frame(from = tr[["from"]], to = tr[["to"]], tr[[table]])
   }
+}
+
+ord_by_state <- function(tbl, states) { 
+  ord <- with(tbl, order(factor(from, levels = states), 
+                         factor(to, levels = states)))
+  tbl <- tbl[ord, ]
+  row.names(tbl) <- NULL
+  tbl
 }
 
 # Update a ca_model with new arguments
@@ -545,3 +548,49 @@ update.ca_model <- function(object,
 
   do.call(camodel, newcall)
 }
+
+# Get the required number of points along which we need to sample the f(q) component. 
+# This number of points corresponds to the number of states the neighborhood can be, 
+# for a given CA state. For example, for a moore neighborhood, a cell can have 
+# 0, 1, 2, 3, 4, 5, 6, 7 or 8 neighbors in a given state. So we need 9 points to 
+# represent this. 
+get_q_npoints <- function(wrap, kernel, fixed_neighborhood) { 
+  
+  # This comment is deprecated, but kept it anyway
+  # In the worst case scenario, we need 25 points, so that the number of neighbors is
+  # always divisible by 2, 3, 4 or 8. (25 because zero included)
+  # xpoints <- 1 + ifelse(wrap, neighbors, ifelse(neighbors == 8, 120, 24))
+  
+  # If we have a fixed neighborhood because we want it so, or we wraparound, then 
+  # the number of configurations is always 1 + the number of neighbors considered
+  if ( wrap || fixed_neighborhood ) { 
+    xpoints <- 1 + sum(kernel)
+    return(xpoints)
+  }
+  
+  # If we are in a more complicated situation because the number of neighbors is not 
+  # fixed, then we need to get the number of possible configurations. We simply do a
+  # convolution of the neighborhood mask to find all possible number of neighbors
+  nr <- nrow(kernel)
+  c <- (nrow(kernel) - 1) / 2 
+  r <- (nrow(kernel) - 1 ) / 2 
+  configs <- matrix(NA, nrow = 1 + r, ncol = 1 + c)
+  
+  # Removal of rows / columns
+  for ( row_rm in seq(0, r) ) { 
+    for ( col_rm in seq(0, c) ) { 
+      row_keep <- seq.int(nrow(kernel)) > row_rm
+      col_keep <- seq.int(nrow(kernel)) > col_rm
+      configs[row_rm+1, col_rm+1] <- sum(kernel[row_keep, col_keep])
+    }
+  }
+  
+  # The number of points required is the product of all possible neighbor numbers + 
+  # zero 
+  configs <- unique(as.vector(configs))
+  xpoints <- 1 + prod(configs[configs>0])
+  
+  return(xpoints)
+}
+
+
