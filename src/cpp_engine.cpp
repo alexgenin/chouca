@@ -11,6 +11,10 @@
 // cannot use a shorter type here (e.g. unsigned char) because matrices of uchars are not 
 // supported by armadillo. We use c-style array in the 'compiled' backend for better 
 // performance which do use those, but not here because it adds complexity to the code. 
+// 
+// Note that in function signatures we can't use this typedef because they are copied 
+// by Rcpp in the RcppExports.cpp file, but without typedef and this makes the 
+// compilation fail on Windows. 
 typedef unsigned short ushort;
 
 // Define some column names for clarity
@@ -27,7 +31,7 @@ inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
                                        const arma::Mat<unsigned short>& m,
                                        const arma::uword& j,
                                        const bool& wrap,
-                                       const arma::Mat<ushort>& kernel) {
+                                       const arma::Mat<unsigned short>& kernel) {
                                       
   qs.fill(0);
   arma::uword nc = m.n_cols;
@@ -70,11 +74,11 @@ inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
 // This is a function that returns the local state counts to R, for the full column of
 // a matrix. j must be indexed the R-way (1-indexing)
 //[[Rcpp::export]]
-arma::Mat<arma::uword> local_dens_col(const arma::Mat<ushort>& m,
+arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short>& m,
                                       const arma::uword& nstates,
                                       const arma::uword& j,
                                       const bool& wrap,
-                                      const arma::Mat<ushort>& kernel) {
+                                      const arma::Mat<unsigned short>& kernel) {
   arma::Mat<arma::uword> newq(m.n_rows, nstates);
   newq.fill(0);
   // m, i and j must be adjusted to take into account the way things are stored in R
