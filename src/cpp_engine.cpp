@@ -90,14 +90,13 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short>& m,
 //
 // This file contains the main c++ engine to run CAs
 //
-// [[Rcpp::export]]
+//[[Rcpp::export]]
 void camodel_cpp_engine(const Rcpp::List ctrl) {
   
   // Unpack control list
   const bool wrap = ctrl["wrap"];
   const arma::Mat<ushort> init = ctrl["init"];
   const ushort ns = ctrl["nstates"];
-  const ushort nbs = ctrl["neighbors"]; // Needed to make sure conversion from list is OK
   const arma::uword substeps = ctrl["substeps"];
   const arma::Col<arma::uword> times = ctrl["times"];
   
@@ -324,7 +323,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
           // ptrans = cumsum(ptrans); // alternative code, but slower because it needs
           //                          // a copy of the vector
           for (ushort k = 1; k < ns; k++) {
-              ptrans(k) += ptrans(k - 1);
+            ptrans(k) += ptrans(k - 1);
           }
           
           ushort new_cell_state = from;
