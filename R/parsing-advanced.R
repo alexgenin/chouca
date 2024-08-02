@@ -113,7 +113,7 @@
 #' 
 #'# Voter model (defined as in Durrett & Levin, 1994, p342). See also ?ca_library
 #'gamma <- 0.1
-#'kappa <- 50
+#'kappa <- 30
 #'coefs <- array(0, dim = rep(kappa, 3))
 #'for ( state in seq.int(kappa) ) { 
 #'  coefs[ , state, state] <- gamma
@@ -130,10 +130,11 @@
 #'
 #'# This model takes a long time to run for high values of kappa
 #'\donttest{ 
+#' nrows <- ncols <- 256
 #' initmm <- generate_initmat(mod, rep(1/kappa, kappa), 
-#'                             nrow = nrows/4, ncol = ncols/4)
-#' iters <- seq(0, 512)
-#' run_camodel(mod, initmm, iters)
+#'                             nrow = nrows, ncol = ncols)
+#' iters <- seq(0, 128)
+#' run_camodel(mod, initmm, iters, control = list(engine = "compiled"))
 #'}
 #'
 #'@export
@@ -210,7 +211,7 @@ camodel_mat <- function(beta_0 = NULL,
                                        to = all_states, 
                                        stringsAsFactors = FALSE), 
                            coef = as.vector(beta_0))
-  beta_0_tab <- subset(beta_0_tab, coef >= epsilon)
+  beta_0_tab <- beta_0_tab[beta_0_tab[ ,"coef"] >= epsilon, ]
   
   # Handle beta_p component 
   beta_pp_list <- list()
@@ -287,7 +288,7 @@ camodel_mat <- function(beta_0 = NULL,
           transitions <- append(transitions, 
                                 list(transition(from = all_states[from], 
                                                 to   = all_states[to], 
-                                                prob = as.formula(str))))
+                                                prob = stats::as.formula(str))))
         }
       }
     }

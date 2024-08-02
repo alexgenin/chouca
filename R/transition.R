@@ -85,8 +85,8 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   # coefficients of beta_qq, which makes for faster computations most of the time. 
   has_continuous_dependency_on_q <- plyr::daply(beta_q, ~ state_1, function(df) {
     degmax <- min(getOption("chouca.degmax", default = DEGMAX), nrow(df) - 1)
-    a <- lm(coef ~ poly(qs, degmax), data = df)
-    maxerr <- max( abs(predict(a) - df[ ,"coef"] ) )
+    a <- stats::lm(coef ~ poly(qs, degmax), data = df)
+    maxerr <- max( abs(stats::predict(a) - df[ ,"coef"] ) )
     ifelse(maxerr < epsilon, df[1, "state_1"], "")
   })
   continuous_q <- FALSE
