@@ -6,10 +6,10 @@ Major improvements:
   - Neighborhoods can now be specified using logical matrices, allowing for arbitrary
       types of neighborhood and not only the nearest cells
 
-  - A new function, camodel_mat, can be used to specify models using matrices and arrays
-      of real numbers, instead of symbolic expressions. This is much faster for models 
-      with many states and transitions, but simple mathematical forms of transition
-      probabilities
+  - A new function, `camodel_mat`, can be used to specify models using matrices and
+      arrays of real numbers, instead of symbolic expressions. This is much faster for
+      models with many states and transitions, and simple mathematical forms of
+      transition probabilities
   
 Minor improvements: 
 
