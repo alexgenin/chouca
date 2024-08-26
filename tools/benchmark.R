@@ -13,7 +13,8 @@ GIT_ORIG <- "https://github.com/alexgenin/chouca"
 TEST_COMMITS <- c("06a7e291ada8d810de2be580282c5331dc983da2", 
                   "c9cebaa15784cfc989f5dd5f1549d8efa09fd133", 
                   "2994a802fda6d7b65052bbb9b911b61c223f9f11", 
-                  "0e82250bad699a03277b661cd9315bc5bf95ad2e")
+                  "0e82250bad699a03277b661cd9315bc5bf95ad2e", 
+                  "9a990231c9c29f85c4f994e68dc5f1a56b13a45a")
 COMMIT_LAST <- tail(TEST_COMMITS, 1)
 
 # Download latest chouca package in directory, compile and load it 
@@ -26,12 +27,13 @@ NREPS       <- 3
 CXXF <- "-O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
 # ENGINES <- c("compiled") 
-ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "rockpaperscissor", "aridvege")
+ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "aridvege", 
+                "coralreef")
 # ALL_MODELS <- c("musselbed")
 
 time_mod <- function(mod, init, control, niter) { 
   timings <- system.time({ 
-    a <- try( run_camodel(mod, init, niter = seq(0, niter), control = control) )
+    a <- try( run_camodel(mod, init, times = seq(0, niter), control = control) )
   })
   list(error = inherits(a, "try-error"), timings = timings)
 }
@@ -59,7 +61,7 @@ mkbench <- function(sizes, nrep, cxxf, commit, cores = 1, tmax = "auto") {
         # Model used for benchmark
         # NOTE: we use ::: because at some point ca_library() was not exported. And we 
         # use try() because the model list has changed. 
-        mod <- try({ chouca:::ca_library(model) })
+        mod <- try({ chouca::ca_library(model) })
         if ( inherits(mod, "try-error") ) { 
           return( NULL ) 
         }
