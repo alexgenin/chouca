@@ -23,7 +23,7 @@ single values. If this list contains only a subset of model parameters, the
 old parameter values will be reused for those not provided.}
 
 \item{neighbors}{The number of neighbors to use in the cellular automaton
-('4' for 4-way or von-Neumann neghborhood, or '8' for an 8-way or Moore
+('4' for 4-way or von-Neumann neighborhood, or '8' for an 8-way or Moore
 neighborhood)}
 
 \item{wrap}{If \code{TRUE}, then the 2D grid on which the model is run wraps

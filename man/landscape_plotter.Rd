@@ -20,7 +20,7 @@ landscape_plotter(
 \item{col}{a set of colors (character vector) of length equal to the number of
 states in the model.}
 
-\item{fps_cap}{The maximum number of frame displayed per seconds. Simulation
+\item{fps_cap}{The maximum number of frames displayed per second. Simulation
 will be slowed down if necessary so that plot updates will not be
 more frequent than this value}
 

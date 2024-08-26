@@ -183,15 +183,15 @@ water running downslope in a landscape (Mayor et al. 2013).
 The probabilities of transition can have any form, but respecting those two
 principles will work better:
 
-* To be accurately computed, transition probabilities must be a linear
-polynomial of the products of the local or global proportion of cells in a
-given state. For example, a transition probability defined between states $i$
+* To be accurately computed, transition probabilities must be linear
+polynomials of the products of the local or global proportion of cells in a
+given state. In other words, a transition probability defined between states $i$
 and $j$ as $P(i \rightarrow j) = 0.1 + p_i + p_j q_i$ works perfectly, but
 something involving non-linear functions such as
 $P(0 \rightarrow +) = 0.1 + sin(p_i)$ may not be correctly handled (see below
 for the consequences).
 
-* There is some tolerance is discontinuities in the transition rules. Rules
+* There is some tolerance for discontinuities in transition rules. Rules
 such as "if one neighbor is in state $i$, then the probability of transition
 is increased" are OK. However, such rule involving multiple types of neighbors
 are not, e.g. "if one neighbor is in state $i$ *and* another one in state
@@ -231,7 +231,7 @@ your model and see if it is supported.
 For all models, `chouca` reports an estimation of the error on the probabilities of
 transition, and whether probabilities can reach problematic values above one 
 or below zero. For example, the above forest model can be perfectly represented by
-`chouca`, so the reported error is zero:
+`chouca`, so the reported error is virtually zero:
 
 ```{r}
 print(kubo_model)
@@ -362,8 +362,8 @@ The last approach to improve performance is to use multithreading. In `chouca`,
 the approach used considers the updating of cells in parallel, instead of
 doing it one-by-one. However, there is some synchronisation work required
 between threads to make sure the different cores are not writing to shared
-data structures. This often results in a significant overhead, and thus only
-small performance improvements when using memoisation. 
+data structures at the same time. This often results in a significant overhead, and 
+thus only small performance improvements when using memoisation. 
 
 ```{r}
 

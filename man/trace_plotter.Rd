@@ -30,7 +30,7 @@ values returned by fun.}
 
 \item{max_samples}{The maximum number of samples to display in the plot}
 
-\item{fps_cap}{The maximum number of frame displayed per seconds. Simulation
+\item{fps_cap}{The maximum number of frames displayed per second. Simulation
 will be slowed down if necessary so that plot updates will not be
 more frequent than this value}
 

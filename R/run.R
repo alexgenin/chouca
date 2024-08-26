@@ -90,9 +90,8 @@
 #'    \item \code{precompute_probas} (Compiled engine only) Set to \code{TRUE} to
 #'      precompute probabilities of transitions for all possible combinations of
 #'      neighborhood. When working with a model with a low number of states
-#'      (typically 3 or 4), this can increase simulation speed dramatically.
-#'      By default, a heuristic is used to decide whether to enable
-#'      precomputation or not.
+#'      (typically 3 or 4), this can greatly increase simulation speed. By default, a
+#'      heuristic is used to decide whether to enable precomputation or not.
 #'
 #'    \item \code{verbose_compilation} (Compiled engine only) Set to \code{TRUE} to print
 #'      Rcpp messages when compiling the model. Default is \code{FALSE}.

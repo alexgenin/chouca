@@ -14,7 +14,7 @@
 #' @param col a set of colors (character vector) of length equal to the number of
 #'   states in the model.
 #'
-#' @param fps_cap The maximum number of frame displayed per seconds. Simulation
+#' @param fps_cap The maximum number of frames displayed per second. Simulation
 #'   will be slowed down if necessary so that plot updates will not be
 #'   more frequent than this value
 #'
@@ -224,7 +224,7 @@ landscape_plotter <- function(mod,
 #' @param col a set of colors (character vector) of length equal to the number of
 #'   values returned by fun.
 #'
-#' @param fps_cap The maximum number of frame displayed per seconds. Simulation
+#' @param fps_cap The maximum number of frames displayed per second. Simulation
 #'   will be slowed down if necessary so that plot updates will not be
 #'   more frequent than this value
 #'

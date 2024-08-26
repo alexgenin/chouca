@@ -76,7 +76,7 @@ change with package updates.
 
   \item{\code{parms}}{the parameter values used for the model}
 
-  \item{\code{beta_0},\code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
+  \item{\code{beta_0}, \code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
     internal tables used to represent probabilities of transitions when running
     simulations, these tables are for internal use and probably not interesting for 
     end users, but more information is provided in the package source code}
@@ -88,8 +88,8 @@ change with package updates.
   \item{\code{epsilon}}{The \code{epsilon} values used in the model definition, below 
     which transition probabilities are assumed to be zero}
   
-  \item{\code{xpoints}}{(for internal use only) The number of values used to 
-     represent the proportion of neighbors of a cell in each state}
+  \item{\code{xpoints}}{The number of values used to represent the proportion of
+        neighbors of a cell in each state}
   
   \item{\code{max_error}, \code{max_rel_error}}{vector of numeric values containing 
     the maximum error and maximum relative error on each transition probability}
@@ -151,7 +151,7 @@ for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as
 }
 
 where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{\beta_k} are constants for all \eqn{k}, 
-and \eqn{K} is the total number of terms (equal to \eqn{S^2}). Note that 
+and \eqn{K} is the total number of terms. Note that 
 \eqn{\alpha_K} and \eqn{\beta_K} are capped to 5. This can be overriden using
 \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher 
 values typically make the package slow and/or leads to numerical instabilities.
@@ -162,23 +162,28 @@ neighborhood of a cell, including some 'threshold' rules that involve a single s
 5 neighbors in a given state make a cell switch from state A to B" is OK, but
 combining states may not be supported, such as "more than 5
 neighbors in state A *and* 2 in state B means a cell switches from A to B". When in
-doubt, just write your model, and \code{chouca} will tell you if it cannot run it
+doubt, just write your model, as \code{chouca} can tell you if it cannot run it
 accurately by running model checks.
 
-Model checks are controlled by the argument \code{check_model}. When set to "quick" 
-or "full", a check is performed to make sure the functional form above is able to
-accurately represent probabilities of transitions in the model, with "full" enabling
-more extensive testing, and "none" removing it entirely. Coefficients in the formula 
-above are rounded down to zero when below \code{epsilon}. This may be an issue if 
-your transition probabilities are close to zero: consider reducing \code{epsilon} to 
-a smaller value in this case, or adjusting your model parameters. 
+These checks are controlled by the argument \code{check_model}. When set to
+\code{"quick"} or \code{"full"}, a check is performed to make sure the functional 
+form above is able to accurately represent probabilities of transitions in the model,
+with \code{"full"} enabling more extensive testing, and "none" removing it entirely.
+Coefficients in the formula above are rounded down to zero when below \code{epsilon}.
+This may be an issue if your transition probabilities are close to zero: consider
+reducing \code{epsilon} to a smaller value in this case, or adjusting your model
+parameters. 
 
 When space does not wrap around (\code{wrap = FALSE}), cells in the corners
-or in the edges will have a lower number of neighbors. The proportions
+or in the edges have a lower number of neighbors. The proportions
 of cells in a given state \eqn{k}, \eqn{q_k}, will thus be computed with a reduced
 number of cells. For example, a cell in a corner will have only 2 neighbors
 when using a 4x4 neighborhood, so \eqn{q_k} is computed using only two cells, and 
-can be only equal to 0, 0.5 or 1. 
+can be only equal to 0, 0.5 or 1. This variable number of neighbors per cell can make
+simulation a bit slower, so you can set \code{fixed_neighborhood} to \code{TRUE} to 
+always assume cells have the maximum number of neighbors (e.g. 4, for a 4x4 or 
+Von Neumann neighborhood). This comes at a cost of approximate simulation at the edges
+of the landscape. 
 
 To run a model once it is defined, the function \code{\link{run_camodel}} can be
 used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial
@@ -273,6 +278,12 @@ image(out)
 # kept to their original values
 mod_updated <- update(mod, parms = list(m = 0.035))
 
+}
+\references{
+Genin, Alexandre, Guillaume Dupont, Daniel Valencia, Mauro Zucconi, M. Isidora 
+Avila-Thieme, Sergio Navarrete, and Evie Wieters. 2023. "Easy, Fast and 
+Reproducible Stochastic Cellular Automata with ‘Chouca.’" 
+https://doi.org/10.1101/2023.11.08.566206.
 }
 \seealso{
 run_camodel, run_meanfield, generate_initmat, run_meanfield,

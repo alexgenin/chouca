@@ -8,7 +8,7 @@
 #'@title chouca: a package for stochastic cellular automata
 #'
 #'@description \code{chouca} is a package that can be used to implement and run stochastic
-#'  cellular automata (SCA). SCA are model that describe dynamics over a grid of cells.
+#'  cellular automata (SCA). SCA are models that describe dynamics over a grid of cells.
 #'  Each cell can be in one of a set of states, and at each time step, can switch to
 #'  another one with a given transition probabilities. These transitions probabilities
 #'  typically depend on the neighborhood of a focal cell.
@@ -19,7 +19,7 @@
 #'  on (1) constant parameters, (2) the proportion of cells in a given state in the
 #'  landscape, and (3) the proportion of neighboring cells in a given state. More
 #'  information on the types of supported model can be found in our publication, but in
-#'  any case \code{chouca} is able to identify and warn you if your model is unsupported.
+#'  any case \code{chouca} will warn you if your model is unsupported.
 #'
 #'  The package workflow has typically four steps (1) define the
 #'  model, (2) create an initial landscape (grid of cells), (3) run the model, and
@@ -45,12 +45,12 @@
 #'
 #'    This model defines two transitions (between the "bare" and the
 #'    "plant" state and vice versa). These transitions are defined using the
-#'    transition() function, which arguments define where the transition
+#'    \code{transition()} function, which arguments define where the transition
 #'    goes from, to, and an expression on how to compute its probability. In this model,
 #'    the probability that the first transition occurs depends on the proportion of
 #'    "plant" cells in the landscape, \code{p["plant"]}, and the proportion of neighbors
 #'    in the "plant" state, \code{q["plant"]}. The model has three parameters,
-#'    \code{r1}, \code{r2} and \code{m} whose value is passed through the named list 
+#'    \code{r1}, \code{r2} and \code{m} whose values are passed through the named list 
 #'    \code{parms}. The \code{neighbors} argument defines the type of neighborhood 
 #'    (here 8-way, or Moore neighborhood), and we specify that the model should run over 
 #'    a toric space that wraps around the edges of the grid (\code{wrap = TRUE}).
@@ -69,8 +69,8 @@
 #'                                  nrow = 128, ncol = 90)
 #'    }
 #'
-#'    Here, we create a 128x90 rectangular grid that contains 40% bare area and 60% plant,
-#'      distributed randomly through space.
+#'    Here, we create a 128x90 rectangular grid that contains 40\% bare area and 60\%
+#'    plant cover, distributed randomly through space.
 #'
 #'    If you already have a specific grid of cells (as an R \link{matrix})
 #'    you would like to use, we recommend to process it first through

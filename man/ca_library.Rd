@@ -14,7 +14,7 @@ included with \code{chouca}.}
 parameters will be used.}
 
 \item{neighbors}{The number of neighbors to use in the cellular automaton (4 for 4-way
-or von-Neumann neghborhood, or 8 for a Moore neighborhood). If unset, the model
+or von-Neumann neighborhood, or 8 for a Moore neighborhood). If unset, the model
 default neighborhood will be used.}
 
 \item{wrap}{Whether the 2D grid should wrap around at the edges. Default it to wrap
@@ -33,7 +33,7 @@ change with package updates.
 
   \item{\code{parms}}{the parameter values used for the model}
 
-  \item{\code{beta_0},\code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
+  \item{\code{beta_0}, \code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
     internal tables used to represent probabilities of transitions when running
     simulations, these tables are for internal use and probably not interesting for 
     end users, but more information is provided in the package source code}
@@ -45,8 +45,8 @@ change with package updates.
   \item{\code{epsilon}}{The \code{epsilon} values used in the model definition, below 
     which transition probabilities are assumed to be zero}
   
-  \item{\code{xpoints}}{(for internal use only) The number of values used to 
-     represent the proportion of neighbors of a cell in each state}
+  \item{\code{xpoints}}{The number of values used to represent the proportion of
+        neighbors of a cell in each state}
   
   \item{\code{max_error}, \code{max_rel_error}}{vector of numeric values containing 
     the maximum error and maximum relative error on each transition probability}
