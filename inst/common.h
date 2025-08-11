@@ -18,13 +18,13 @@ constexpr uword _beta_pq_end   = 9;
 #define _expo_2 5
 
 // Define some things known at compile time
-const s_xyint KERNEL_SEMIHEIGHT = (NB_KERNEL_NR - 1) / 2; 
-const s_xyint KERNEL_SEMIWIDTH  = (NB_KERNEL_NC - 1) / 2; 
+const s_xyint KERNEL_SEMIHEIGHT = (NB_KERNEL_NR - 1) / 2;
+const s_xyint KERNEL_SEMIWIDTH  = (NB_KERNEL_NC - 1) / 2;
 
 /* This is xoshiro256+
  * https://prng.di.unimi.it/xoshiro256plus.c
  */
-static inline uint64_t rotl(const uint64_t x, 
+static inline uint64_t rotl(const uint64_t x,
                             const int k) {
   return (x << k) | (x >> (64 - k));
 }
@@ -73,47 +73,47 @@ inline arma::uword intpow(const u_nbcount a,
 // probas of transition are not memoized.
 static inline double fintpow(const pfloat& x,
                              const u_nbcount& b) {
-  // Here we make available to the compiler the maximum value for b, this may 
-  // enable some optimizations. 
-  const u_nbcount bmax = b <= MAX_POW_DEGREE ? b : MAX_POW_DEGREE; 
-  
-  pfloat ans = 1.0; 
-  for ( u_nbcount i=0; i<bmax; i++ ) { 
-    ans *= x; 
+  // Here we make available to the compiler the maximum value for b, this may
+  // enable some optimizations.
+  const u_nbcount bmax = b <= MAX_POW_DEGREE ? b : MAX_POW_DEGREE;
+
+  pfloat ans = 1.0;
+  for ( u_nbcount i=0; i<bmax; i++ ) {
+    ans *= x;
   }
 
   return ans;
 }
 
 // Return the product x^a * y^b, while enabling some optimizations when possible
-static double xy_ab_product(const pfloat x, 
+static double xy_ab_product(const pfloat x,
                             const u_nbcount a,   // aka EXPO_1
-                            const pfloat y, 
+                            const pfloat y,
                             const u_nbcount b) { // aka EXPO_2
-  
-  pfloat ans; 
-  
-  // If we will never call this function with b > 0, then discard that part of 
+
+  pfloat ans;
+
+  // If we will never call this function with b > 0, then discard that part of
   // the multiplication
-  if ( MAX_PP_EXPO_2 == 0 && MAX_PQ_EXPO_2 == 0 && MAX_QQ_EXPO_2 == 0 ) { 
-    
-    // If the exponents for a are one or zero, then this function will be always called 
-    // with a == 1, so we just return x. Note that a is guaranteed to be strictly 
+  if ( MAX_PP_EXPO_2 == 0 && MAX_PQ_EXPO_2 == 0 && MAX_QQ_EXPO_2 == 0 ) {
+
+    // If the exponents for a are one or zero, then this function will be always called
+    // with a == 1, so we just return x. Note that a is guaranteed to be strictly
     // above zero, because the corresponding coefficients are removed from the tables
     // when expo_1 is zero
     if ( MAX_PP_EXPO_1 == 1 && MAX_PQ_EXPO_1 == 1 && MAX_QQ_EXPO_1 == 1 ) {
-      return x; 
+      return x;
     }
-    
-    ans = fintpow(x, a); 
-    return ans; 
-  } 
-  ans = fintpow(x, a) * fintpow(y, b); 
-  
-  return ans; 
+
+    ans = fintpow(x, a);
+    return ans;
+  }
+  ans = fintpow(x, a) * fintpow(y, b);
+
+  return ans;
 }
 
-// TODO: what happens when there is no neighbors set in the neighborhood kernel? 
+// TODO: what happens when there is no neighbors set in the neighborhood kernel?
 
 inline u_nbcount number_of_neighbors(const u_xyint i,
                                      const u_xyint j) {
@@ -124,89 +124,89 @@ inline u_nbcount number_of_neighbors(const u_xyint i,
   //
   // The compiler will remove the if{} statements below at compile time if we are
   // wrapping, making this function return a constant, defined on the line below:
-  u_nbcount nnb = NB_KERNEL_MAXN; 
+  u_nbcount nnb = NB_KERNEL_MAXN;
 
-  // If we use a fixed number of neighbors, then things are fine with just the 
-  // compile time-value. We can assume this is what we want as an approximation, even 
+  // If we use a fixed number of neighbors, then things are fine with just the
+  // compile time-value. We can assume this is what we want as an approximation, even
   // if we don't wrap. In this case, cells on the edges will have a lower chance of
   // switching, but this may be an approximation we are willing to make for better
   // performance.
-  // 
-  // If we don't assume fixed number of neighbors, then we need to count them for 
-  // real. This is what we do below. Note that if we wraparound, then by definition 
-  // the numer of neighbors is fixed (but FIXED_NB is not necessarily true). 
+  //
+  // If we don't assume fixed number of neighbors, then we need to count them for
+  // real. This is what we do below. Note that if we wraparound, then by definition
+  // the numer of neighbors is fixed (but FIXED_NB is not necessarily true).
   if ( ! FIXED_NB && ! WRAP ) {
-    nnb = 0; 
-    for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
-      for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
-        // If we don't wrap, then we need to add a bound check to make sure 
+    nnb = 0;
+    for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) {
+      for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) {
+        // If we don't wrap, then we need to add a bound check to make sure
         // we are in the matrix
-        const u_xyint i_target = i + o_r; 
-        const u_xyint j_target = j + o_c; 
-        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
-          nnb += NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
+        const u_xyint i_target = i + o_r;
+        const u_xyint j_target = j + o_c;
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) {
+          nnb += NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
         }
       }
     }
   }
-  
-  // Rcpp::Rcout << "i: " << (int) i << " j: " << (int) j << " nbs: " << (int) nnb << "\n"; 
+
+  // Rcpp::Rcout << "i: " << (int) i << " j: " << (int) j << " nbs: " << (int) nnb << "\n";
   return nnb;
 }
 
 // Build the q vector for a given cell
-void inline count_qs(u_state this_qs[NS], 
-                     u_xyint i, 
-                     u_xyint j, 
-                     const u_state m[NR][NC]) { 
-  
-  memset(this_qs, 0, sizeof(u_state) * NS); 
-  
+void inline count_qs(u_state this_qs[NS],
+                     u_xyint i,
+                     u_xyint j,
+                     const u_state m[NR][NC]) {
+
+  memset(this_qs, 0, sizeof(u_state) * NS);
+
   // We loop over the required offsets
-  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
-    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
-      
-      if ( WRAP ) { 
-        u_state state = m[(NR + i + o_r) % NR][(NC + j + o_c) % NC]; 
-        this_qs[state] += 
-          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
-      
-      } else { 
-        // If we don't wrap, then we need to add a bound check to make sure 
+  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) {
+    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) {
+
+      if ( WRAP ) {
+        u_state state = m[(NR + i + o_r) % NR][(NC + j + o_c) % NC];
+        this_qs[state] +=
+          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
+
+      } else {
+        // If we don't wrap, then we need to add a bound check to make sure
         // we are in the matrix
-        const u_xyint i_target = i + o_r; 
-        const u_xyint j_target = j + o_c; 
-        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
-          u_state state = m[i_target][j_target]; 
-          this_qs[state] += 
-            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
+        const u_xyint i_target = i + o_r;
+        const u_xyint j_target = j + o_c;
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) {
+          u_state state = m[i_target][j_target];
+          this_qs[state] +=
+            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
         }
       }
     }
   }
-    // if ( i == 0 && j == 0 ) { 
-    //   for ( int k=0; k<NS; k++ ) { 
+    // if ( i == 0 && j == 0 ) {
+    //   for ( int k=0; k<NS; k++ ) {
     //     Rcpp::Rcout << "this_qs[" << (int) k << "]: " << (int) this_qs[k] << "\n";
     //   }
     // }
-  
+
 }
 
 // This function will set the "probability lines", ie fill in the array that contains
 // for each neighborhood configuration, where to pick its probability of transitions
 void initialize_prob_line(u_pline prob_lines[NR][NC],
                           const u_state m[NR][NC]) {
-  
+
   for ( u_xyint i=0; i<NR; i++ ) {
     for ( u_xyint j=0; j<NC; j++ ) {
-      
-      u_nbcount this_qs[NS]; 
-      count_qs(this_qs, i, j, m); 
+
+      u_nbcount this_qs[NS];
+      count_qs(this_qs, i, j, m);
 
       // Get line in pre-computed transition probability table
       u_pline line = 0;
       for ( u_state k=0; k<NS; k++ ) {
-        // Rcpp::Rcout << "this_qs[" << (int) k << "]: " << (int) this_qs[k] << "\n"; 
+        // Rcpp::Rcout << "this_qs[" << (int) k << "]: " << (int) this_qs[k] << "\n";
         line = line * (1+MAX_NB) + this_qs[k];
       }
       line -= 1;
@@ -219,10 +219,10 @@ void initialize_prob_line(u_pline prob_lines[NR][NC],
       }
 
       prob_lines[i][j] = line;
-      // Rcpp::Rcout << "line: " << (int) line << " pline: " << (int) prob_lines[i][j] << "\n"; 
+      // Rcpp::Rcout << "line: " << (int) line << " pline: " << (int) prob_lines[i][j] << "\n";
     }
   }
-  
+
 }
 
 // Initialize the count of local densities for each cell in the landscape
@@ -230,13 +230,13 @@ void init_local_densities(u_nbcount qs[NR][NC][NS],
                           const u_state m[NR][NC]) {
 
   for ( uword i=0; i<NR; i++ ) {
-    for ( uword j=0; j<NC; j++ ) { 
-      count_qs(qs[i][j], i, j, m); 
+    for ( uword j=0; j<NC; j++ ) {
+      count_qs(qs[i][j], i, j, m);
     }
   }
-  
+
 }
-  
+
 
 // Adjust the local densities of the neighboring cells of a cell that changed state
 // from state 'from' to state 'to' at position 'i', 'j'.
@@ -245,29 +245,29 @@ inline void adjust_local_density(u_nbcount qs[NR][NC][NS],
                                  const u_xyint j,
                                  const u_state from,
                                  const u_state to) {
-  
+
   // We loop over the required offsets
-  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
-    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
-        
-      if ( WRAP ) { 
-        qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][to] += 
-          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
-        qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][from] -= 
-          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
-        
-      } else { 
-        // If we don't wrap, then we need to add a bound check to make sure 
+  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) {
+    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) {
+
+      if ( WRAP ) {
+        qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][to] +=
+          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
+        qs[(NR + i + o_r) % NR][(NC + j + o_c) % NC][from] -=
+          NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
+
+      } else {
+        // If we don't wrap, then we need to add a bound check to make sure
         // we are in the matrix
-        const u_xyint i_target = i + o_r; 
-        const u_xyint j_target = j + o_c; 
-        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) { 
-          qs[i_target][j_target][to] += 
-            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
-          qs[i_target][j_target][from] -= 
-            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
+        const u_xyint i_target = i + o_r;
+        const u_xyint j_target = j + o_c;
+        if ( i_target >= 0 && j_target >= 0 && i_target < NR && j_target < NC ) {
+          qs[i_target][j_target][to] +=
+            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
+          qs[i_target][j_target][from] -=
+            NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
         }
-        
+
       }
     }
   }
@@ -282,8 +282,8 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
                              const u_state from,
                              const u_state to) {
 
-  // Remember that the table of possible neighborhood configurations is organized like 
-  // this: 
+  // Remember that the table of possible neighborhood configurations is organized like
+  // this:
   //        q_3  q_2  q_1  total
   //       [,1] [,2] [,3] [,4]
   // [1,]    0    0    0    0
@@ -297,92 +297,102 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
   // [9,]    0    1    3    4
   // [10,]   0    1    4    5
   // [11,]   0    2    0    2
-  // 
-  // where the three first columns are the states, and the last column is the total 
-  // number of neighbors. This means that the number of lines before a configuration 
-  // is equal to 
-  // 
-  //  \sum_k=1^NS (nb+1)^(k-1) q_k where 
-  //  
-  //   NS is the number of states 
-  //   nb is the max number of neighbors 
-  //   q_k is the number of neighbors in state k 
-  // 
-  // for example, for line 10 above the number of lines to skip to reach it is equal to 
-  //   (nb+1)^0 * 4 + (nb+1)^1*1 + (nb+1)^2 * 0 = 4 + 5 = 9 
-  // 
-  //  ...and there are indeed 9 lines before line 10. There is some adjustment to do 
-  //  to take into account 0-indexing vs 1-indexing, but this is the gist of it. 
-  // 
-  // Because this is a sum, when one neighbor changes state, this means that one of 
-  // those columns changes, so we need to remove the term corresponding 
-  // to the old state, and add the term corresponding to the new state, hence the 
-  // following adjustment factor: 
-  // 
-  // NOTE: we use signed integers here because the pline adjustment can be negative (we 
-  // go up in the table). Note that we convert *before* we carry out the difference, 
-  // otherwise the integers wrap around 
-  s_pline adj = (s_pline) intpow(MAX_NB+1, (NS-1) - to) - 
+  //
+  // where the three first columns are the states, and the last column is the total
+  // number of neighbors. This means that the number of lines before a configuration
+  // is equal to
+  //
+  //  \sum_k=1^NS (nb+1)^(k-1) q_k where
+  //
+  //   NS is the number of states
+  //   nb is the max number of neighbors
+  //   q_k is the number of neighbors in state k
+  //
+  // for example, for line 10 above the number of lines to skip to reach it is equal to
+  //   (nb+1)^0 * 4 + (nb+1)^1*1 + (nb+1)^2 * 0 = 4 + 5 = 9
+  //
+  //  ...and there are indeed 9 lines before line 10. There is some adjustment to do
+  //  to take into account 0-indexing vs 1-indexing, but this is the gist of it.
+  //
+  // Because this is a sum, when one neighbor changes state, this means that one of
+  // those columns changes, so we need to remove the term corresponding
+  // to the old state, and add the term corresponding to the new state, hence the
+  // following adjustment factor:
+  //
+  // NOTE: we use signed integers here because the pline adjustment can be negative (we
+  // go up in the table). Note that we convert *before* we carry out the difference,
+  // otherwise the integers wrap around
+  s_pline adj = (s_pline) intpow(MAX_NB+1, (NS-1) - to) -
                   (s_pline) intpow(MAX_NB+1, (NS-1) - from);
-  
-  // If we have a fixed number of neighbors, then we discard the combinations that 
-  // do not sum to this number of neighbors. In the table above for example, this is 
-  // not done so you have configurations with, for example, 3 neighbors, that do not 
-  // correspond to something that occurs in the grid. This effectively removes every 
+
+  // If we have a fixed number of neighbors, then we discard the combinations that
+  // do not sum to this number of neighbors. In the table above for example, this is
+  // not done so you have configurations with, for example, 3 neighbors, that do not
+  // correspond to something that occurs in the grid. This effectively removes every
   // line but those that fall every 'nb' (the number of neighbors), so we need to divide
   // the adjustment factor accordingly (i.e. instead of going nb-by-nb, we go one by
-  // one). 
+  // one).
   adj = WRAP ? adj / ( (s_pline) MAX_NB ) : adj;
-  
+
   // We loop over the required offsets
-  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) { 
-    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) { 
-        
-      if ( WRAP ) { 
-        pline[(NR + i + o_r) % NR][(NC + j + o_c) % NC] += 
-          adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
-          
-      } else { 
-        // If we don't wrap, then we need to add a bound check to make sure 
+  for ( s_xyint o_r = - KERNEL_SEMIHEIGHT; o_r <= KERNEL_SEMIHEIGHT; o_r++ ) {
+    for ( s_xyint o_c = - KERNEL_SEMIWIDTH; o_c <= KERNEL_SEMIWIDTH; o_c++ ) {
+
+      if ( WRAP ) {
+        pline[(NR + i + o_r) % NR][(NC + j + o_c) % NC] +=
+          adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
+
+      } else {
+        // If we don't wrap, then we need to add a bound check to make sure
         // we are in the matrix
-        const u_xyint i_changed = i + o_r; 
-        const u_xyint j_changed = j + o_c; 
-        if ( i_changed > 0 && j_changed > 0 && i_changed < NR && j_changed < NC ) { 
-          pline[i_changed][j_changed] += 
-            adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH]; 
+        const u_xyint i_changed = i + o_r;
+        const u_xyint j_changed = j + o_c;
+        if ( i_changed > 0 && j_changed > 0 && i_changed < NR && j_changed < NC ) {
+          pline[i_changed][j_changed] +=
+            adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
         }
-        
+
       }
     }
   }
-  
+
 }
 
 // Compute probability of transitions to other states, and store in tprob_line
+// If no precomputation is done, this is a very very hot function, so any change
+// here will have a big impact on performance
 void compute_rate(pfloat tprob_line[NS],
                   const u_nbcount qs[NS],
                   const u_pscount ps[NS],
                   const u_nbcount& total_nb,
                   const u_state& from) {
-  
+
   // Set all probs to zero
   memset(tprob_line, 0, sizeof(pfloat)*NS);
-  
-  double total = 0.0; 
-  u_state to = 0; 
-  while ( to < NS ) { 
-    
+
+  double total = 0.0;
+  u_state to = 0;
+  while ( to < NS ) {
+
     // Check if we will ever transition into the state. This assumes
     // probability is set to zero above, otherwise tprob_line contains undefined or
-    // wrong values. This adds a branch but it is usally worth it, especially with 
-    // very sparse models. 
+    // wrong values. This adds a branch but it is usally worth it, especially with
+    // very sparse models.
     if ( ! transition_matrix[from][to] ) {
-      to++; 
+      to++;
       continue;
     }
 
-    // double total = 0.0. 
-    // pfloat total = 0.0; 
+    // If we use the identity normalization of probabilities, we run the
+    // cumsum in line by reusing the total from the previous value of to.
+    // However, if we normalize probabilities somehow, this breaks down
+    // and we need to carry out the cumsum at the end, once all probabilities
+    // are known
+    if ( NORMFUN != NORMF_IDENTITY ) {
+      total = 0.0;
+    }
+
+    // pfloat total = 0.0;
     s_pline kstart, kend;
 
     // constant component
@@ -406,15 +416,15 @@ void compute_rate(pfloat tprob_line[NS],
         // We know they are spaced xpoints apart from each other in the
         // coefficient table, so we just sum values every xpoints
         uword n_coef_to_sum = (kend - kstart + 1) / XPOINTS;
-        
-        // qpointn is a number used to convert the number of neighbors into 
-        // the point at which the value of f(q) is stored in the coefficient tables. 
-        // all_qs[ ][NS] holds the total number of neighbors, and is passed as 
-        // total_nb. However, here fixed_nb is constexpr so this if() should be 
+
+        // qpointn is a number used to convert the number of neighbors into
+        // the point at which the value of f(q) is stored in the coefficient tables.
+        // all_qs[ ][NS] holds the total number of neighbors, and is passed as
+        // total_nb. However, here fixed_nb is constexpr so this if() should be
         // optimized away when we use a fixed number of neighbors as qpointn
-        // is then known at compile time. 
-        const u_nbcount qpointn = ( XPOINTS - 1 ) / ( FIXED_NB ? MAX_NB : total_nb ); 
-          
+        // is then known at compile time.
+        const u_nbcount qpointn = ( XPOINTS - 1 ) / ( FIXED_NB ? MAX_NB : total_nb );
+
         for ( uword coef=0; coef<n_coef_to_sum; coef++) {
           uword qthis = qs[ coef_tab_ints[kstart + XPOINTS*coef][_state_1] ] * qpointn;
           total += coef_tab_flts[kstart + qthis + XPOINTS*coef];
@@ -429,9 +439,9 @@ void compute_rate(pfloat tprob_line[NS],
       for ( s_pline k=kstart; k<=kend; k++ ) {
         const pfloat p1 = (pfloat) ps[ coef_tab_ints[k][_state_1] ] / FLOAT_NCELLS;
         const pfloat p2 = (pfloat) ps[ coef_tab_ints[k][_state_2] ] / FLOAT_NCELLS;
-        
-        total += coef_tab_flts[k] * 
-          xy_ab_product(p1, coef_tab_ints[k][_expo_1], 
+
+        total += coef_tab_flts[k] *
+          xy_ab_product(p1, coef_tab_ints[k][_expo_1],
                         p2, coef_tab_ints[k][_expo_2]);
       }
     }
@@ -443,10 +453,10 @@ void compute_rate(pfloat tprob_line[NS],
       for ( s_pline k=kstart; k<=kend; k++ ) {
         const pfloat q1 = (pfloat) qs[ coef_tab_ints[k][_state_1] ] / total_nb;
         const pfloat q2 = (pfloat) qs[ coef_tab_ints[k][_state_2] ] / total_nb;
-        
-        total += coef_tab_flts[k] * 
-          xy_ab_product(q1, coef_tab_ints[k][_expo_1], 
-                        q2, coef_tab_ints[k][_expo_2]);; 
+
+        total += coef_tab_flts[k] *
+          xy_ab_product(q1, coef_tab_ints[k][_expo_1],
+                        q2, coef_tab_ints[k][_expo_2]);;
       }
     }
 
@@ -457,10 +467,10 @@ void compute_rate(pfloat tprob_line[NS],
       for ( s_pline k=kstart; k<=kend; k++ ) {
         const pfloat p1 = (pfloat) ps[ coef_tab_ints[k][_state_1] ] / FLOAT_NCELLS;
         const pfloat q1 = (pfloat) qs[ coef_tab_ints[k][_state_2] ] / total_nb;
-        
-        total += coef_tab_flts[k] * 
-          xy_ab_product(p1, coef_tab_ints[k][_expo_1], 
-                        q1, coef_tab_ints[k][_expo_2]);; 
+
+        total += coef_tab_flts[k] *
+          xy_ab_product(p1, coef_tab_ints[k][_expo_1],
+                        q1, coef_tab_ints[k][_expo_2]);;
       }
     }
 
@@ -473,58 +483,49 @@ void compute_rate(pfloat tprob_line[NS],
     // P(s -> b) when using substeps >= 2.
     // Cap the proba to 0-1 range
     // total = total > 1.0 ? 1.0 : total;
-    total = total < 0.0 ? 0.0 : total;
-    
-    // Total contains the probability for this transition. We do the cumsum right away, 
-    // while we used to do it separately below. 
-    tprob_line[to] = total; 
-    
-    to++; 
+
+    // There is a case to be made about negative probabilities that could
+    // be considered zero
+    // total = total < 0.0 ? 0.0 : total;
+
+    // Total contains the probability for this transition. Because we reuse the value
+    // already there in variable total, this means we do the cumsum right away, while we
+    // used to do it separately below. Note that this is not true if the normalization
+    // function is not the identity.
+    tprob_line[to] = total;
+
+    to++;
   }
 
-  // Compute cumsum of probabilities. This is already by using a while loop above, 
+  // Normalize probabilities if needed
+  //
+  // Softmax transforms all probabilities to exp(P_i) / sum(exp(P_i)). This
+  // allows typically for whatever sign of P_i
+  // TODO: check that this compiles into AVX instructions
+  // TODO: what to do of the transition to self?
+  if ( NORMFUN == NORMF_SOFTMAX ) {
+    double sum_exp = 0;
+    tprob_line[0] = exp(tprob_line[0]);
+    sum_exp += tprob_line[0];
+    for ( u_state i=1; i < NS; i++ ) {
+      // NOTE: we compute the cumsum at the same time here
+      double this_exp = exp(tprob_line[i]);
+      tprob_line[i] += tprob_line[i-1] + this_exp;
+      sum_exp += this_exp;
+    }
+    for ( u_state i=0; i < NS; i++ ) {
+      tprob_line[i] /= sum_exp;
+    }
+  }
+
+  // Compute cumsum of probabilities. This is already by using a while loop above,
   // instead of computing the rate of transition to every state, then computing the
-  // cumsum separately. 
+  // cumsum separately.
   // for ( u_state k=1; k<NS; k++ ) {
   //  tprob_line[k] += tprob_line[k-1];
   // }
 
 }
-
-
-// These memory slots should be contiguous, but maybe the compiler does this already
-constexpr u_nbcount empty_vec_qs[NS] = {0}; 
-constexpr u_pscount empty_vec_ps[NS] = {0}; 
-static const u_nbcount *prev_qs = empty_vec_qs; 
-static const u_pscount *prev_ps = empty_vec_ps; 
-static u_nbcount prev_total_nb = 0; 
-static u_nbcount prev_from = 0; 
-
-// Same as compute_rate, but the last call is memoised, i.e. we will not recompute the 
-// probabilities if arguments are the same by updating tprob_line
-void compute_rate_memo(pfloat tprob_line[NS],
-                       const u_nbcount qs[NS],
-                       const u_pscount ps[NS],
-                       const u_nbcount& total_nb,
-                       const u_state& from) {
-  
-  // Test if all arguments are the same
-  if ( prev_from == from && 
-       ( memcmp(qs, prev_qs, sizeof(u_nbcount)*NS) == 0 ) && 
-       ( memcmp(ps, prev_ps, sizeof(u_nbcount)*NS) == 0 ) && 
-       prev_total_nb == total_nb ) { 
-    // Do nothing and return, tprob_line holds the right thing already
-    return; 
-  }
-  
-  prev_qs = qs; 
-  prev_ps = ps; 
-  prev_total_nb = total_nb; 
-  prev_from = from; 
-  
-  compute_rate(tprob_line, qs, ps, total_nb, from);
-}
-
 
 // These wrappers are here to convert back c-style arrays to armadillo arrays, which
 // Rcpp can understand.
@@ -532,7 +533,7 @@ void compute_rate_memo(pfloat tprob_line[NS],
 void console_callback_wrap(const u_tstep iter,
                            const u_pscount ps[NS],
                            const Rcpp::Function console_callback) {
-  uvec ps_arma(NS); 
+  uvec ps_arma(NS);
   for ( u_state k=0; k<NS; k++ ) {
     ps_arma(k) = (arma::uword) ps[k];
   }
@@ -576,6 +577,6 @@ void cover_callback_wrap(const u_tstep t,
   for ( u_state k=0; k<NS; k++ ) {
     ps_arma(k) = (arma::uword) ps[k];
   }
-  
+
   cover_callback(t, ps_arma, FLOAT_NCELLS);
 }

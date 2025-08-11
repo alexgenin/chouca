@@ -37,151 +37,151 @@
 #'   considered to be equal to zero. The default value should work well here, except
 #'   if you run models that have extremely small transition probabilities (<1e-8).
 #'
-#' @param fixed_neighborhood When not using wrapping around the edges 
-#'   (\code{wrap = FALSE}), the number of neighbors per cell is variable, which can 
+#' @param fixed_neighborhood When not using wrapping around the edges
+#'   (\code{wrap = FALSE}), the number of neighbors per cell is variable, which can
 #'   slow down the simulation. Set this option to \code{TRUE} to consider that the number
 #'   of neighbors is always four or eight, regardless of the position of the cell in the
 #'   landscape, at the cost of approximate dynamics at the edges of the landscape.
 #'
 #' @details
-#' 
-#' This help page describes in detail technical points related to the definition of 
-#' models in \code{chouca}. If this is your first time working with \code{chouca}, 
-#' you may like the longer introduction in the vignette, accessible using 
+#'
+#' This help page describes in detail technical points related to the definition of
+#' models in \code{chouca}. If this is your first time working with \code{chouca},
+#' you may like the longer introduction in the vignette, accessible using
 #' \code{vignette("chouca-package")}.
-#' 
+#'
 #' \code{camodel} allows defining a stochastic cellular automaton model by its set of
 #' transition rules. These are defined by a set of calls to the \code{transition()}
 #' function. Each of these calls defines the two states of the transition, and the
-#' probability as a one-sided formula involving constants and the special vectors 
+#' probability as a one-sided formula involving constants and the special vectors
 #' p and q.
-#' 
+#'
 #' \code{transition()} calls takes three arguments: the state from which the transition
 #' is defined, the state to which the transition goes, and a transition probability,
 #' defined as a one-sided formula. This formula can include numerical constants,
 #' parameters defined in the named list \code{parms}, and any combination of
-#' \code{p['a']} and \code{q['b']}, which respectively represent the proportion 
+#' \code{p['a']} and \code{q['b']}, which respectively represent the proportion
 #' of cells in a landscape in state 'a', and the proportion of neighbors of a given cell
 #' in state 'b' ('a', and 'b' being, of course, any of the possible states defined in the
-#' model). Such formula could typically look like \code{~ 0.2 + 0.3 * p["a"] + q["b"]}. 
-#' See below for examples of model definitions. 
-#' 
+#' model). Such formula could typically look like \code{~ 0.2 + 0.3 * p["a"] + q["b"]}.
+#' See below for examples of model definitions.
+#'
 #' It is important to remember when using this function that \code{chouca} only
 #' supports models where the probabilities depend on constant parameters, the global
 #' proportion of each state in the landscape, and the local proportion of cells around
-#' a given cell. In other words, all transition probabilities should have the following 
-#' functional form: 
-#' 
+#' a given cell. In other words, all transition probabilities should have the following
+#' functional form:
+#'
 #' \deqn{a_0 + \sum_{k=1}^S g_k(q_k) + s(q, q) + s(p, q) + s(q, q)}{
 #'       a_0 + \sum_{k=1}^S g_k(q_k) + s(q, q) + s(p, q) + s(q, q)}
 #'
-#' where \eqn{a_0} is a constant, \eqn{g_k} are univariate functions of \eqn{q_k}, 
-#' the proportions of neighbors of a cell in state k, and \eqn{q} is the vector 
+#' where \eqn{a_0} is a constant, \eqn{g_k} are univariate functions of \eqn{q_k},
+#' the proportions of neighbors of a cell in state k, and \eqn{q} is the vector
 #' containing all the \eqn{q_k} for k between \eqn{1} and \eqn{S}, the total number of
 #' states in the model. Similarly, \eqn{p} is the length-\eqn{S} vector containing the
-#' proportion of cells in each state in the whole grid. \eqn{s} above is the sum, defined 
-#' for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as 
-#' 
-#' \deqn{ 
-#'   a_1 x_1^{\alpha_1} y_1^{\beta_1} + 
-#'   a_2 x_1^{\alpha_2} y_2^{\beta_2} + 
-#'   a_3 x_1^{\alpha_3} y_3^{\beta_3} + 
-#'   a_4 x_2^{\alpha_3} y_1^{\beta_3} + 
-#'   a_4 x_2^{\alpha_3} y_2^{\beta_3} + 
-#'   \dots + 
+#' proportion of cells in each state in the whole grid. \eqn{s} above is the sum, defined
+#' for two vectors \eqn{x = (x_1, ..., x_S)} and \eqn{y = (y_1, ..., y_S)} as
+#'
+#' \deqn{
+#'   a_1 x_1^{\alpha_1} y_1^{\beta_1} +
+#'   a_2 x_1^{\alpha_2} y_2^{\beta_2} +
+#'   a_3 x_1^{\alpha_3} y_3^{\beta_3} +
+#'   a_4 x_2^{\alpha_3} y_1^{\beta_3} +
+#'   a_4 x_2^{\alpha_3} y_2^{\beta_3} +
+#'   \dots +
 #'   a_K x_S^{\alpha_K} y_S^{\beta_K}
 #' }
-#' 
-#' where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{\beta_k} are constants for all \eqn{k}, 
-#' and \eqn{K} is the total number of terms. Note that 
+#'
+#' where the \eqn{a_k}, \eqn{\alpha_k} and \eqn{\beta_k} are constants for all \eqn{k},
+#' and \eqn{K} is the total number of terms. Note that
 #' \eqn{\alpha_K} and \eqn{\beta_K} are capped to 5. This can be overriden using
-#' \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher 
+#' \code{options(chouca.degmax = n)}, but we do not recommend changing it as higher
 #' values typically make the package slow and/or leads to numerical instabilities.
 #' The functions \eqn{g_k} above can be any univariate functions of \eqn{q_k}, so
-#' \code{chouca} effectively supports any type of transition rule involving the 
-#' neighborhood of a cell, including some 'threshold' rules that involve a single state 
+#' \code{chouca} effectively supports any type of transition rule involving the
+#' neighborhood of a cell, including some 'threshold' rules that involve a single state
 #' (and only one). For example, a rule such as "more than
 #' 5 neighbors in a given state make a cell switch from state A to B" is OK, but
 #' combining states may not be supported, such as "more than 5
 #' neighbors in state A *and* 2 in state B means a cell switches from A to B". When in
 #' doubt, just write your model, as \code{chouca} can tell you if it cannot run it
 #' accurately by running model checks.
-#' 
+#'
 #' These checks are controlled by the argument \code{check_model}. When set to
-#' \code{"quick"} or \code{"full"}, a check is performed to make sure the functional 
+#' \code{"quick"} or \code{"full"}, a check is performed to make sure the functional
 #' form above is able to accurately represent probabilities of transitions in the model,
 #' with \code{"full"} enabling more extensive testing, and "none" removing it entirely.
 #' Coefficients in the formula above are rounded down to zero when below \code{epsilon}.
 #' This may be an issue if your transition probabilities are close to zero: consider
 #' reducing \code{epsilon} to a smaller value in this case, or adjusting your model
-#' parameters. 
-#' 
+#' parameters.
+#'
 #' When space does not wrap around (\code{wrap = FALSE}), cells in the corners
 #' or in the edges have a lower number of neighbors. The proportions
 #' of cells in a given state \eqn{k}, \eqn{q_k}, will thus be computed with a reduced
 #' number of cells. For example, a cell in a corner will have only 2 neighbors
-#' when using a 4x4 neighborhood, so \eqn{q_k} is computed using only two cells, and 
+#' when using a 4x4 neighborhood, so \eqn{q_k} is computed using only two cells, and
 #' can be only equal to 0, 0.5 or 1. This variable number of neighbors per cell can make
-#' simulation a bit slower, so you can set \code{fixed_neighborhood} to \code{TRUE} to 
-#' always assume cells have the maximum number of neighbors (e.g. 4, for a 4x4 or 
+#' simulation a bit slower, so you can set \code{fixed_neighborhood} to \code{TRUE} to
+#' always assume cells have the maximum number of neighbors (e.g. 4, for a 4x4 or
 #' Von Neumann neighborhood). This comes at a cost of approximate simulation at the edges
-#' of the landscape. 
-#' 
+#' of the landscape.
+#'
 #' To run a model once it is defined, the function \code{\link{run_camodel}} can be
 #' used, or \code{\link{run_meanfield}} for a mean-field approximation. An initial
 #' landscape for a simulation can be created using \code{\link{generate_initmat}}.
-#' 
+#'
 #' You can update a model definition with new parameters (all of them or a subset)
-#' using the \code{\link[=update.ca_model]{update}} method. The model graph with the 
-#' different states and transitions can be displayed using the \code{plot} method 
+#' using the \code{\link[=update.ca_model]{update}} method. The model graph with the
+#' different states and transitions can be displayed using the \code{plot} method
 #' (this requires the package igraph).
-#' 
-#' @returns 
+#'
+#' @returns
 #'
 #NOTE: Also update the same section in ca_library() when changing this
 #'
-#' This function returns a \code{\link{list}} object with class \code{ca_model}, with 
-#' the following named components. Please note that most are for internal use and may 
-#' change with package updates. 
-#' 
+#' This function returns a \code{\link{list}} object with class \code{ca_model}, with
+#' the following named components. Please note that most are for internal use and may
+#' change with package updates.
+#'
 #' \describe{
-#'   \item{\code{transitions}}{the list of transitions of the model, as returned 
+#'   \item{\code{transitions}}{the list of transitions of the model, as returned
 #'       by \code{\link{transition}} }
-#' 
+#'
 #'   \item{\code{nstates}}{the number of states of the model}
-#' 
+#'
 #'   \item{\code{parms}}{the parameter values used for the model}
-#' 
-#'   \item{\code{beta_0}, \code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{ 
+#'
+#'   \item{\code{beta_0}, \code{beta_q}, \code{beta_pp}, \code{beta_pq}, \code{beta_qq}}{
 #'     internal tables used to represent probabilities of transitions when running
-#'     simulations, these tables are for internal use and probably not interesting for 
+#'     simulations, these tables are for internal use and probably not interesting for
 #'     end users, but more information is provided in the package source code}
-#'   
+#'
 #'   \item{\code{wrap}}{Whether the model uses a toric space that wraps around the edge}
-#' 
+#'
 #'   \item{\code{neighbors}}{The type of neighborhood (4 or 8)}
-#'   
-#'   \item{\code{epsilon}}{The \code{epsilon} values used in the model definition, below 
+#'
+#'   \item{\code{epsilon}}{The \code{epsilon} values used in the model definition, below
 #'     which transition probabilities are assumed to be zero}
-#'   
+#'
 #'   \item{\code{xpoints}}{The number of values used to represent the proportion of
 #'         neighbors of a cell in each state}
-#'   
-#'   \item{\code{max_error}, \code{max_rel_error}}{vector of numeric values containing 
+#'
+#'   \item{\code{max_error}, \code{max_rel_error}}{vector of numeric values containing
 #'     the maximum error and maximum relative error on each transition probability}
-#' 
+#'
 #'   \item{\code{fixed_neighborhood}}{flag equal to \code{TRUE} when cells have
 #'     a fixed number of neighbors}
-#' 
+#'
 #' }
-#' 
-#' @references 
-#' 
-#' Genin, Alexandre, Guillaume Dupont, Daniel Valencia, Mauro Zucconi, M. Isidora 
-#' Avila-Thieme, Sergio Navarrete, and Evie Wieters. 2023. "Easy, Fast and 
-#' Reproducible Stochastic Cellular Automata with ‘Chouca.’" 
+#'
+#' @references
+#'
+#' Genin, Alexandre, Guillaume Dupont, Daniel Valencia, Mauro Zucconi, M. Isidora
+#' Avila-Thieme, Sergio Navarrete, and Evie Wieters. 2023. "Easy, Fast and
+#' Reproducible Stochastic Cellular Automata with ‘Chouca.’"
 #' https://doi.org/10.1101/2023.11.08.566206.
-#' 
+#'
 #' @seealso run_camodel, run_meanfield, generate_initmat, run_meanfield,
 #'   update.ca_model, ca_library
 #'
@@ -269,6 +269,7 @@ camodel <- function(...,
                     neighbors,
                     wrap,
                     parms = list(),
+                    normfun = "identity",
                     all_states = NULL,
                     check_model = "quick",
                     verbose = FALSE,
@@ -333,7 +334,7 @@ camodel <- function(...,
   # Parse transitions
   kernel <- build_neighbor_kernel(neighbors)
   xpoints <- get_q_npoints(wrap, kernel, fixed_neighborhood)
-  
+
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
                                epsilon, check_model)
 
@@ -354,12 +355,13 @@ camodel <- function(...,
                 parms = parms,
                 beta_0 = ord_by_state(beta_0, states),
                 beta_q = ord_by_state(beta_q, states),
-                beta_pp = ord_by_state(beta_pp, states), 
-                beta_pq = ord_by_state(beta_pq, states), 
-                beta_qq = ord_by_state(beta_qq, states), 
+                beta_pp = ord_by_state(beta_pp, states),
+                beta_pq = ord_by_state(beta_pq, states),
+                beta_qq = ord_by_state(beta_qq, states),
                 wrap = wrap,
                 neighbors = neighbors,
-                kernel = kernel, 
+                normfun = normfun, 
+                kernel = kernel,
                 epsilon = epsilon,
                 xpoints = xpoints,
                 max_error = max_error,
@@ -409,8 +411,8 @@ pack_table_fromto <- function(tr, table, states) {
   }
 }
 
-ord_by_state <- function(tbl, states) { 
-  ord <- with(tbl, order(factor(from, levels = states), 
+ord_by_state <- function(tbl, states) {
+  ord <- with(tbl, order(factor(from, levels = states),
                          factor(to, levels = states)))
   tbl <- tbl[ord, ]
   row.names(tbl) <- NULL
@@ -470,11 +472,11 @@ ord_by_state <- function(tbl, states) {
 #'
 #' @seealso camodel, run_camodel...
 #'
-#' @returns 
-#'  
-#'  This function returns a list with class \code{ca_model} with the changes applied to 
+#' @returns
+#'
+#'  This function returns a list with class \code{ca_model} with the changes applied to
 #'  the original model (see \code{\link{camodel}} for details about this type of
-#'  object). 
+#'  object).
 #'
 #'@examples
 #'
@@ -494,7 +496,7 @@ ord_by_state <- function(tbl, states) {
 #' mussels_new
 #'
 #' \donttest{
-#' 
+#'
 #' # Run the model for different values of d, the death rate of mussels
 #' ds <- seq(0, 0.25, length.out = 12)
 #' initmat <- generate_initmat(mussels, c(0.5, 0.5, 0), nrow = 64, ncol = 64)
@@ -504,7 +506,7 @@ ord_by_state <- function(tbl, states) {
 #'   data.frame(d = this_dvalue,
 #'              as.data.frame(tail(run[["output"]][["covers"]], 1)))
 #' })
-#' 
+#'
 #' results <- do.call(rbind, results)
 #' plot(results[ ,"d"], results[ ,"MUSSEL"], type = "b",
 #'      xlab = "d", ylab = "Mussel cover")
@@ -516,6 +518,7 @@ update.ca_model <- function(object,
                             parms = NULL,
                             neighbors = NULL,
                             wrap = NULL,
+                            normfun = "identity",
                             fixed_neighborhood = NULL,
                             check_model = "quick",
                             verbose = FALSE,
@@ -550,6 +553,7 @@ update.ca_model <- function(object,
   newcall <- c(object[["transitions"]], # always a list, so result of c() is a list
                neighbors = neighbors,
                wrap = wrap,
+               normfun = normfun,
                fixed_neighborhood = fixed_neighborhood,
                parms = list(parms),
                all_states = list(object[["states"]]),
@@ -560,47 +564,47 @@ update.ca_model <- function(object,
   do.call(camodel, newcall)
 }
 
-# Get the required number of points along which we need to sample the f(q) component. 
-# This number of points corresponds to the number of states the neighborhood can be, 
-# for a given CA state. For example, for a moore neighborhood, a cell can have 
-# 0, 1, 2, 3, 4, 5, 6, 7 or 8 neighbors in a given state. So we need 9 points to 
-# represent this. 
-get_q_npoints <- function(wrap, kernel, fixed_neighborhood) { 
-  
+# Get the required number of points along which we need to sample the f(q) component.
+# This number of points corresponds to the number of states the neighborhood can be,
+# for a given CA state. For example, for a moore neighborhood, a cell can have
+# 0, 1, 2, 3, 4, 5, 6, 7 or 8 neighbors in a given state. So we need 9 points to
+# represent this.
+get_q_npoints <- function(wrap, kernel, fixed_neighborhood) {
+
   # This comment is deprecated, but kept it anyway
   # In the worst case scenario, we need 25 points, so that the number of neighbors is
   # always divisible by 2, 3, 4 or 8. (25 because zero included)
   # xpoints <- 1 + ifelse(wrap, neighbors, ifelse(neighbors == 8, 120, 24))
-  
-  # If we have a fixed neighborhood because we want it so, or we wraparound, then 
+
+  # If we have a fixed neighborhood because we want it so, or we wraparound, then
   # the number of configurations is always 1 + the number of neighbors considered
-  if ( wrap || fixed_neighborhood ) { 
+  if ( wrap || fixed_neighborhood ) {
     xpoints <- 1 + sum(kernel)
     return(xpoints)
   }
-  
-  # If we are in a more complicated situation because the number of neighbors is not 
+
+  # If we are in a more complicated situation because the number of neighbors is not
   # fixed, then we need to get the number of possible configurations. We simply do a
   # convolution of the neighborhood mask to find all possible number of neighbors
   nr <- nrow(kernel)
-  c <- (nrow(kernel) - 1) / 2 
-  r <- (nrow(kernel) - 1 ) / 2 
+  c <- (nrow(kernel) - 1) / 2
+  r <- (nrow(kernel) - 1 ) / 2
   configs <- matrix(NA, nrow = 1 + r, ncol = 1 + c)
-  
+
   # Removal of rows / columns
-  for ( row_rm in seq(0, r) ) { 
-    for ( col_rm in seq(0, c) ) { 
+  for ( row_rm in seq(0, r) ) {
+    for ( col_rm in seq(0, c) ) {
       row_keep <- seq.int(nrow(kernel)) > row_rm
       col_keep <- seq.int(nrow(kernel)) > col_rm
       configs[row_rm+1, col_rm+1] <- sum(kernel[row_keep, col_keep])
     }
   }
-  
-  # The number of points required is the product of all possible neighbor numbers + 
-  # zero 
+
+  # The number of points required is the product of all possible neighbor numbers +
+  # zero
   configs <- unique(as.vector(configs))
   xpoints <- 1 + prod(configs[configs>0])
-  
+
   return(xpoints)
 }
 

@@ -2,6 +2,9 @@
 # Interface to the compiled engine
 #
 
+# The number of DLL files that can be loaded by chouca. If we reach this maximum,
+# then we will unload DLLs from the session.
+MAXLL_DEFAULT <- 20
 
 # Here we use the local() call so that the function can keep some internal state.
 # Otherwise the parent environment of the function is the package's internal
@@ -20,7 +23,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   init       <- ctrl[["init"]]
   ns         <- ctrl[["nstates"]]
   max_nb <- sum(ctrl[["kernel"]])
-  
+
   # Read cpp file that we will compile
   cppfile <- system.file("compiled_engine.cpp", package = "chouca")
   clines <- readLines(cppfile)
@@ -53,9 +56,12 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   clines <- gsubf("__BETA_QQ_NROW__", format(nrow(ctrl[["beta_qq"]])), clines)
   clines <- gsubf("__BETA_PQ_NROW__", format(nrow(ctrl[["beta_pq"]])), clines)
   clines <- gsubf("__COMMON_HEADER__",
-                     system.file("common.h", package = "chouca"), clines)
-  
-  # These values are used to enable compiler optimizations 
+                  system.file("common.h", package = "chouca"), clines)
+
+  normfun_define <- paste0("NORMF_", toupper(ctrl[["normfun"]]))
+  clines <- gsubf("__NORMFUN__", normfun_define, clines)
+
+  # These values are used to enable compiler optimizations
   fmaxzero <- function(X) { if ( length(X) == 0 ) "0" else format(max(X)) }
   clines <- gsubf("__MAX_PP_EXPO_1__", fmaxzero(ctrl[["beta_pp"]][ ,"expo_1"]), clines)
   clines <- gsubf("__MAX_PP_EXPO_2__", fmaxzero(ctrl[["beta_pp"]][ ,"expo_2"]), clines)
@@ -63,14 +69,14 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   clines <- gsubf("__MAX_QQ_EXPO_2__", fmaxzero(ctrl[["beta_qq"]][ ,"expo_2"]), clines)
   clines <- gsubf("__MAX_PQ_EXPO_1__", fmaxzero(ctrl[["beta_pq"]][ ,"expo_1"]), clines)
   clines <- gsubf("__MAX_PQ_EXPO_2__", fmaxzero(ctrl[["beta_pq"]][ ,"expo_2"]), clines)
-  
-  # Write neighborhood kernel 
+
+  # Write neighborhood kernel
   kernelstr <- write_cpp_array_2d(ctrl[["kernel"]])
   clines <- gsubf("__NB_KERNEL__", kernelstr, clines)
   clines <- gsubf("__NB_KERNEL_NROW__", format(nrow(ctrl[["kernel"]])), clines)
   clines <- gsubf("__NB_KERNEL_NCOL__", format(ncol(ctrl[["kernel"]])), clines)
   clines <- gsubf("__NB_KERNEL_MAXN__", format(sum(ctrl[["kernel"]])), clines)
-  
+
   # Write transition matrix. This contains 1/0 depending on whether the transition
   # from one state to another exists.
   tmat_array <- write_cpp_array_2d(ctrl[["transition_mat"]])
@@ -108,10 +114,10 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # 'betas_index' contains the starting and ending index to pick relevant coefficients in
   # coef_table for each transition. It is a 3d array where the first columns correspond
   # to the state being transitioned from and to, and the third dimension contains the
-  # starting and ending indices in coef_table. 
-  # This is a bit cumbersome, but it allows having all the different tables beta_0, 
+  # starting and ending indices in coef_table.
+  # This is a bit cumbersome, but it allows having all the different tables beta_0,
   # beta_q, etc. in one big table, which helps with cache locality
-  # 
+  #
   betas_index <- array(nrow(coef_table)+1, dim = list(ns, ns, 2 * length(tables)))
   for ( i in seq_along(tables) ) {
     for ( from in seq(0, ns-1) ) {
@@ -126,7 +132,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
           betas_index[from+1, to+1, 1 + 2*(i-1) ] <- min(which_rows) - 1
           betas_index[from+1, to+1, 1 + 2*(i-1)+1 ] <- max(which_rows) - 1
         } else {
-          # When no transition, we put kend before kstart, so we don't enter for loops 
+          # When no transition, we put kend before kstart, so we don't enter for loops
           betas_index[from+1, to+1, 1 + 2*(i-1) ] <- -1
           betas_index[from+1, to+1, 1 + 2*(i-1)+1 ] <- -2
         }
@@ -136,12 +142,12 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # Trim coef table and write it to c++
   coef_tab_ints <- as.matrix(coef_table[ ,c("from", "to", "state_1", "state_2",
                                             "expo_1", "expo_2", "qs")])
-  coef_tab_ints[is.na(coef_tab_ints)] <- -1 # default value 
+  coef_tab_ints[is.na(coef_tab_ints)] <- -1 # default value
   coef_tab_dbls <- as.matrix(coef_table[ ,"coef", drop = FALSE])
   ctrl[["coef_tab_dbls"]] <- coef_tab_dbls
   ctrl[["coef_tab_ints"]] <- coef_tab_ints
   clines <- gsubf("__COEF_TAB_NROW__", nrow(coef_tab_ints), clines)
-  
+
   # Write it as c++ array in the file
   betas_index_str <- write_cpp_array_3d(betas_index)
   clines <- gsubf("__BETAS_INDEX__", betas_index_str, clines)
@@ -155,7 +161,7 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   cores <- ctrl[["cores"]]
   clines <- gsubf("__CORES__", format(cores), clines)
   clines <- gsubf("__USE_OMP__", ifelse(cores > 1, 1, 0), clines)
-  
+
   # Set #define on whether to precompute transition probabilities or not
   precompute_probas <- ctrl[["precompute_probas"]]
 
@@ -176,19 +182,19 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   hash <- digest::digest(list(clines, ctrl[["cores"]]), algo = "md5")
   clines <- gsub("__FPREFIX__", hash, clines)
   fname <- paste0("aaa", hash, "camodel_compiled_engine")
-  
-  # Maximum degree we will need for power function. The degree is often quite low so 
-  # there is room for optimization when it is only one or two 
-  clines <- gsub("__MAX_POW_DEGREE__", 
-                 max(ctrl[["coef_tab_ints"]][ ,c("expo_1", "expo_2")]), 
+
+  # Maximum degree we will need for power function. The degree is often quite low so
+  # there is room for optimization when it is only one or two
+  clines <- gsub("__MAX_POW_DEGREE__",
+                 fmaxzero(ctrl[["coef_tab_ints"]][ ,c("expo_1", "expo_2")]),
                  clines)
-  
+
   # Make the table with all combinations of qs. If we wrap, then we can discard
   # combinations that are not multiples of the number of neighbors (this is what the
   # 'filter' argument does below)
   if ( precompute_probas ) {
-    all_qs <- generate_all_qs(max_nb, ns, 
-                              filter = wrap, 
+    all_qs <- generate_all_qs(max_nb, ns,
+                              filter = wrap,
                               line_cap = 0)
   } else {
     # This is a dummy matrix just to make sure we pass something to the c++ function.
@@ -206,16 +212,40 @@ function(ctrl, console_callback, cover_callback, snapshot_callback) {
   # Source cpp if needed
   if ( ! exists(fname) || ctrl[["force_compilation"]] ) {
 
+    # Make sure we have left DLLs to load. We do not load more than 20 different
+    # DLLs by default (adjustable by 'chouca_dlls' option)
+    loaded_dlls <- getLoadedDLLs()
+    chouca_dlls <- Filter(function(x) grepl("chouca_dlls", x[["path"]]), loaded_dlls)
+    if ( length(chouca_dlls) > getOption("chouca.maxdll", 20) ) {
+
+      if ( getOption("chouca.maxdll.warn", TRUE) ) {
+        warning(sprintf("Unloading chouca DLLs because we reached the limit of %s. You can increase this limit using options(chouca.maxdll = <n>), and disable this warning using options(chouca.maxdll.warn = FALSE).",
+                        getOption("chouca.maxdll", 20)))
+      }
+
+      # Unload all chouca DLLs
+      lapply(chouca_dlls, function(o) dyn.unload(o[["path"]]))
+
+      # Cleanup generated functions in internal environment to make sure we
+      # force a recompilation for those, as their DLL is not loaded anymore.
+      funs <- ls(envir = function_envir)
+      funs <- funs[grepl("^aaa", funs)]
+      rm(list = funs, pos = function_envir)
+
+    }
+
     # We compile from the file, so that lines can be put in a debug run
     funs <- sourceCpp(code = paste(clines, collapse = "\n"),
                       verbose = ctrl[["verbose_compilation"]],
+                      cacheDir = file.path(tempdir(), "chouca_dlls"),
                       cleanupCacheDir = FALSE,
-                      rebuild = TRUE, # always force rebuild has we have our own cache
+                      rebuild = TRUE, # always force rebuild as we have our own cache
                       env = function_envir)
   }
-  
+
   runf <- get(fname, envir = function_envir)
   runf(all_qs, ctrl)
+
 }
 
 }) # end of local() block
@@ -234,7 +264,7 @@ write_cpp_array_2d <- function(m) {
 # }
 
 write_cpp_array_3d <- function(m) {
-  # We want to access the values in m[i, j, k] (R) as m[i][j][k] in C, which requires 
+  # We want to access the values in m[i, j, k] (R) as m[i][j][k] in C, which requires
   # some reordering of the R array
   depth_vectors <- apply(m, c(1, 2), write_cpp_array_1d)
   write_cpp_array_1d(apply(depth_vectors, 1, write_cpp_array_1d))

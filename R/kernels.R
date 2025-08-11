@@ -37,6 +37,8 @@ nb_kernel_moore <- matrix(c(1, 1, 1,
 #' to a cell, but at a given integer distance \code{distance}. See Examples section to 
 #' visualize different types of neighborhoods. 
 #' 
+#' The function
+#'
 #'@examples
 #'
 #'# Classic moore and von_neumann neighborhoods
@@ -48,23 +50,28 @@ nb_kernel_moore <- matrix(c(1, 1, 1,
 #'ker <- nb_kernel("moore", 2)
 #'image(ker)
 #' 
-#'# Different kernel types and distances 
+#'# Different kernel types and distances
 #'opar <- par(no.readonly = TRUE)
-#'par(mfcol = c(3, 5)) 
-#'lapply(c(1, 3, 6, 9, 12), function(distance) { 
-#'  image( nb_kernel("von_neumann", distance) )
-#'  title(sprintf("Von Neumann kernel, distance %s", distance))
-#'  image( nb_kernel("moore", distance) )
-#'  title(sprintf("Moore kernel, distance %s", distance))
-#'  image( nb_kernel("circular", distance) )
-#'  title(sprintf("Circular kernel, distance %s", distance))
+#'par(mfcol = c(3, 5))
+#'lapply(c(1, 3, 6, 9, 12), function(distance) {
+#'  coords <- seq.int(2*distance+1) - distance - 1
+#'  image(x = coords, y = coords,
+#'        nb_kernel("von_neumann", distance) )
+#'  title(sprintf('nb_kernel("von_neumann", %s)', distance))
+#'  image(x = coords, y = coords,
+#'        nb_kernel("moore", distance) )
+#'  title(sprintf('nb_kernel("moore", %s)', distance))
+#'  image(x = coords, y = coords,
+#'        nb_kernel("circular", distance) )
+#'  title(sprintf('nb_kernel("circular", %s)', distance))
 #'})
 #'
+#'
 #'par(opar)
-#' 
+#'
 #'# Circular kernel with a given distance
 #'opar <- par(no.readonly = TRUE)
-#'par(mfrow = c(3, 3)) 
+#'par(mfrow = c(3, 3))
 #'lapply(seq(1, 9*2, by = 2), function(distance) { 
 #'  image( nb_kernel("circular", distance) )
 #'  title(sprintf("Circular kernel, distance %s", distance))
@@ -77,14 +84,15 @@ nb_kernel <- function(type, distance) {
   if ( length(type) != 1 ) { 
     stop("The kernel type must be a length-1 character vector")
   }
-  
+  type <- tolower(type)
+
   cr <- distance + 1 # center
   
   if ( type == "moore" ) { 
     k <- matrix(TRUE, nrow = 2*distance + 1, ncol = 2*distance + 1)
     k[1+distance, 1+distance] <- FALSE
     
-  } else if ( type %in% c("diamond", "von_neumann") ) { 
+  } else if ( type %in% c("diamond", "von_neumann", "von-neumann") ) {
     
     k <- matrix(FALSE, nrow = 2*distance + 1, ncol = 2*distance + 1)
     for ( i in seq(-distance, distance) ) { 
@@ -104,6 +112,8 @@ nb_kernel <- function(type, distance) {
       }
     }
     
+  } else { 
+    stop(sprintf("Unknown kernel shape %s, possible values are: moore, diamond, von_neumann, circular", type))
   }
   
   # Center of kernel is always false
@@ -140,8 +150,19 @@ build_neighbor_kernel <- function(neighbors) {
   # c <- 1 + (ncol(kernel) -1)/ 2
   # kernel[c, c] <- 0
   
-  # Enforce logical type
-  kernel <- matrix(kernel > 0.5, nrow = nrow(kernel), ncol = ncol(kernel))
+  # Enforce logical type if we only have ones or zeros
+  if ( all(kernel %in% c(0, 1)) ) { 
+    kernel <- matrix(kernel > 0.5, nrow = nrow(kernel), ncol = ncol(kernel))
+  }
   
   kernel
+}
+
+# Helper function to determine if a kernel is continuous or discrete (1/0)
+kernel_type <- function(k) { 
+  if ( is.logical(k) || all(k %in% c(0, 1)) ) { 
+    return("discrete")
+  } else { 
+    return("continuous")
+  }
 }

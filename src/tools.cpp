@@ -50,3 +50,50 @@ arma::vec quick_pred_cpp(const arma::vec coefs,
   
   return yp; 
 }
+
+//[[Rcpp::export]]
+arma::vec get_cell_qvec(const arma::Mat<unsigned short>& m,
+                        const arma::uword& i_R,
+                        const arma::uword& j_R,
+                        const arma::uword ns, 
+                        const bool& wrap,
+                        const arma::Mat<unsigned short>& kernel) {
+  
+  arma::vec qs(ns); 
+  qs.fill(0);
+  arma::uword nc = m.n_cols;
+  arma::uword nr = m.n_rows;
+  
+  arma::uword i = i_R - 1; 
+  arma::uword j = j_R - 1; 
+  
+  const arma::sword kernel_semiheight = ( kernel.n_rows - 1 ) / 2;
+  const arma::sword kernel_semiwidth  = ( kernel.n_cols - 1 ) / 2;
+  
+  // We loop over the required offsets
+  for ( arma::sword o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
+    for ( arma::sword o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
+      // Rcpp::Rcout << "o_r: " << o_r << " o_c: " << o_c << "\n"; 
+      
+      if ( wrap ) { 
+        const ushort state = m( (nr + i + o_r) % nr, 
+                                (nc + j + o_c) % nc ); 
+        qs(state) += kernel(o_r + kernel_semiheight, 
+                               o_c + kernel_semiwidth); 
+        
+      } else { 
+        // If we don't wrap, then we need to add a bound check to make sure 
+        // we are in the matrix
+        const arma::uword i_target = i + o_r; 
+        const arma::uword j_target = j + o_c; 
+        if ( i_target >= 0 && j_target >= 0 && i_target < nr && j_target < nc ) { 
+          const ushort state = m(i_target, j_target); 
+          qs(state) += kernel(o_r + kernel_semiheight, 
+                              o_c + kernel_semiwidth); 
+        }
+      }
+    }
+  }
+  
+  return qs; 
+}

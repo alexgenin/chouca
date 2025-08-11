@@ -12,6 +12,16 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// camodel_cpp_engine
+void camodel_cpp_engine(const Rcpp::List ctrl);
+RcppExport SEXP _chouca_camodel_cpp_engine(SEXP ctrlSEXP) {
+BEGIN_RCPP
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Rcpp::List >::type ctrl(ctrlSEXP);
+    camodel_cpp_engine(ctrl);
+    return R_NilValue;
+END_RCPP
+}
 // local_dens_col
 arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short>& m, const arma::uword& nstates, const arma::uword& j, const bool& wrap, const arma::Mat<unsigned short>& kernel);
 RcppExport SEXP _chouca_local_dens_col(SEXP mSEXP, SEXP nstatesSEXP, SEXP jSEXP, SEXP wrapSEXP, SEXP kernelSEXP) {
@@ -27,14 +37,16 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// camodel_cpp_engine
-void camodel_cpp_engine(const Rcpp::List ctrl);
-RcppExport SEXP _chouca_camodel_cpp_engine(SEXP ctrlSEXP) {
+// get_transition_probas_cpp
+arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat, Rcpp::List& ctrl);
+RcppExport SEXP _chouca_get_transition_probas_cpp(SEXP matSEXP, SEXP ctrlSEXP) {
 BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< const Rcpp::List >::type ctrl(ctrlSEXP);
-    camodel_cpp_engine(ctrl);
-    return R_NilValue;
+    Rcpp::traits::input_parameter< arma::Mat<ushort>& >::type mat(matSEXP);
+    Rcpp::traits::input_parameter< Rcpp::List& >::type ctrl(ctrlSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_transition_probas_cpp(mat, ctrl));
+    return rcpp_result_gen;
 END_RCPP
 }
 // generate_all_qs
@@ -65,12 +77,30 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// get_cell_qvec
+arma::vec get_cell_qvec(const arma::Mat<unsigned short>& m, const arma::uword& i_R, const arma::uword& j_R, const arma::uword ns, const bool& wrap, const arma::Mat<unsigned short>& kernel);
+RcppExport SEXP _chouca_get_cell_qvec(SEXP mSEXP, SEXP i_RSEXP, SEXP j_RSEXP, SEXP nsSEXP, SEXP wrapSEXP, SEXP kernelSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::Mat<unsigned short>& >::type m(mSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type i_R(i_RSEXP);
+    Rcpp::traits::input_parameter< const arma::uword& >::type j_R(j_RSEXP);
+    Rcpp::traits::input_parameter< const arma::uword >::type ns(nsSEXP);
+    Rcpp::traits::input_parameter< const bool& >::type wrap(wrapSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<unsigned short>& >::type kernel(kernelSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_cell_qvec(m, i_R, j_R, ns, wrap, kernel));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 1},
+    {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
+    {"_chouca_get_transition_probas_cpp", (DL_FUNC) &_chouca_get_transition_probas_cpp, 2},
     {"_chouca_generate_all_qs", (DL_FUNC) &_chouca_generate_all_qs, 4},
     {"_chouca_quick_pred_cpp", (DL_FUNC) &_chouca_quick_pred_cpp, 4},
+    {"_chouca_get_cell_qvec", (DL_FUNC) &_chouca_get_cell_qvec, 6},
     {NULL, NULL, 0}
 };
 

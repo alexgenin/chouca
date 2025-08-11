@@ -27,8 +27,7 @@ NREPS       <- 3
 CXXF <- "-O2 -Wall"
 ENGINES <- c("cpp", "compiled") 
 # ENGINES <- c("compiled") 
-ALL_MODELS <- c("forestgap", "musselbed", "gameoflife", "aridvege", 
-                "coralreef")
+ALL_MODELS <- c("forestgap", "musselbed", "aridvege", "coralreef")
 # ALL_MODELS <- c("musselbed")
 
 time_mod <- function(mod, init, control, niter) { 

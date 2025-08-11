@@ -8,14 +8,14 @@
 #define ARMA_NO_DEBUG
 #endif
 
-// This is required for portability 
+// This is required for portability
 #ifdef _OPENMP
 #define USE_OMP __USE_OMP__
 #else
 #define USE_OMP 0
 #endif
 
-#if USE_OMP 
+#if USE_OMP
 #include <omp.h>
 #endif
 
@@ -24,25 +24,27 @@
 
 using namespace arma;
 
-// TODO: remove me
-#include <csignal>
-
 // Some typedefs for better legibility
 typedef unsigned char uchar;
 typedef signed char schar;
 typedef unsigned short ushort;
 
 // Some typedefs used for model quantities
-typedef uchar       u_state;     // value holding a state 
+typedef uchar       u_state;     // value holding a state
 typedef schar       s_state;     // value holding a state (signed)
 typedef uchar       u_nbcount;   // count of neighbors in given config
 typedef arma::uword u_xyint;     // coordinates in matrix
 typedef arma::sword s_xyint;     // coordinates in matrix (signed)
-typedef unsigned int u_pscount; // count of cells in given state
-typedef unsigned int u_pline;   // line in all_qs
-typedef signed int s_pline;     // line in all_qs, signed version
+typedef unsigned int u_pscount;    // count of cells in given state (needs to be signed)
+typedef unsigned int u_pline;    // line in all_qs
+typedef signed int s_pline;      // line in all_qs, signed version
 typedef unsigned long u_tstep;   // integer representing time step
 typedef double      pfloat;      // floating point values used in probabilities
+
+// We need to define the types of probability normalization functions as
+// integers here
+constexpr unsigned char NORMF_IDENTITY = 0;
+constexpr unsigned char NORMF_SOFTMAX = 1;
 
 // These strings will be replaced by their values
 constexpr uword NR = __NR__;
@@ -50,7 +52,7 @@ constexpr uword NC = __NC__;
 constexpr u_state NS = __NS__;
 constexpr bool WRAP = __WRAP__;
 // constexpr bool USE_8_NB = __USE_8_NB__;
-constexpr u_state MAX_NB = __MAX_NB__; 
+constexpr u_state MAX_NB = __MAX_NB__;
 constexpr bool FIXED_NB = __FIXED_NEIGHBOR_NUMBER__;
 constexpr uword SUBSTEPS = __SUBSTEPS__;
 constexpr uword XPOINTS = __XPOINTS__;
@@ -62,28 +64,30 @@ constexpr uword BETA_QQ_NROW = __BETA_QQ_NROW__;
 constexpr uword BETA_PQ_NROW = __BETA_PQ_NROW__;
 constexpr uword ALL_QS_NROW = __ALL_QS_NROW__;
 constexpr uword CORES = __CORES__;
-constexpr uword MAX_POW_DEGREE = __MAX_POW_DEGREE__; 
+constexpr uword MAX_POW_DEGREE = __MAX_POW_DEGREE__;
+constexpr uword NORMFUN = __NORMFUN__;
 
-// We get some information on the degrees used to compute the coefficients, this is 
+// We get some information on the degrees used to compute the coefficients, this is
 // used to implement some optimizations when computing rates
-constexpr uword MAX_PP_EXPO_1 = __MAX_PP_EXPO_1__; 
-constexpr uword MAX_PP_EXPO_2 = __MAX_PP_EXPO_2__; 
-constexpr uword MAX_QQ_EXPO_1 = __MAX_QQ_EXPO_1__; 
-constexpr uword MAX_QQ_EXPO_2 = __MAX_QQ_EXPO_2__; 
-constexpr uword MAX_PQ_EXPO_1 = __MAX_PQ_EXPO_1__; 
-constexpr uword MAX_PQ_EXPO_2 = __MAX_PQ_EXPO_2__; 
+constexpr uword MAX_PP_EXPO_1 = __MAX_PP_EXPO_1__;
+constexpr uword MAX_PP_EXPO_2 = __MAX_PP_EXPO_2__;
+constexpr uword MAX_QQ_EXPO_1 = __MAX_QQ_EXPO_1__;
+constexpr uword MAX_QQ_EXPO_2 = __MAX_QQ_EXPO_2__;
+constexpr uword MAX_PQ_EXPO_1 = __MAX_PQ_EXPO_1__;
+constexpr uword MAX_PQ_EXPO_2 = __MAX_PQ_EXPO_2__;
 
 // Neighborhood kernel
-constexpr uword NB_KERNEL_NR = __NB_KERNEL_NROW__; 
-constexpr uword NB_KERNEL_NC = __NB_KERNEL_NCOL__; 
-constexpr uword NB_KERNEL_MAXN = __NB_KERNEL_MAXN__; 
-constexpr bool NB_KERNEL[__NB_KERNEL_NROW__][__NB_KERNEL_NCOL__] = __NB_KERNEL__; 
+constexpr uword NB_KERNEL_NR = __NB_KERNEL_NROW__;
+constexpr uword NB_KERNEL_NC = __NB_KERNEL_NCOL__;
+constexpr uword NB_KERNEL_RADIUS = (NB_KERNEL_NR - 1) / 2;
+constexpr uword NB_KERNEL_MAXN = __NB_KERNEL_MAXN__;
+constexpr bool NB_KERNEL[__NB_KERNEL_NROW__][__NB_KERNEL_NCOL__] = __NB_KERNEL__;
 
 // Transition matrix (true when transition can be done, false when not)
 constexpr bool transition_matrix[NS][NS] = __TMATRIX_ARRAY__;
 
 // 5*2 because we have 5 packed tables of coefficients, each of which needing 2
-// (where to start, and where to stop for this transition). 
+// (where to start, and where to stop for this transition).
 constexpr sword betas_index[NS][NS][5 * 2] = __BETAS_INDEX__;
 
 // Whether we want to precompute probabilities or not
@@ -94,20 +98,20 @@ constexpr arma::uword COEF_TAB_NROW = __COEF_TAB_NROW__;
 
 // Coef tables
 static arma::Mat<ushort> arma_ints(COEF_TAB_NROW, 6);
-u_nbcount coef_tab_ints[COEF_TAB_NROW][6]; 
+u_nbcount coef_tab_ints[COEF_TAB_NROW][6];
 
 static arma::Mat<double> arma_flts(COEF_TAB_NROW, 6);
 pfloat coef_tab_flts[COEF_TAB_NROW];
 
 // Include functions and type declarations (this points to 'common.h')
 #include "__COMMON_HEADER__"
- 
+
 // Compute transition probabilities between all possible qs states
 inline void precompute_transition_probabilites(pfloat tprobs[ALL_QS_NROW][NS][NS],
                                                const u_nbcount all_qs[ALL_QS_NROW][NS + 1],
                                                const u_pscount ps[NS]) {
 
-  // 
+  //
   // This function depends on the matrix all_qs, which contains all possible
   // neighborhood configurations, with an added column at the end with the total
   // number of neighbors (a fixed number under some set of options, e.g. it is always
@@ -131,14 +135,14 @@ inline void precompute_transition_probabilites(pfloat tprobs[ALL_QS_NROW][NS][NS
   // another, which is stored in tprobs. Then once we know the neighbor configuration
   // of a cell, we just need to fetch it from tprobs instead of recomputing it from
   // scratch.
-  // 
+  //
   // Note that when the neighborhood of a cell changes, we know immediately where to
   // find the new neighborhood configuration all_qs. For example, if we go from the
   // neighborhood (1, 0, 3) to (0, 0, 4), we know we new neighborhood config is 6 rows
   // above in all_qs (and thus in tprobs). This is because in all_qs,
   // the neighborhood configurations have a specific ordering. See adjust_nb_plines()
   // in common.h for more details.
-  // 
+  //
   for (u_pline l = 0; l < ALL_QS_NROW; l++) {
 
     // Some combinations in all_qs will never be used because the number of
@@ -151,11 +155,11 @@ inline void precompute_transition_probabilites(pfloat tprobs[ALL_QS_NROW][NS][NS
     // sum to valid combinations. This would make all_qs not grow as fast with the number
     // of neighbors and state, thus enabling memoization for more complex models.
     // However, this complexifies a lot the way of keeping
-    // track of where to pick the transition probability for each neighbor combination. 
-    // 
+    // track of where to pick the transition probability for each neighbor combination.
+    //
     // I [Alex] worked out a math formula somewhere but lost it, I just remember the
     // problem simplified into some variant of the bars and stars problem, see
-    // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics). 
+    // https://en.wikipedia.org/wiki/Stars_and_bars_(combinatorics).
     if ( all_qs[l][NS] > MAX_NB ) {
       continue;
     }
@@ -170,6 +174,16 @@ inline void precompute_transition_probabilites(pfloat tprobs[ALL_QS_NROW][NS][NS
                    from); // from, to states
     }
   }
+}
+
+// Get thread number even when OMP is off
+inline const unsigned int safe_get_thread_num() {
+#if USE_OMP
+  unsigned int n = omp_get_thread_num();
+#else
+  unsigned int n = 0;
+#endif
+  return n;
 }
 
 // [[Rcpp::export]]
@@ -195,20 +209,20 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   const uword custom_callback_every = ctrl["custom_output_every"];
   const bool custom_callback_active = custom_callback_every > 0;
   Rcpp::Function custom_callback = ctrl["custom_callback"];
-  
-  // Extract things from list. These arrays are declared as static above so accessible 
-  // from other functions. We copy elements one by one to handle the type conversion, 
-  // if needed. 
+
+  // Extract things from list. These arrays are declared as static above so accessible
+  // from other functions. We copy elements one by one to handle the type conversion,
+  // if needed.
   arma_ints = Rcpp::as< arma::Mat<ushort> >(ctrl["coef_tab_ints"]);
   arma_flts = Rcpp::as< arma::Mat<double> >(ctrl["coef_tab_dbls"]);
-  for ( uword i=0; i<COEF_TAB_NROW; i++) { 
-    coef_tab_flts[i] = (pfloat) arma_flts(i); 
-    for ( uword j=0; j<6; j++) { 
-      coef_tab_ints[i][j] = (u_nbcount) arma_ints(i, j); 
+  for ( uword i=0; i<COEF_TAB_NROW; i++) {
+    coef_tab_flts[i] = (pfloat) arma_flts(i);
+    for ( uword j=0; j<6; j++) {
+      coef_tab_ints[i][j] = (u_nbcount) arma_ints(i, j);
     }
   }
-  
-  // Copy some things as c arrays. 
+
+  // Copy some things as c arrays.
   // Note: we allocate omat/nmat on the heap since they can be big matrices and blow up
   // the size of the C stack beyond acceptable.
   auto old_mat = new u_state[NR][NC];
@@ -231,7 +245,10 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #endif
 
   // Initialize vectors with counts of cells in each state in the landscape (used to
-  // compute global densities)
+  // compute global densities).
+  // This needs to be signed as the values can be negative in a multithread context.
+  // All cores add/substract to new_ps, which is reducted at the end of the parallel
+  // block. This may make new_ps go negative sometimes.
   u_pscount old_ps[NS];
   u_pscount new_ps[NS];
   memset(old_ps, 0, sizeof(u_pscount) * NS);
@@ -249,7 +266,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
   // When we do not use memoization, we maintain for each cell of the grid the state
   // of its neighbors (in old/new_qs). Everytime a cell changes state, the values of
   // those matrices are changed for all neighboring cells.
-  // 
+  //
   // When we use memoization, we do not need to keep track of the local counts of
   // neighbors, we just need to adjust the index (row) in old/new_pline which contains
   // where in tprobs the probability of transition needs to be picked for a cell
@@ -284,24 +301,29 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
     for (uchar i = 0; i < 4; i++) {
       // randn returns 64-bit double precision numbers
       double rn = exp( arma::randu<double>()*10 );
-      // Rcpp::Rcout << "rn: " << rn << "\n"; 
+      // Rcpp::Rcout << "rn: " << rn << "\n";
       memcpy(&s[thread][i], &rn, sizeof(double));
     }
-    
+
     // Draw a random number to warm up the rng. The first number seems to be biased
-    // otherwise. 
-    randunif(thread); 
+    // otherwise.
+    randunif(thread);
   }
-  
+
   // Allocate some things we will reuse later. We always need to define this when using
   // multiple threads as otherwise the omp pragma will complain it's undefined.
 #if ( ! PRECOMPUTE_TRANS_PROBAS ) || USE_OMP
   pfloat ptrans[NS];
-#endif 
-  
-#if ( ! PRECOMPUTE_TRANS_PROBAS ) 
+#endif
+
+#if USE_OMP
+  bool has_changed[NR][NC];
+  memset(has_changed, 0, sizeof(bool) * NR * NC);
+#endif
+
+#if ( ! PRECOMPUTE_TRANS_PROBAS )
   // We initialize ptrans with something
-  // Rcpp::Rcout << "nnb(0, 0):" << (uword) number_of_neighbors(0, 0) << "\n"; 
+  // Rcpp::Rcout << "nnb(0, 0):" << (uword) number_of_neighbors(0, 0) << "\n";
   compute_rate(ptrans,
                old_qs[0][0], // qs
                old_ps, // ps
@@ -309,7 +331,11 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
                old_mat[0][0]); // from (current) state
 #endif
 
-  
+#if USE_OMP
+  omp_lock_t last_row_lock;
+  omp_init_lock( &last_row_lock );
+#endif
+
   u_tstep current_t = 0;
   u_tstep last_t = times(times.n_elem - 1);
   u_tstep export_n = 0;
@@ -351,32 +377,46 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #endif
 
 #if USE_OMP
-      // This parallel block has an implicit barrier at the end, so each thread will
-      // process a line and wait for the others to finish before switching to the next
-      // line. This ensures that two threads will never write to the same cell in the
-      // shared data structures. This slows down things a lot when precomputing
-      // probabilities because there is not much to do and threads will spend a lot of 
-      // time not trying to step on each others' toes, but when there is a significant 
-      // amount of work to do per line (complex model, no memoization of probas), 
-      // this works well.
-      //
-      // Note that this probably assumes that NR >> CORES, but it would be a bit of a 
-      // pathological case if this was not true.
-      // 
-      // This has funny indentation but it is the only way to align code in the
-      // inside blocks with the non-parallel version
-      for (uword c = 0; c < (NR / CORES); c++) {
-#pragma omp parallel num_threads(CORES) default(shared) \
-  firstprivate(ptrans) reduction(+:new_ps)
-      {
-      uword i = omp_get_thread_num() * (NR / CORES) + c;
-      // Make sure we never run the loop if the number of rows is beyond the number
-      // of rows in the landscape
-      if (i < NR) {
+// When using multiple threads to update cells, we need to make sure threads never
+// write to the same memory area. A cell update implies a possible write to its
+// neighbors, so we need to make sure threads update cells that are at least 1+2*the
+// radius of the neighbor kernel apart. For instance, using a kernel of radius 1
+// (i.e. we only consider the neighbors next to a focal cell) means that threads need to
+// update cells at least 1+2*1 = 3 cells apart.
+//
+//  For example, for a neighborhood kernel of 3 rows, i.e. only considering direct
+//  neighbors, we need to dispatch processed rows this way:
+//
+//   x----------------- thread 1, t0
+//   x----------------- thread 1, t1
+//   x----------------- thread 1, t2
+//   x----------------- thread 2, t0
+//   x----------------- thread 2, t1
+//   x----------------- thread 2, t2
+//   x----------------- thread 3, t0
+//
+// An interesting problem arises if we use a toric space, as two threads can update the
+// same memory areas even if the spacing is right, for example if two threads update the
+// first and last line of the landscape at the same time. In the above example,
+// thread 3 and 1 can write into the same memory addresses and time t0 because, if
+// we wrap the first and last line are neighbors.
+//
+// We need to handle that and make sure that threads updating the last x lines are
+// doing so while other threads wait, where x here is the height of the
+// neighborhood kernel - 1.
+//
+      for ( uchar start = 0; start < NB_KERNEL_NR; start++ ) {
+#pragma omp parallel for num_threads(CORES) default(shared) \
+  firstprivate(ptrans) reduction(+:new_ps[:NS])
+      for ( u_xyint i = start; i < NR; i += NB_KERNEL_NR ) {
+
+        if ( WRAP && i > (NR - NB_KERNEL_NR) ) {
+          omp_set_lock( &last_row_lock );
+        }
 #else
       for (u_xyint i = 0; i < NR; i++) {
 #endif
-        
+
         for (u_xyint j = 0; j < NC; j++) {
 
           u_state from = old_mat[i][j];
@@ -385,7 +425,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 #else
           // Normalized local densities to proportions
           const u_nbcount qs_total = number_of_neighbors(i, j);
-          
+
           // Compute the rate of change for this cell
           compute_rate(ptrans,
                        old_qs[i][j], // qs
@@ -394,11 +434,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
                        from); // from (current) state
 #endif
 
-#if USE_OMP
-          pfloat rn = (pfloat) randunif(omp_get_thread_num());
-#else
-          pfloat rn = (pfloat) randunif(0); 
-#endif
+          const pfloat rn = (pfloat) randunif( safe_get_thread_num() );
 
           // Check if we actually transition. We compute the cumulative sum of
           // probabilities, then draw a random number (here 'rn'), to see if the
@@ -411,9 +447,9 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           // Of course the sum of probabilities must be lower than one, otherwise we are
           // making an approximation and may never consider a given transition.
           u_state new_cell_state = from;
-          
+
           // Note the signedness so that the loop does NOT wrap around
-          for (s_state k = (NS - 1); k >= 0; k--) { 
+          for (s_state k = (NS - 1); k >= 0; k--) {
 #if PRECOMPUTE_TRANS_PROBAS
             u_pline line = old_pline[i][j];
             new_cell_state = rn < tprobs[line][from][k] ? k : new_cell_state;
@@ -421,7 +457,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             new_cell_state = rn < ptrans[k] ? k : new_cell_state;
 #endif
           }
-          
+
           if ( new_cell_state != from ) {
             new_ps[new_cell_state]++;
             new_ps[from]--;
@@ -432,32 +468,35 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             adjust_local_density(new_qs, i, j, from, new_cell_state);
 #endif
           }
-          
+
           // Generate an interrupt for gdb
           // std::raise(SIGINT);
-          // if ( current_t == 0 && i == 0 && j == 0 && from == 0 ) { 
-          //   Rcpp::Rcout << 
-          //     "t=" << current_t << " " << 
-          //     "ptrans[0]:" << ptrans[0] << " " << 
-          //     "ptrans[1]:" << ptrans[1] << " " << 
-          //     "rn: " << rn << " " << 
-          //     "old_mat[0][0]:" << (int) old_mat[0][0] << " " << 
-          //     "new_mat[0][0]:" << (int) new_mat[0][0] << " " << 
-          //     "ps:" << (int) old_ps[0] << "/" << (int) old_ps[1] << " " << 
-          //     "qs_next:" << (int) old_qs[0][1][0] << "/" << (int) old_qs[0][1][1] << " " << 
-          //     "\n"; 
+          // if ( current_t == 0 && i == 0 && j == 0 && from == 0 ) {
+          //   Rcpp::Rcout <<
+          //     "t=" << current_t << " " <<
+          //     "ptrans[0]:" << ptrans[0] << " " <<
+          //     "ptrans[1]:" << ptrans[1] << " " <<
+          //     "rn: " << rn << " " <<
+          //     "old_mat[0][0]:" << (int) old_mat[0][0] << " " <<
+          //     "new_mat[0][0]:" << (int) new_mat[0][0] << " " <<
+          //     "ps:" << (int) old_ps[0] << "/" << (int) old_ps[1] << " " <<
+          //     "qs_next:" << (int) old_qs[0][1][0] << "/" << (int) old_qs[0][1][1] << " " <<
+          //     "\n";
           // }
-          
+
 
         } // end of loop on j (columns)
-
 #if USE_OMP
-      } // closes if() check to make sure lines are within matrix
-      } // closes parallel block
+      if ( WRAP && i > (NR - NB_KERNEL_NR) ) {
+        omp_unset_lock( &last_row_lock );
+      }
 #endif
-      } // for loop on i
+      } // end of for loop on i (rows)
+#if USE_OMP
+    } // end of loop on starting values
+#endif
 
-      // Copy old matrix to new and other bookkeeping arrays 
+      // Copy old matrix to new and other bookkeeping arrays
       memcpy(old_ps, new_ps, sizeof(u_pscount) * NS);
       memcpy(old_mat, new_mat, sizeof(u_state) * NR * NC);
 #if PRECOMPUTE_TRANS_PROBAS

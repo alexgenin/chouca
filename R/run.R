@@ -108,9 +108,9 @@
 #'      to run the model. This provides a moderate speedup in most cases, and
 #'      is sometimes counter-productive on small landscapes. If you plan on
 #'      running multiple simulations, you are probably better off parallelizing
-#'      at a higher level. See also the 'Performance' section in the vignette, 
+#'      at a higher level. See also the 'Performance' section in the vignette,
 #'      accessible using the command \code{vignette("chouca-package")}.
-#'      
+#'
 #' }
 #'
 #' @returns A \code{ca_model_result} objects, which is a list with the following
@@ -118,11 +118,11 @@
 #'
 #' \enumerate{
 #'
-#'   \item \code{model} The original model used for the model run (see 
+#'   \item \code{model} The original model used for the model run (see
 #'     return value of \code{\link{camodel}} for more details about these objects).
 #'
-#'   \item \code{initmat} The initial landscape (matrix) used for the model run, 
-#'     such as what is returned by \code{\link{generate_initmat}}. 
+#'   \item \code{initmat} The initial landscape (matrix) used for the model run,
+#'     such as what is returned by \code{\link{generate_initmat}}.
 #'
 #'   \item \code{times} The time points vector at which output is saved
 #'
@@ -132,9 +132,9 @@
 #'   \item \code{output} A named list containing the simulation outputs. The 'covers'
 #'     component contains a matrix with the first column containing the time step, and the
 #'     other columns the proportions of cells in a given state. The 'snapshots' component
-#'     contains the landscapes recorded as matrices(\code{camodel_initmat} objects), with 
-#'     a 't' attribute indicating the corresponding time step of the model run. The 
-#'     'custom' component contains the results from calling a custom function provided 
+#'     contains the landscapes recorded as matrices(\code{camodel_initmat} objects), with
+#'     a 't' attribute indicating the corresponding time step of the model run. The
+#'     'custom' component contains the results from calling a custom function provided
 #'     as 'custom_output_fun' in the control list (see examples below).
 #' }
 #'
@@ -145,13 +145,13 @@
 #' im  <- generate_initmat(mod, c(0.4, 0.6, 0), nrow = 100, ncol = 50)
 #' out <- run_camodel(mod, im, times = seq(0, 100))
 #' plot(out)
-#' 
-#' # Disable console output 
-#' opts <- list(console_output_every = 0) 
+#'
+#' # Disable console output
+#' opts <- list(console_output_every = 0)
 #' out <- run_camodel(mod, im, times = seq(0, 100), control = opts)
-#' 
-#' # 
-#' 
+#'
+#' #
+#'
 #' \donttest{
 #'
 #' # Run the same model with the 'compiled' engine, and save snapshots. This
@@ -160,13 +160,13 @@
 #' ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 100)
 #' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
 #' plot(run)
-#' 
-#' # 
+#'
+#' #
 #' oldpar <- par(mfrow = c(1, 2))
 #' image(run, snapshot_time = 0)
 #' image(run, snapshot_time = 100)
 #' par(oldpar)
-#' 
+#'
 #' # Disable console output
 #' ctrl <- list(console_output_every = 0)
 #' run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
@@ -209,11 +209,11 @@ run_camodel <- function(mod, initmat, times,
   if ( ! all(levels(initmat) %in% states) ) {
     stop("States in the initial matrix do not match the model states")
   }
-  
+
   if ( ! is.numeric(times) && prod(dim(times) == length(times)) ) {
     stop("The output time steps must be a numeric vector")
   }
-  
+
   if ( ! all(round(times) == times) && all(times >= 0) ) {
     stop("Time steps must be non-negative integers")
   }
@@ -322,64 +322,35 @@ run_camodel <- function(mod, initmat, times,
 
   # Convert initmat to internal representation
   d <- dim(initmat)
-  initmat <- as.integer(initmat) - 1
+  initmat <- as.integer(factor(as.character(initmat), levels = mod[["states"]])) - 1
   dim(initmat) <- d
 
-  # Convert state factors to internal representation
-  fix <- function(x) {
-    as.integer(factor(as.character(x), levels = states)) - 1
-  }
+  # Prepare data for internal representation with states as integers, and take substeps
+  # into account by dividing probabilities
+  betas <- adjust_states_and_probs(mod[c("beta_0", "beta_q", "beta_pp",
+                                         "beta_qq", "beta_pq")],
+                                   mod[["states"]],
+                                   control[["substeps"]])
 
-  # Prepare data for internal representation, and take substeps into account
-  betas <- mod[c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")]
-  betas <- lapply(betas, function(tab) {
-    # Convert references to state to internal representation
-    tab[ ,"from"] <- fix(tab[ ,"from"])
-    tab[ ,"to"] <- fix(tab[ ,"to"])
-    if ( "state_1" %in% colnames(tab) ) {
-      tab[ ,"state_1"] <- fix(tab[ ,"state_1"])
-    }
-    if ( "state_2" %in% colnames(tab) ) {
-      tab[ ,"state_2"] <- fix(tab[ ,"state_2"])
-    }
+  # Make the transition matrix (ns*ns matrix with TRUE when there is a transition).
+  # This improves performance most of the time because transition matrices are often
+  # quite sparse.
+  transition_mat <- make_transition_matrix(mod[["states"]], betas)
 
-    # We divide all probabilities by the number of substeps
-    tab[ ,"coef"] <- tab[ ,"coef"] / control[["substeps"]]
-
-    as.matrix(tab)
-  })
-
-  # Construct the matrix of from/to states. This matrix holds TRUE when a transition 
-  # from this state to another exists. 
-  transition_mat <- matrix(FALSE, nrow = ns, ncol = ns)
-  colnames(transition_mat) <- rownames(transition_mat) <- states
-  all_transitions <- lapply(betas, function(o) unique(o[ ,c("from", "to")]))
-  all_transitions <- unique(do.call(rbind, all_transitions))
-  
-  # Mind the +1 because states are coded from 0 to (ns-1) at this stage
-  for ( i in seq.int(nrow(all_transitions)) ) {
-    transition_mat[ all_transitions[i, "from"] + 1, 
-                    all_transitions[i, "to"]   + 1 ] <- TRUE
-  }
-  
   # Make sure the center cell in the kernel is set to 0/FALSE
-  kern <- mod[["kernel"]]
-  if ( is.logical(kern) ) { 
-    kern[ceiling(nrow(kern)/2), ceiling(ncol(kern)/2)] <- FALSE
-  } else { 
-    kern[ceiling(nrow(kern)/2), ceiling(ncol(kern)/2)] <- 0
-  }
-  
+  kern <- adjust_kernel(mod[["kernel"]])
+
   # Adjust the control list to add some components
   control_list <- c(control,
                     mod[c("wrap",
-                          "neighbors", 
+                          "neighbors",
+                          "normfun",
                           "xpoints", "fixed_neighborhood")],
                     betas,
                     list(init     = initmat,
                          times    = times,
                          nstates  = ns,
-                         kernel = kern, 
+                         kernel = kern,
                          transition_mat = transition_mat,
                          console_callback       = console_callback,
                          cover_callback         = cover_callback,
@@ -394,6 +365,10 @@ run_camodel <- function(mod, initmat, times,
   } else {
     stop(sprintf("%s is an unknown CA engine", engine))
   }
+
+  # At this stage, the model runs and exports results throught the callbacks
+  # defined above. It is not very idiomatic, but the camodel_*_wrap() functions here
+  # modify the current environment.
 
   # Store artefacts and return result
   results <- list(model = mod,
@@ -510,11 +485,11 @@ load_control_list <- function(l, tmax) {
        is.function(control_list[["custom_output_fun"]]) ) {
     warning("A custom output function was provided, but it will not be used")
   }
-  
-  # Some platforms do not support OpenMP, so we disable the support of multiple 
+
+  # Some platforms do not support OpenMP, so we disable the support of multiple
   # cores
   control_list[["cores"]] <- openmp_platform_check(control_list[["cores"]])
-  
+
   control_list
 }
 
@@ -544,7 +519,7 @@ is_positive <- function(x) {
 }
 
 
-openmp_platform_check <- function(ncores) { 
+openmp_platform_check <- function(ncores) {
   # not implemented as things appear to run smoothly so far
-  return(ncores) 
+  return(ncores)
 }

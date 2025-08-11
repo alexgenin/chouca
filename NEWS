@@ -13,7 +13,7 @@ Major improvements:
   
 Minor improvements: 
 
-  - Make sure the 'times' vector is well-formatted in run_camodel(), and return 
+  - We now make sure the 'times' vector is well-formatted in run_camodel(), and return 
       an informative error if this is not the case. This helps dealing with cases where 
       the 'times' argument and 'initmat' arguments of run_camodel() are inverted. 
 

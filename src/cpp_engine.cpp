@@ -5,87 +5,8 @@
 
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
-    
-// Some typedefs for better legibility. ushort typically contains an integer 
-// for the state number, which is often way lower than its maximum value (2^16). We 
-// cannot use a shorter type here (e.g. unsigned char) because matrices of uchars are not 
-// supported by armadillo. We use c-style array in the 'compiled' backend for better 
-// performance which do use those, but not here because it adds complexity to the code. 
-// 
-// Note that in function signatures we can't use this typedef because they are copied 
-// by Rcpp in the RcppExports.cpp file, but without typedef and this makes the 
-// compilation fail on Windows. 
-typedef unsigned short ushort;
 
-// Define some column names for clarity
-#define _from 0
-#define _to 1
-#define _state_1 2
-#define _state_2 3
-#define _expo_1 4
-#define _expo_2 5
-#define _qs 3 // only in beta_q, so no overlap with _state_2 above
-#define _coef 0
-
-inline void get_local_densities_column(arma::Mat<arma::uword>& qs,
-                                       const arma::Mat<unsigned short>& m,
-                                       const arma::uword& j,
-                                       const bool& wrap,
-                                       const arma::Mat<unsigned short>& kernel) {
-                                      
-  qs.fill(0);
-  arma::uword nc = m.n_cols;
-  arma::uword nr = m.n_rows;
-  
-  const arma::sword kernel_semiheight = ( kernel.n_rows - 1 ) / 2;
-  const arma::sword kernel_semiwidth  = ( kernel.n_cols - 1 ) / 2;
-  
-  for ( arma::uword i = 0; i < nr; i++ ) {
-    
-    // We loop over the required offsets
-    for ( arma::sword o_r = - kernel_semiheight; o_r <= kernel_semiheight; o_r++ ) { 
-      for ( arma::sword o_c = - kernel_semiwidth; o_c <= kernel_semiwidth; o_c++ ) { 
-        // Rcpp::Rcout << "o_r: " << o_r << " o_c: " << o_c << "\n"; 
-        
-        if ( wrap ) { 
-          const ushort state = m( (nr + i + o_r) % nr, 
-                                  (nc + j + o_c) % nc ); 
-          qs(i, state) += kernel(o_r + kernel_semiheight, 
-                                 o_c + kernel_semiwidth); 
-          
-        } else { 
-          // If we don't wrap, then we need to add a bound check to make sure 
-          // we are in the matrix
-          const arma::uword i_target = i + o_r; 
-          const arma::uword j_target = j + o_c; 
-          if ( i_target >= 0 && j_target >= 0 && i_target < nr && j_target < nc ) { 
-            const ushort state = m(i_target, j_target); 
-            qs(i, state) += kernel(o_r + kernel_semiheight, 
-                                   o_c + kernel_semiwidth); 
-          }
-        }
-      }
-    }
-    
-  }
-  
-}
-
-// This is a function that returns the local state counts to R, for the full column of
-// a matrix. j must be indexed the R-way (1-indexing)
-//[[Rcpp::export]]
-arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short>& m,
-                                      const arma::uword& nstates,
-                                      const arma::uword& j,
-                                      const bool& wrap,
-                                      const arma::Mat<unsigned short>& kernel) {
-  arma::Mat<arma::uword> newq(m.n_rows, nstates);
-  newq.fill(0);
-  // m, i and j must be adjusted to take into account the way things are stored in R
-  get_local_densities_column(newq, m, j - 1, wrap, kernel);
-  
-  return (newq);
-}
+#include "helpers.h"
 
 //
 // This file contains the main c++ engine to run CAs
@@ -143,7 +64,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   const arma::uword nc = init.n_cols;
   const double ncells = (double) nr * (double) nc;
   
-  // We need to versions of the matrix 
+  // We need two versions of the matrix
   arma::Mat<ushort> omat = init;
   arma::Mat<ushort> nmat = init;
   
@@ -226,79 +147,79 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
           
           // Compute probability transitions
           for (ushort to = 0; to < ns; to++) {
-              
+
             // Init probability
             ptrans(to) = 0;
-            
+
             if (transition_mat(from, to) == 0) {
               continue;
             }
-            
+
             // constant component
             for (arma::uword k = 0; k < beta_0_index.n_rows; k++) {
-              ptrans(to) += 
-                (beta_0_index(k, _from) == from) * 
-                (beta_0_index(k, _to) == to) * 
+              ptrans(to) +=
+                (beta_0_index(k, _from) == from) *
+                (beta_0_index(k, _to) == to) *
                 beta_0_vals(k);
             }
-            
+
             // f(q) component
             for (arma::uword k = 0; k < beta_q_index.n_rows; k++) {
-                
+
                 // Lookup which point in the qs function we need to use for the
                 // current neighbor situation.
                 arma::uword qthis = qs(i, beta_q_index(k, _state_1)) * qpointn;
-                
-                ptrans(to) += 
-                  (beta_q_index(k, _from) == from) * 
+
+                ptrans(to) +=
+                  (beta_q_index(k, _from) == from) *
                   (beta_q_index(k, _to) == to) *
                   // Given the observed local abundance of this state, which line in
                   // beta_q should be retained ?
-                  (beta_q_index(k, _qs) == qthis) * 
+                  (beta_q_index(k, _qs) == qthis) *
                   beta_q_vals(k);
             }
-            
+
             // pp
             for (arma::uword k = 0; k < beta_pp_index.n_rows; k++) {
                 const double p1 = ps[beta_pp_index(k, _state_1)] / ncells;
                 const double p2 = ps[beta_pp_index(k, _state_2)] / ncells;
-                
-                ptrans(to) += 
-                  (beta_pp_index(k, _from) == from) * // zero when other transition than 
+
+                ptrans(to) +=
+                  (beta_pp_index(k, _from) == from) * // zero when other transition than
                   (beta_pp_index(k, _to) == to) *     // the one we are dealing with now
-                  beta_pp_vals(k, _coef) * 
-                  pow(p1, beta_pp_index(k, _expo_1)) * 
+                  beta_pp_vals(k, _coef) *
+                  pow(p1, beta_pp_index(k, _expo_1)) *
                   pow(p2, beta_pp_index(k, _expo_2));
             }
-            
+
             // qq
             for (arma::uword k = 0; k < beta_qq_index.n_rows; k++) {
                 const double q1 = (double) qs(i, beta_qq_index(k, _state_1)) / total_nb;
                 const double q2 = (double) qs(i, beta_qq_index(k, _state_2)) / total_nb;
-                
-                ptrans(to) += 
-                  (beta_qq_index(k, _from) == from) * // zero when other transition than 
+
+                ptrans(to) +=
+                  (beta_qq_index(k, _from) == from) * // zero when other transition than
                   (beta_qq_index(k, _to) == to) *     // the one we are dealing with now
-                  beta_qq_vals(k, _coef) * 
-                  pow(q1, beta_qq_index(k, _expo_1)) * 
+                  beta_qq_vals(k, _coef) *
+                  pow(q1, beta_qq_index(k, _expo_1)) *
                   pow(q2, beta_qq_index(k, _expo_2));
             }
-            
+
             // pq
             for (arma::uword k = 0; k < beta_pq_index.n_rows; k++) {
                 const double p1 = ps[beta_pq_index(k, _state_1)] / ncells;
                 const double q1 = (double) qs(i, beta_pq_index(k, _state_2)) / total_nb;
-                
-                ptrans(to) += 
-                  (beta_pq_index(k, _from) == from) * // zero when other transition than 
+
+                ptrans(to) +=
+                  (beta_pq_index(k, _from) == from) * // zero when other transition than
                   (beta_pq_index(k, _to) == to) *     // the one we are dealing with now
-                  beta_pq_vals(k, _coef) * 
-                  pow(p1, beta_pq_index(k, _expo_1)) * 
+                  beta_pq_vals(k, _coef) *
+                  pow(p1, beta_pq_index(k, _expo_1)) *
                   pow(q1, beta_pq_index(k, _expo_2));
             }
-            
+
             ptrans(to) = ptrans(to) < 0.0 ? 0.0 : ptrans(to);
-            
+
             // NOTE: it seems like a good idea to cap probabilities to 1, but it
             // is really not. The fact that things are above 1 should be handled
             // by increasing the number of substeps, otherwise the rates of
@@ -308,7 +229,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             // P(s -> b) when using substeps >= 2.
             // ptrans(to) = ptrans(to) > 1.0 ? 1.0 : ptrans(to);
           }
-          
+
           // Check if we actually transition. We compute the cumulative sum of 
           // probabilities, then draw a random number (here 'rn'), to see if the 
           // transition occurs or not. 
