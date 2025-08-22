@@ -54,6 +54,11 @@ adjust_states_and_probs <- function(betas_list, states, substeps) {
   }
 
   lapply(betas_list, function(tab) {
+
+    # Order factors so that it is more cache friendly, i.e. state 0 comes first in the
+    # table, etc.
+    tab <- ord_by_state(tab, states)
+
     # Convert references to state to internal representation
     tab[ ,"from"] <- fix(tab[ ,"from"])
     tab[ ,"to"] <- fix(tab[ ,"to"])
@@ -69,6 +74,14 @@ adjust_states_and_probs <- function(betas_list, states, substeps) {
 
     as.matrix(tab)
   })
+}
+
+ord_by_state <- function(tbl, states) {
+  ord <- with(tbl, order(factor(from, levels = states),
+                         factor(to, levels = states)))
+  tbl <- tbl[ord, ]
+  row.names(tbl) <- NULL
+  tbl
 }
 
 # Make sure the kernel holds a zero or FALSE value at its center
@@ -90,3 +103,37 @@ intmat <- function(m) {
   mn
 }
 
+ord_by_state <- function(tbl, states) {
+  ord <- with(tbl, order(factor(from, levels = states),
+                         factor(to, levels = states)))
+  tbl <- tbl[ord, ]
+  row.names(tbl) <- NULL
+  tbl
+}
+
+# Helper function to pack transitions coefficients into tables that contain coefficients
+# for all transitions
+pack_betas <- function(tr_parsed) {
+  beta_names <- c("beta_0", "beta_q", "beta_pp", "beta_pq", "beta_qq")
+
+  # Sometimes the transitions are already packed in the component transitions_parsed.
+  # This happens when creating a model with camodel_mat for example
+  if ( all(beta_names %in% names(tr_parsed)) ) {
+    betas <- tr_parsed[beta_names]
+  } else {
+    betas <- purrr::map(beta_names, function(tbl) {
+      l <- purrr::map(tr_parsed, function(tr) {
+        tbl <- tr[[tbl]]
+        if ( nrow(tbl) == 0 ) {
+          data.frame(from = character(0), to = character(0), tbl)
+        } else {
+          data.frame(from = tr[["from"]], to = tr[["to"]], tbl)
+        }
+      })
+      purrr::list_rbind(l)
+    })
+  }
+
+  names(betas) <- beta_names
+  betas
+}

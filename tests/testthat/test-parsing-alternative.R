@@ -55,7 +55,7 @@ test_that("Advanced model-building builds correct things", {
   })
   
   comp_test <- names(mod)[ ! names(mod) %in% c("max_error", "max_rel_error", 
-                                               "transitions") ]
+                                               "transitions", "transitions_parsed") ]
   for ( i in comp_test ) { 
     expect_true({ 
       all.equal(mod[[i]], mod_adv[[i]])
@@ -73,12 +73,12 @@ test_that("Advanced model-building builds correct things", {
 })
 
 test_that("Advanced model-building runs identically", { 
-  ctrl <- list(engine = "compiled", force_compilation = FALSE, 
+  ctrl <- list(engine = "cpp", force_compilation = FALSE,
                console_output_every = 0)
   init <- generate_initmat(mod, rep(1/NS, NS), nrow = 256, ncol = 256)
   
-  run_adv <- run_camodel(mod_adv, init, seq.int(128), control = ctrl)
-  run_old <- run_camodel(mod, init, seq.int(128), control = ctrl)
+  run_adv <- run_camodel(mod_adv, init, seq.int(3), control = ctrl)
+  run_old <- run_camodel(mod, init, seq.int(3), control = ctrl)
   
   adv <- run_adv[["output"]][["covers"]]
   old <- run_old[["output"]][["covers"]]

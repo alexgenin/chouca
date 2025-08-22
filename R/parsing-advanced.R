@@ -207,6 +207,92 @@ camodel_mat <- function(beta_0 = NULL,
 
   s_seq <- seq.int(ns) - 1
 
+  # Scan for transitions in the passed coefficients
+  trmat <- matrix(FALSE, nrow = length(all_states), ncol = length(all_states))
+  # Mark TRUE if beta_0 is non-zero
+  trmat[] <- trmat | ( beta_0 > 0 )
+  # Mark TRUE if
+  for ( s in seq.int(ns) ) {
+    trmat[] <- trmat | beta_p[ , ,s]
+    trmat[] <- trmat | beta_q[ , ,s]
+  }
+  diag(trmat) <- FALSE
+
+  # Build transitions
+  gr <- expand.grid(from = seq.int(nrow(trmat)), to = seq.int(ncol(trmat)))
+  keep <- purrr::map_lgl(seq.int(nrow(gr)), function(k) trmat[gr[k, "from"], gr[k, "to"]])
+  gr <- gr[keep, ]
+
+#   transitions_parsed <- purrr::map(seq.int(nrow(gr)), function(i) {
+#     from <- gr[i, "from"]
+#     to <- gr[i, "to"]
+#
+#     if ( beta_0[from, to] > 0 ) {
+#       beta_0_tab <- data.frame(coef = beta_0[from, to])
+#     } else {
+#       beta_0_tab <- data.frame(coef = numeric(0))
+#     }
+#
+#     beta_pp_tab <- purrr::map(seq.int(ns), function(s) {
+#       if ( beta_p[from, to, s] != 0 ) {
+#         data.frame(state_1 = all_states[s],
+#                    state_2 = all_states[1], # not used because expo_2 is 0
+#                    expo_1  = 1,
+#                    expo_2 = 0,
+#                    coef = beta_p[from, to, s])
+#       } else {
+#         data.frame(state_1 = character(0),
+#                    state_2 = character(0),
+#                    expo_1  = integer(0),
+#                    expo_2  = integer(0),
+#                    coef = numeric(0))
+#       }
+#     })
+#     beta_pp_tab <- purrr::list_rbind(beta_pp_tab)
+#
+#
+#     beta_qq_tab <- purrr::map(seq.int(ns), function(s) {
+#       if ( beta_q[from, to, s] != 0 ) {
+#         data.frame(state_1 = all_states[s],
+#                    state_2 = all_states[1], # not used because expo_2 is 0
+#                    expo_1  = 1,
+#                    expo_2 = 0,
+#                    coef = beta_q[from, to, s])
+#       } else {
+#         data.frame(state_1 = character(0),
+#                    state_2 = character(0),
+#                    expo_1  = integer(0),
+#                    expo_2  = integer(0),
+#                    coef = numeric(0))
+#       }
+#     })
+#     beta_qq_tab <- purrr::list_rbind(beta_qq_tab)
+#
+#     # beta_q is always a dummy
+#     beta_q_tab <- data.frame(state_1 = character(0),
+#                              qs      = integer(0),
+#                              coef    = numeric(0))
+#
+#     # beta_pq is always a dummy
+#     beta_pq_tab <- data.frame(state_1 = character(0),
+#                               state_2 = character(0),
+#                               expo_1  = integer(0),
+#                               expo_2  = integer(0),
+#                               coef    = numeric(0))
+#
+#     # Errors are always zero
+#     errors <- c(mean_error = 0, max_error = 0, max_rel_error = 0)
+#
+#     # Return the parsed list
+#     list(beta_0 = beta_0_tab,
+#          beta_q = beta_q_tab,
+#          beta_pp = beta_pp_tab,
+#          beta_pq = beta_pq_tab,
+#          beta_qq = beta_qq_tab,
+#          prob = NULL, # FIXME
+#          errors = errors)
+#   })
+
   # Handle beta_0 component
   beta_0_tab <- data.frame(expand.grid(from = all_states,
                                        to = all_states,
@@ -239,7 +325,7 @@ camodel_mat <- function(beta_0 = NULL,
 #     beta_pp_tab[ ,"from"] <- factor(beta_pp_tab[ ,"from"], levels = all_states)
 #     beta_pp_tab[ ,"to"] <- factor(beta_pp_tab[ ,"to"], levels = all_states)
   } else {
-    beta_pp_tab <- dummy_beta_pp # defined in transition.R
+    beta_pp_tab <- data.frame(dummy_fromto_cols, dummy_beta_pp) # defined in transition.R
   }
 
   # Handle beta_qq component
@@ -268,7 +354,7 @@ camodel_mat <- function(beta_0 = NULL,
 #     beta_q_tab[ ,"from"] <- factor(beta_q_tab[ ,"from"], levels = all_states)
 #     beta_q_tab[ ,"to"] <- factor(beta_q_tab[ ,"to"], levels = all_states)
   } else {
-    beta_qq_tab <- dummy_beta_qq # defined in transition.R
+    data.frame(dummy_fromto_cols, dummy_beta_qq) # defined in transition.R
   }
 
   # Build transitions
@@ -302,22 +388,24 @@ camodel_mat <- function(beta_0 = NULL,
 
   camod_object <- list(
     transitions = transitions,
+    transitions_parsed = list(
+      beta_0 = ord_by_state(beta_0_tab, all_states),
+      beta_q = data.frame(dummy_fromto_cols, dummy_beta_q),
+      beta_pp = ord_by_state(beta_pp_tab, all_states),
+      beta_pq = data.frame(dummy_fromto_cols, dummy_beta_pq),
+      beta_qq = beta_qq_tab
+    ),
     nstates = ns,
     states = factor(all_states, levels = all_states),
     parms = list(),
-    beta_0 = ord_by_state(beta_0_tab, all_states),
-    beta_q = dummy_beta_q,
-    beta_pp = ord_by_state(beta_pp_tab, all_states),
-    beta_pq = dummy_beta_pq,
-    beta_qq = beta_qq_tab,
     wrap = wrap,
     neighbors = neighbors,
     normfun = normfun,
     kernel = build_neighbor_kernel(neighbors),
     epsilon = epsilon,
     xpoints = get_q_npoints(wrap, neighbors, fixed_neighborhood), # unused, but for completion
-    max_error = rep(NA, 4),
-    max_rel_error = rep(NA, 4),
+    max_error = rep(0, sum(trmat)),
+    max_rel_error = rep(0, sum(trmat)),
     fixed_neighborhood = fixed_neighborhood
   )
   class(camod_object) <- c("ca_model", "list")

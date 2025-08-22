@@ -79,13 +79,14 @@ m <- mkmod(
              ~ 1 - 0.1*p["+"]*p["0"] + 0.2*(p["+"]*p["0"])^2 + 0.03*(p["+"]*p["0"])^3 +
                 0.1*(p["+"]*p["0"])^4)
 )
+tr <- m[["transitions_parsed"]][[1]]
 
 expect_true({ 
-  abs(m[["beta_0"]][ ,"coef"] - 1) < 1e-8
+  abs(tr[["beta_0"]][ ,"coef"] - 1) < 1e-8
 })
 
 expect_true({ 
-  all(abs(m[["beta_pp"]][ ,"coef"] - c(-0.1, 0.2, 0.03, 0.10)) < 1e-8)
+  all(abs(tr[["beta_pp"]][ ,"coef"] - c(-0.1, 0.2, 0.03, 0.10)) < 1e-8)
 })
 
 
@@ -96,13 +97,14 @@ m <- mkmod(
              ~ 1 - 0.1*p["+"]*q["0"] + 0.2*(p["+"]*q["0"])^2 + 0.03*(p["+"]*q["0"])^3 +
                 0.1*(p["+"]*q["0"])^4)
 )
+tr <- m[["transitions_parsed"]][[1]]
 
 expect_true({ 
-  abs(m[["beta_0"]][ ,"coef"] - 1) < 1e-8
+  abs(tr[["beta_0"]][ ,"coef"] - 1) < 1e-8
 })
 
 expect_true({ 
-  all(abs(m[["beta_pq"]][ ,"coef"] - c(-0.1, 0.2, 0.03, 0.10)) < 1e-8)
+  all(abs(tr[["beta_pq"]][ ,"coef"] - c(-0.1, 0.2, 0.03, 0.10)) < 1e-8)
 })
 
 
@@ -130,15 +132,16 @@ err <- function(deg) {
     m <- mkmod(transition(from = "0", to = "+", 
                           ~ 1.01 + sin_approx( - p["+"] * q["+"] * pi / 1.2, deg)))
   })
-  
-#   m <- mkmod(transition(from = "0", to = "+", 
+  tr <- m[["transitions_parsed"]][[1]]
+
+#   m <- mkmod(transition(from = "0", to = "+",
 #                         ~ 1.01 + sin_approx( - p["+"] * q["+"] * pi / 1.2, deg)))
-  
+
   xy <- expand.grid(x = seq(0, 1, l = 32), 
                     y = seq(0, 1, l = 32))
   xy[ ,"z"] <- with(xy, sin_approx(- x * y * pi / 1.2, 2))
   xy[ ,"pr"] <- sapply(seq.int(nrow(xy)), function(i) { 
-    with(as.data.frame(m$beta_pq), { 
+    with(as.data.frame(tr$beta_pq), {
       sum( coef * xy[i,"x"]^expo_1 * xy[i,"y"]^expo_2 )
     })
   })
@@ -200,6 +203,7 @@ expect_warning({
 # We expect to recover the first two terms of the Mac Laurin series for sin
 m <- mkmod(transition(from = "0",to = "+", 
                       ~ 1.1 + sin_approx(-p["+"]*q["0"] * pi / 1.2, 1)))
+tr <- m[["transitions_parsed"]][[1]]
 expect_true({ 
   all( abs(m[["beta_pq"]][["coef"]] - c(-2.617994, 2.990575)) < 1e-5 )
 })

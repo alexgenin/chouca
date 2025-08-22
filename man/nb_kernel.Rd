@@ -29,7 +29,9 @@ which means that \eqn{q} will be computed using the 8 cells all around a focal c
 or only its 4 nearest neighbors, respectively. These types of neighborhoods can be 
 extended to larger distances, i.e. considering neighbors that are not only adjacent 
 to a cell, but at a given integer distance \code{distance}. See Examples section to 
-visualize different types of neighborhoods.
+visualize different types of neighborhoods. 
+
+The function
 }
 \examples{
 
@@ -42,23 +44,28 @@ print( nb_kernel("von_neumann", 1) )
 ker <- nb_kernel("moore", 2)
 image(ker)
 
-# Different kernel types and distances 
+# Different kernel types and distances
 opar <- par(no.readonly = TRUE)
-par(mfcol = c(3, 5)) 
-lapply(c(1, 3, 6, 9, 12), function(distance) { 
- image( nb_kernel("von_neumann", distance) )
- title(sprintf("Von Neumann kernel, distance \%s", distance))
- image( nb_kernel("moore", distance) )
- title(sprintf("Moore kernel, distance \%s", distance))
- image( nb_kernel("circular", distance) )
- title(sprintf("Circular kernel, distance \%s", distance))
+par(mfcol = c(3, 5))
+lapply(c(1, 3, 6, 9, 12), function(distance) {
+ coords <- seq.int(2*distance+1) - distance - 1
+ image(x = coords, y = coords,
+       nb_kernel("von_neumann", distance) )
+ title(sprintf('nb_kernel("von_neumann", \%s)', distance))
+ image(x = coords, y = coords,
+       nb_kernel("moore", distance) )
+ title(sprintf('nb_kernel("moore", \%s)', distance))
+ image(x = coords, y = coords,
+       nb_kernel("circular", distance) )
+ title(sprintf('nb_kernel("circular", \%s)', distance))
 })
+
 
 par(opar)
 
 # Circular kernel with a given distance
 opar <- par(no.readonly = TRUE)
-par(mfrow = c(3, 3)) 
+par(mfrow = c(3, 3))
 lapply(seq(1, 9*2, by = 2), function(distance) { 
  image( nb_kernel("circular", distance) )
  title(sprintf("Circular kernel, distance \%s", distance))

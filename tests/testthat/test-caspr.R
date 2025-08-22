@@ -14,7 +14,7 @@ if ( dir.exists("./caspr_output") ) {
   kubo_mod <- ca_library("forestgap", parms = p)
   initmat <- generate_initmat(kubo_mod, c(0.4, 0.6), 
                               nr = 100, nc = 100)
-  ctrl <- list(engine = "cpp", console_output_every = 0, substeps = 10)
+  ctrl <- list(engine = "compiled", console_output_every = 0, substeps = 10)
   run <- run_camodel(kubo_mod, initmat, ts, control = ctrl)
   kubo_chouca <- as.data.frame(run[["output"]][["covers"]])
   names(kubo_chouca) <- c("time", "0", "+")
@@ -47,7 +47,7 @@ if ( dir.exists("./caspr_output") ) {
   
   initmat <- generate_initmat(guichard_mod, c(0.6, 0.2, 0.2), 
                               nr = 100, nc = 100)
-  ctrl <- list(engine = "cpp", console_output_every = 0, substeps = 10)
+  ctrl <- list(engine = "compiled", console_output_every = 0, substeps = 10)
   run <- run_camodel(guichard_mod, initmat, ts, control = ctrl)
   guichard_chouca <- as.data.frame(run[["output"]][["covers"]])
   names(guichard_chouca) <- c("time", "m", "e", "d")
@@ -85,7 +85,7 @@ if ( dir.exists("./caspr_output") ) {
   # l <- init_landscape(c("+","0", "-"),  c(0.6, 0.2, 0.2), width = 100) 
   initmat <- generate_initmat(aridvege_mod, c(VEGE = 0.6, EMPTY = 0.2, DEGR = 0.2), 
                               nr = 100, nc = 100)
-  ctrl <- list(engine = "cpp", console_output_every = 0, substeps = 10)
+  ctrl <- list(engine = "compiled", console_output_every = 0, substeps = 10)
   run <- run_camodel(aridvege_mod, initmat, ts, control = ctrl)
   aridvege_chouca <- as.data.frame(run[["output"]][["covers"]])
   names(aridvege_chouca) <- c("time", "-", "0", "+")

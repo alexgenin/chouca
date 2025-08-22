@@ -338,26 +338,18 @@ camodel <- function(...,
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
                                epsilon, check_model)
 
-  # Pack transitions into matrices
-  beta_q  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_q")
-  beta_pp <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_pp")
-  beta_pq <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_pq")
-  beta_qq <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_qq")
-  beta_0  <- plyr::ldply(transitions_parsed, pack_table_fromto, "beta_0")
 
   # Extract mean/max errors
-  max_error <- plyr::laply(transitions_parsed, function(o) o[["max_error"]])
-  max_rel_error <- plyr::laply(transitions_parsed, function(o) o[["max_rel_error"]])
+  max_error <- plyr::laply(transitions_parsed,
+                           function(o) o[["errors"]]["max_error"])
+  max_rel_error <- plyr::laply(transitions_parsed,
+                               function(o) o[["errors"]]["max_rel_error"])
 
   caobj <- list(transitions = transitions,
+                transitions_parsed = transitions_parsed,
                 nstates = nstates,
                 states = factor(states, levels = states), # convert explicitely to factor
                 parms = parms,
-                beta_0 = ord_by_state(beta_0, states),
-                beta_q = ord_by_state(beta_q, states),
-                beta_pp = ord_by_state(beta_pp, states),
-                beta_pq = ord_by_state(beta_pq, states),
-                beta_qq = ord_by_state(beta_qq, states),
                 wrap = wrap,
                 neighbors = neighbors,
                 normfun = normfun, 
@@ -399,24 +391,6 @@ transition <- function(from, to, prob) {
   class(o) <- c("camodel_transition", "list")
 
   return(o)
-}
-
-# Helper function to pack transitions into model-level tables
-pack_table_fromto <- function(tr, table, states) {
-
-  if ( nrow(tr[[table]]) == 0 ) {
-    data.frame(from = character(0), to = character(0), tr[[table]])
-  } else {
-    data.frame(from = tr[["from"]], to = tr[["to"]], tr[[table]])
-  }
-}
-
-ord_by_state <- function(tbl, states) {
-  ord <- with(tbl, order(factor(from, levels = states),
-                         factor(to, levels = states)))
-  tbl <- tbl[ord, ]
-  row.names(tbl) <- NULL
-  tbl
 }
 
 # Update a ca_model with new arguments
@@ -524,6 +498,14 @@ update.ca_model <- function(object,
                             verbose = FALSE,
                             ...) {
 
+  # If we only change the value of parameters, then we can use a fast-track way to
+  # update internal transitions of the object, and we do that. Otherwise we have
+  # to recreate an object from scratch.
+  only_change_in_parms <- FALSE
+  if ( is.null(wrap) & is.null(neighbors) & is.null(fixed_neighborhood) ) {
+    only_change_in_parms <- TRUE
+  }
+
   if ( is.null(wrap) ) {
     wrap <- object[["wrap"]]
   }
@@ -549,6 +531,39 @@ update.ca_model <- function(object,
     parms <- parms_orig
   }
 
+  if ( only_change_in_parms ) {
+    # Reparse the transitions with a fast track as we know the structure of the model
+    # already
+    transitions_parsed <- reparse_transitions(object,
+                                              parms,
+                                              check_type = check_model)
+
+    # Extract mean/max errors with new parameters
+    max_error <- purrr::map_dbl(transitions_parsed,
+                                function(o) o[["errors"]]["max_error"])
+    max_rel_error <- purrr::map_dbl(transitions_parsed,
+                                    function(o) o[["errors"]]["max_rel_error"])
+
+    # If we managed to make a good fit to the original model, then we go no further
+    # and return the new transitions. If not, we need to refit the model from
+    # scratch
+    error_level_ok <- all(max_error < ERROR_MAX) & all(max_rel_error < ERROR_MAX)
+    if ( check_model == "none" || check_model == FALSE || error_level_ok ) {
+
+      if ( check_model == "none" ) {
+        warning(paste0("Updating a model without checking the results may produce ",
+                       "wrong results, consider using check_type = \"quick\""))
+      }
+
+      object[["max_error"]] <- max_error
+      object[["max_rel_error"]] <- max_rel_error
+      object[["transitions_parsed"]] <- transitions_parsed
+      object[["parms"]] <- parms
+
+      return(object)
+    }
+  }
+
   # Extract model parameters, and do the call
   newcall <- c(object[["transitions"]], # always a list, so result of c() is a list
                neighbors = neighbors,
@@ -556,7 +571,7 @@ update.ca_model <- function(object,
                normfun = normfun,
                fixed_neighborhood = fixed_neighborhood,
                parms = list(parms),
-               all_states = list(object[["states"]]),
+               all_states = list(as.character(object[["states"]])),
                check_model = check_model,
                verbose = verbose,
                epsilon = object[["epsilon"]])
@@ -568,7 +583,7 @@ update.ca_model <- function(object,
 # This number of points corresponds to the number of states the neighborhood can be,
 # for a given CA state. For example, for a moore neighborhood, a cell can have
 # 0, 1, 2, 3, 4, 5, 6, 7 or 8 neighbors in a given state. So we need 9 points to
-# represent this.
+# represent this, this is what get_q_npoints() returns.
 get_q_npoints <- function(wrap, kernel, fixed_neighborhood) {
 
   # This comment is deprecated, but kept it anyway

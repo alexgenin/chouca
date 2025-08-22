@@ -13,6 +13,10 @@ get_transition_probas_cpp <- function(mat, ctrl) {
     .Call(`_chouca_get_transition_probas_cpp`, mat, ctrl)
 }
 
+transition_ll <- function(from_mat, to_mat, tprobs) {
+    .Call(`_chouca_transition_ll`, from_mat, to_mat, tprobs)
+}
+
 generate_all_qs <- function(nb, ns, filter, line_cap) {
     .Call(`_chouca_generate_all_qs`, nb, ns, filter, line_cap)
 }

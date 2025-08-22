@@ -3,36 +3,21 @@
 # iteration given a model.
 #
 
-next_state_probs <- function(mod, mat) {
+next_state_probs <- function(model, mat) {
 
   # Convert mat to internal representation
   d <- dim(mat)
   mat <- as.integer(mat) - 1
   dim(mat) <- d
 
-  # Convert state factors to internal representation
-  fix <- function(x) {
-    as.integer(factor(as.character(x), levels = mod[["states"]])) - 1
-  }
+  # Prepare data for internal representation. Here we always use substeps = 1 because
+  # we want the raw transition probabilities
+  betas <- pack_betas(model[["transitions_parsed"]])
+  betas <- adjust_states_and_probs(betas, model[["states"]], substeps = 1)
+  model[names(betas)] <- betas
 
-  # Prepare data for internal representation, and take substeps into account
-  betas <- mod[c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")]
-  betas <- lapply(betas, function(tab) {
-    # Convert references to state to internal representation
-    tab[ ,"from"] <- fix(tab[ ,"from"])
-    tab[ ,"to"] <- fix(tab[ ,"to"])
-    if ( "state_1" %in% colnames(tab) ) {
-      tab[ ,"state_1"] <- fix(tab[ ,"state_1"])
-    }
-    if ( "state_2" %in% colnames(tab) ) {
-      tab[ ,"state_2"] <- fix(tab[ ,"state_2"])
-    }
+  # Split tabs for cpp code that cannot handle mixed-type values in a single table
+  model <- split_tabs(model)
 
-    as.matrix(tab)
-  })
-  mod[c("beta_0", "beta_q", "beta_pp", "beta_qq", "beta_pq")] <- betas
-
-  mod <- split_tabs(mod)
-
-  get_transition_probas_cpp(mat, mod)
+  get_transition_probas_cpp(mat, model)
 }

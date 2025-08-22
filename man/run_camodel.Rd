@@ -25,11 +25,11 @@ A \code{ca_model_result} objects, which is a list with the following
 
 \enumerate{
 
-  \item \code{model} The original model used for the model run (see 
+  \item \code{model} The original model used for the model run (see
     return value of \code{\link{camodel}} for more details about these objects).
 
-  \item \code{initmat} The initial landscape (matrix) used for the model run, 
-    such as what is returned by \code{\link{generate_initmat}}. 
+  \item \code{initmat} The initial landscape (matrix) used for the model run,
+    such as what is returned by \code{\link{generate_initmat}}.
 
   \item \code{times} The time points vector at which output is saved
 
@@ -39,9 +39,9 @@ A \code{ca_model_result} objects, which is a list with the following
   \item \code{output} A named list containing the simulation outputs. The 'covers'
     component contains a matrix with the first column containing the time step, and the
     other columns the proportions of cells in a given state. The 'snapshots' component
-    contains the landscapes recorded as matrices(\code{camodel_initmat} objects), with 
-    a 't' attribute indicating the corresponding time step of the model run. The 
-    'custom' component contains the results from calling a custom function provided 
+    contains the landscapes recorded as matrices(\code{camodel_initmat} objects), with
+    a 't' attribute indicating the corresponding time step of the model run. The
+    'custom' component contains the results from calling a custom function provided
     as 'custom_output_fun' in the control list (see examples below).
 }
 }
@@ -135,9 +135,9 @@ Possible options are the following:
      to run the model. This provides a moderate speedup in most cases, and
      is sometimes counter-productive on small landscapes. If you plan on
      running multiple simulations, you are probably better off parallelizing
-     at a higher level. See also the 'Performance' section in the vignette, 
+     at a higher level. See also the 'Performance' section in the vignette,
      accessible using the command \code{vignette("chouca-package")}.
-     
+
 }
 }
 \examples{
@@ -148,11 +148,11 @@ im  <- generate_initmat(mod, c(0.4, 0.6, 0), nrow = 100, ncol = 50)
 out <- run_camodel(mod, im, times = seq(0, 100))
 plot(out)
 
-# Disable console output 
-opts <- list(console_output_every = 0) 
+# Disable console output
+opts <- list(console_output_every = 0)
 out <- run_camodel(mod, im, times = seq(0, 100), control = opts)
 
-# 
+#
 
 \donttest{
 
@@ -163,7 +163,7 @@ ctrl <- list(engine = "compiled", save_covers_every = 1, save_snapshots_every = 
 run <- run_camodel(mod, im, times = seq(0, 100), control = ctrl)
 plot(run)
 
-# 
+#
 oldpar <- par(mfrow = c(1, 2))
 image(run, snapshot_time = 0)
 image(run, snapshot_time = 100)

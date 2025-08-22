@@ -32,7 +32,7 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short>& m,
   // m, i and j must be adjusted to take into account the way things are stored in R
   get_local_densities_column(newq, m, j - 1, wrap, kernel);
 
-  return (newq);
+  return(newq);
 }
 
 // Get the transition probabilities as a 3D matrix
@@ -174,3 +174,40 @@ arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
     return ptrans;
 }
 
+// This is a transitional function to speed things up, but it will go away
+//[[Rcpp::export]]
+arma::mat transition_ll(const arma::Mat<ushort>& from_mat,
+                     const arma::Mat<ushort>& to_mat,
+                     const arma::cube& tprobs) {
+  // from/to mat in R integer form
+
+  arma::uword nr = from_mat.n_rows;
+  arma::uword nc = from_mat.n_cols;
+
+  arma::mat ll(nr, nc);
+  ll.fill(0);
+  //   mod <- update_mod(theta, mod)
+  //
+  // nextp <- next_state_probs(mod, from_mat)
+  // ps <- matrix(0, nrow = nrow(from_mat), ncol = ncol(from_mat))
+  //
+  // for ( i in seq.int(nrow(to_mat)) ) {
+  //   for ( j in seq.int(ncol(to_mat)) ) {
+  //     ps[i, j] <-
+  //       (to_mat[i,j] == from_mat[i,j]) * ( 1 - sum(nextp[i, j, ]) ) + # no change
+  //       (to_mat[i,j] != from_mat[i,j]) * ( nextp[i, j, to_mat[i, j]] ) # change
+  //   }
+  // }
+  //
+  // sum(log(ps))
+
+  for ( arma::uword i=0; i<nr; i++ ) {
+    for ( arma::uword j=0; j<nc; j++ ) {
+      ll(i, j) = ( from_mat(i, j) == to_mat(i, j) ) ?
+                   1 - accu(tprobs.tube(i, j)) :
+                   tprobs(i, j, to_mat(i, j) - 1); // take into account R form
+    }
+  }
+
+  return(ll);
+}

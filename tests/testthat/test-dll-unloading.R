@@ -31,7 +31,7 @@ test_that("We cleanup things properly when DLL unloading", {
   lapply(c(mods, mods), function(mod) {
 
     initmm <- generate_initmat(mod, rep(1/mod[["nstates"]], mod[["nstates"]]),
-                              nrow = 32)
+                               nrow = 32)
 
     # Time sequence
     iters <- seq(0, 2)

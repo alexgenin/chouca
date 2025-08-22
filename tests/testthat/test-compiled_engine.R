@@ -63,7 +63,6 @@ test_that("Compiled model produces OK results regardless of proba precomputation
 
 })
 
-
 # Make sure things are printed when we use verbose compilation 
 test_that("Verbose compilation prints something", { 
   

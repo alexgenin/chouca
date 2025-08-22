@@ -4,24 +4,24 @@
 \alias{chouca}
 \title{chouca: a package for stochastic cellular automata}
 \description{
-\code{chouca} is a package that can be used to implement and run stochastic
- cellular automata (SCA). SCA are models that describe dynamics over a grid of cells.
- Each cell can be in one of a set of states, and at each time step, can switch to
- another one with a given transition probabilities. These transitions probabilities
- typically depend on the neighborhood of a focal cell.
+\code{chouca} is a package that can be used to implement and run
+ stochastic cellular automata (SCA). SCA are models that describe dynamics over a grid
+ of cells. Each cell can be in one of a set of states, and at each time step, can
+ switch to another one with a given transition probabilities. These transitions
+ probabilities typically depend on the neighborhood of a focal cell.
 
  The \code{chouca} package is able to simulate SCA models efficiently, including
  by emitting and compiling the required C++ code at runtime. It does not support all
- cellular automata, but typically only those where transition probabilities only depend
- on (1) constant parameters, (2) the proportion of cells in a given state in the
- landscape, and (3) the proportion of neighboring cells in a given state. More
+ cellular automata, but typically only those where transition probabilities only
+ depend on (1) constant parameters, (2) the proportion of cells in a given state in
+ the landscape, and (3) the proportion of neighboring cells in a given state. More
  information on the types of supported model can be found in our publication, but in
  any case \code{chouca} will warn you if your model is unsupported.
 
  The package workflow has typically four steps (1) define the
  model, (2) create an initial landscape (grid of cells), (3) run the model, and
- (4) display/extract the results. We describe each step below, and give examples at the
- end of this document. A more complete description of the workflow and the package 
+ (4) display/extract the results. We describe each step below, and give examples at
+ the end of this document. A more complete description of the workflow and the package
  is available in the vignette \code{vignette("chouca-package", package = "chouca")}.
 
  (1) Model definition

@@ -27,7 +27,8 @@ expect_error({
 mod <- ca_library("forestgap")
 mod2 <- update(mod, parms = list(d = 0, delta = 0.5, alpha = 0.01))
 expect_true({ 
-  any(mod[["beta_pp"]] != mod2[["beta_pp"]])
+  any( mod[["transitions_parsed"]][[1]]$beta_qq !=
+          mod2[["transitions_parsed"]][[1]]$beta_qq )
 })
 
 
@@ -95,7 +96,9 @@ expect_true({
 })
 
 expect_true({ 
-  a <- update(mod, check_model = "none")
+  suppressWarnings({
+    a <- update(mod, check_model = "none")
+  })
   all(is.na(a[["max_error"]]))
 })
 

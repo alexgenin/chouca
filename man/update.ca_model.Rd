@@ -9,6 +9,7 @@
   parms = NULL,
   neighbors = NULL,
   wrap = NULL,
+  normfun = "identity",
   fixed_neighborhood = NULL,
   check_model = "quick",
   verbose = FALSE,
@@ -49,7 +50,7 @@ definition.}
 \item{...}{extra arguments are ignored}
 }
 \value{
-This function returns a list with class \code{ca_model} with the changes applied to 
+This function returns a list with class \code{ca_model} with the changes applied to
  the original model (see \code{\link{camodel}} for details about this type of
  object).
 }

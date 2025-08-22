@@ -100,7 +100,7 @@ test_that("fixed neighborhood works", {
 
     data.frame(is_b_varnb = is_b_varnb,
                is_b_fixednb = is_b_fixednb)
-  }, .progress = "time")
+  }, .progress = "none")
 
   expect_true({
     all(results[ ,"is_b_varnb"])

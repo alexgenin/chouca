@@ -6,7 +6,7 @@
 # Maximum degree for bivariate polynomial fitting
 DEGMAX <- 5
 DEGINIT <- 1
-ERROR_REL_MAX <- 0.001 # 0.1 % error is the limit to produce a warning
+ERROR_MAX <- 0.001 # error limit to produce a warning
 
 # 
 # This function parses the definition of a transition, and computers the internal 
@@ -28,6 +28,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   pexpr <- as.expression( as.list(tr[["prob"]])[[2]] )
   zero <- rep(0, ns)
   names(zero) <- state_names
+  notzero <- function(X) abs(X) > epsilon
 
   # We accumulate warnings, and print them later if any arose.
   warn <- character()
@@ -55,7 +56,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   
   # TODO: put big comment here to explain how the things are being computed
   
-  # Get intercept for this transition. Note that beta_0 always has one line, but
+  # Get intercept for this transition. Note that beta_0 has always one line, but
   # we use a df here because we are going to pack multiple values into a df later
   # (using plyr::ldply).
   beta0dbl <- prob_with(p = zero, q = zero)
@@ -68,18 +69,23 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   # 
   # We evaluate q at 'xpoints' points for vectors of q with zeros everywhere except one
   # state.
-  beta_q <- plyr::ldply(state_names, function(s) {
+  beta_q <- purrr::map(state_names, function(s) {
     q <- zero
     xs <- seq(0, 1, length.out = xpoints)
     nqs <- seq_along(xs) - 1
-    ys <- sapply(xs, function(x) {
+    ys <- purrr::map_dbl(xs, function(x) {
       q[s] <- x
       prob_with(p = zero, q = q) - beta0dbl
     })
 
+    if ( ! any(notzero(ys)) ) {
+      return( dummy_beta_q )
+    }
+
     data.frame(state_1 = s, qs = nqs, coef = ys)
   })
-  
+  beta_q <- purrr::list_rbind(beta_q)
+
   # If the dependency on q can be explained fully by a polynomial of order below 
   # getOption("chouca.degmax", default = DEGMAX), then we drop that and will use 
   # coefficients of beta_qq, which makes for faster computations most of the time. 
@@ -92,9 +98,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   continuous_q <- FALSE
   if ( all(beta_q[ ,"state_1"] %in% has_continuous_dependency_on_q) ) {
     continuous_q <- TRUE 
-    beta_q <- data.frame(state_1 = character(0), 
-                         qs = integer(0), 
-                         coef = numeric(0))
+    beta_q <- dummy_beta_q
   }
   
   # We need to fit a sparse polynomial to get alpha * q_i^k * q_j^l. Level of sparsity 
@@ -104,7 +108,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   if ( ! continuous_q ) {
     beta_qq <- fitprod(function(q) {
       prob_with(p = zero, q = q) - beta0dbl -
-        sum(sapply(seq_along(q), function(i) {
+        sum(purrr::map_dbl(seq_along(q), function(i) {
           q[-i] <- 0
           prob_with(p = zero, q = q) - beta0dbl
         }))
@@ -143,7 +147,6 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   }
 
   # Subset matrices where coefficients are zero
-  notzero <- function(X) abs(X) > epsilon
   beta_0   <- beta_0[notzero(beta_0[ ,"coef"]),   , drop = FALSE]
   beta_pp  <- beta_pp[notzero(beta_pp[ ,"coef"]), , drop = FALSE]
   beta_pq  <- beta_pq[notzero(beta_pq[ ,"coef"]), , drop = FALSE]
@@ -165,27 +168,255 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
   beta_qq <- normalize_coefs(beta_qq)
   
   # Check if we reconstruct the probabilities correctly
-  max_error <- mean_error <- max_rel_error <- NA_real_
+  errors <- c(mean_error = NA_real_, max_error = NA_real_, max_rel_error = NA_real_)
   if ( check_model %in% c("full", "quick") ) {
+    betas <- list(beta_0 = beta_0, beta_q = beta_q, beta_pp = beta_pp,
+                  beta_pq = beta_pq, beta_qq = beta_qq)
+    errors <- check_transition(check_model, xpoints, state_names, prob_with, betas)
+
+    warn_on_large_errors(tr, errors, ERROR_MAX)
+  }
+
+  list(from = tr[["from"]],
+       to   = tr[["to"]],
+       beta_0 = beta_0,
+       beta_q = beta_q,
+       beta_pp = beta_pp,
+       beta_pq = beta_pq,
+       beta_qq = beta_qq,
+       prob = pexpr,
+       errors = errors)
+}
+
+
+
+reparse_transitions <- function(mod, parms, check_type) {
+  # Need this to make sure parms is evaluated right now and corresponds to
+  # the passed argument
+  force(parms)
+
+  # Extract some things from the model object
+  xpoints <- mod[["xpoints"]]
+  state_names <- mod[["states"]]
+  ns <- mod[["nstates"]]
+  epsilon <- mod[["epsilon"]]
+
+  notzero <- function(X) abs(X) > epsilon
+
+  lapply(seq_along(mod[["transitions"]]), function(i) {
+    tr <- mod[["transitions"]][[i]]
+    tr_parsed <- mod[["transitions_parsed"]][[i]]
+
+    ns <- length(state_names)
+    zero <- rep(0, ns)
+    names(zero) <- state_names
+
+    envir_expr <- environment(tr[["prob"]])
+    pexpr <- as.expression( as.list(tr[["prob"]])[[2]] )
+
+    warn <- list()
+
+    prob_with <- function(p, q) {
+      prob <- as.numeric( eval(pexpr,
+                               envir = c(parms, list(p = p, q = q)),
+                               enclos = envir_expr) )
+      if ( is.na(prob) ) {
+        m <- "NA/NaNs in model probabilities, please check your model definition."
+        stop(m)
+      }
+
+      if ( prob < 0 ) {
+        m <- paste0("Transition probabilities may go below zero. ",
+                    "Problematic transition:\n",
+                    "  ", tr[["from"]], " -> ", tr[["to"]])
+        warn <<- c(warn, m)
+      }
+
+      prob
+    }
+
+    # Update beta_0
+    beta_0 <- tr_parsed[["beta_0"]]
+    if ( nrow(beta_0) > 0 ) {
+      beta0dbl <- prob_with(p = zero, q = zero)
+      tr_parsed[["beta_0"]] <- data.frame(coef = beta0dbl)
+    } else {
+      # We need this further down in the script, even if 0
+      beta0dbl <- 0
+    }
+
+    # Update beta_q
+    beta_q <- tr_parsed[["beta_q"]]
+    if ( nrow(beta_q) > 0 ) {
+      xpoints <- nrow(beta_q)
+      beta_q <- purrr::map(state_names, function(s) {
+        q <- zero
+        xs <- seq(0, 1, length.out = xpoints)
+        nqs <- seq_along(xs) - 1
+        ys <- purrr::map_dbl(xs, function(x) {
+          q[s] <- x
+          prob_with(p = zero, q = q) - beta0dbl
+        })
+
+        if ( ! any(notzero(ys)) ) {
+          return( dummy_beta_q )
+        }
+
+        data.frame(state_1 = s, qs = nqs, coef = ys)
+      })
+
+      tr_parsed[["beta_q"]] <- purrr::list_rbind(beta_q)
+    }
+
+    # Update beta_pp
+    beta_pp <- tr_parsed[["beta_pp"]]
+    if ( nrow(beta_pp) > 0 ) {
+      ps <- lapply(state_names, function(state) {
+        if ( state %in% beta_pp[ ,"state_1"] || state %in% beta_pp[ ,"state_2"] ) {
+          x <- seq(0, 1, l = nrow(beta_pp) + 1)
+        } else {
+          0
+        }
+      })
+
+      ps <- as.matrix(do.call(expand.grid, ps))
+      colnames(ps) <- state_names
+
+      ys <- purrr::map_dbl(seq.int(nrow(ps)), function(i) {
+        prob_with(p = ps[i, ], q = zero) - beta0dbl
+      })
+
+      mframe <- do.call(cbind, plyr::llply(seq.int(nrow(beta_pp)), function(i) {
+        ps[ , beta_pp[i,"state_1"]] ^ beta_pp[i, "expo_1"] *
+          ps[ , beta_pp[i,"state_2"]] ^ beta_pp[i, "expo_2"]
+      }))
+
+      tr_parsed[["beta_pp"]][ ,"coef"] <-
+        stats::lm.fit(mframe, ys, tol = 1e-16)$coefficients
+    }
+
+    # Update beta_pq
+    beta_pq <- tr_parsed[["beta_pq"]]
+    if ( nrow(beta_pq) > 0 ) {
+      ps <- lapply(state_names, function(state) {
+        if ( state %in% beta_pq[ ,"state_1"] || state %in% beta_pq[ ,"state_2"] ) {
+          x <- seq(0, 1, l = nrow(beta_pq) + 1)
+        } else {
+          0
+        }
+      })
+      ps <- as.matrix(do.call(expand.grid, c(ps, ps)))
+      qs <- ps[ ,seq(1, ns), drop = FALSE]
+      ps <- ps[ ,seq(ns+1, ncol(ps)), drop = FALSE]
+      colnames(ps) <- colnames(qs) <- state_names
+
+      ys <- purrr::map_dbl(seq.int(nrow(qs)), function(i) {
+        prob_with(p = ps[i, ], q = qs[i, ]) -
+          prob_with(p = zero, q = qs[i, ]) -
+          prob_with(p = ps[i, ], q = zero) +
+          beta0dbl
+      })
+
+      mframe <- do.call(cbind, plyr::llply(seq.int(nrow(beta_pq)), function(i) {
+        ps[ , beta_pq[i,"state_1"]] ^ beta_pq[i, "expo_1"] *
+          qs[ , beta_pq[i,"state_2"]] ^ beta_pq[i, "expo_2"]
+      }))
+
+      tr_parsed[["beta_pq"]][ ,"coef"] <-
+        stats::lm.fit(mframe, ys, tol = 1e-16)$coefficients
+    }
+
+    # Update beta_qq
+    beta_qq <- tr_parsed[["beta_qq"]]
+    if ( nrow(beta_qq) > 0 ) {
+      qs <- lapply(state_names, function(state) {
+        if ( state %in% beta_qq[ ,"state_1"] || state %in% beta_qq[ ,"state_2"] ) {
+          x <- seq(0, 1, l = nrow(beta_qq) + 1)
+        } else {
+          0
+        }
+      })
+
+      qs <- as.matrix(do.call(expand.grid, qs))
+      colnames(qs) <- state_names
+
+      # Here we need to remove the beta_q component if it is present
+      if ( nrow(tr_parsed[["beta_q"]]) > 0 ) {
+        ys <- purrr::map_dbl(seq.int(nrow(qs)), function(i) {
+          q <- qs[i, ]
+          prob_with(p = zero, q = q) - beta0dbl -
+            sum(purrr::map_dbl(seq_along(q), function(i) {
+              q[-i] <- 0
+              prob_with(p = zero, q = q) - beta0dbl
+            }))
+        })
+      } else {
+        ys <- purrr::map_dbl(seq.int(nrow(qs)), function(i) {
+          prob_with(p = zero, q = qs[i, ]) - beta0dbl
+        })
+      }
+
+      mframe <- do.call(cbind, plyr::llply(seq.int(nrow(beta_qq)), function(i) {
+        qs[ , beta_qq[i,"state_1"]] ^ beta_qq[i, "expo_1"] *
+          qs[ , beta_qq[i,"state_2"]] ^ beta_qq[i, "expo_2"]
+      }))
+
+      tr_parsed[["beta_qq"]][ ,"coef"] <-
+        stats::lm.fit(mframe, ys, tol = 1e-16)$coefficients
+    }
+
+
+    # Update error. If we do not test, then we replace previous errors with NAs
+    tr_parsed[["errors"]][] <- NA_real_
+    if ( check_type %in% c("full", "quick") ) {
+      tr_parsed[["errors"]] <-
+        check_transition(check_type, xpoints, state_names,
+                         prob_with, tr_parsed)
+    }
+
+    # Print all the warnings accumulated so far
+    if ( length(warn) > 0 ) {
+      # Some of them may be repeated
+      warn <- unique(warn)
+      lapply(warn, warning, call. = FALSE)
+    }
+
+    return(tr_parsed)
+  })
+
+}
+
+
+# Check a transition and report the errors on the computation of probabilities
+check_transition <- function(check_type, xpoints, state_names, p_eval_fun,
+                             tr_parsed) {
+    ns <- length(state_names)
+
+    # Attach some values
+    beta_0 <- tr_parsed[["beta_0"]]
+    beta_q <- tr_parsed[["beta_q"]]
+    beta_pp <- tr_parsed[["beta_pp"]]
+    beta_pq <- tr_parsed[["beta_pq"]]
+    beta_qq <- tr_parsed[["beta_qq"]]
 
     # filter = 2 -> only keep values summing to neighbors
     # cap is the maximum number of lines in all_qss, as a full test can test some
     # time since it scales horribly with the number of states
-    cap <- ifelse(check_model == "quick", 256, 0)
+    cap <- ifelse(check_type == "quick", 256, 0)
     all_qss <- generate_all_qs(xpoints - 1, ns, filter = 2,
                                line_cap = cap)[ ,1:ns, drop = FALSE]
     colnames(all_qss) <- state_names
-    ps <- matrix(stats::runif(ns * nrow(all_qss)), 
-                 nrow = nrow(all_qss), 
+    ps <- matrix(stats::runif(ns * nrow(all_qss)),
+                 nrow = nrow(all_qss),
                  ncol = ns)
     ps <- t(apply(ps, 1, function(X) X / sum(X)))
     colnames(ps) <- state_names
 
-    p_refs <- plyr::laply(seq.int(nrow(all_qss)), function(i) {
-      prob_with(q = all_qss[i, ] / (xpoints - 1), p = ps[i, ])
+    p_refs <- purrr::map_dbl(seq.int(nrow(all_qss)), function(i) {
+      p_eval_fun(q = all_qss[i, ] / (xpoints - 1), p = ps[i, ])
     })
 
-    p_preds <- plyr::laply(seq.int(nrow(all_qss)), function(i) {
+    p_preds <- purrr::map_dbl(seq.int(nrow(all_qss)), function(i) {
 
       # alpha component (always length one, as there is only one intercept for a
       # transition).
@@ -232,48 +463,34 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
           (beta_qq[ ,"qs1"] / (xpoints - 1)) ^ beta_qq[ ,"expo_1"] *
           (beta_qq[ ,"qs2"] / (xpoints - 1)) ^ beta_qq[ ,"expo_2"]
       )
-      
+
       # Total probability expression is the sum of all components
       beta + qssum + ppssum + pqssum + qqssum
     })
-    
+
     # Compute the errors in probability reconstruction
     mean_error <- mean(abs(p_refs - p_preds))
     max_error  <- max(abs(p_refs - p_preds))
     max_rel_error <- max(ifelse((p_refs - p_preds) != 0,
                                 abs((p_refs - p_preds)/p_refs), 0))
-    
-    
-    if ( max_rel_error > ERROR_REL_MAX || max_error > ERROR_REL_MAX ) {
-      msg <- paste(
-        "Residual error in computed probabilities",
-        paste0("  max error: ", format(max_error, digits = 3)),
-        paste0("  max rel error: ", format(max_rel_error, digits = 3)),
-        "Problematic probability expression: ",
-        paste(utils::capture.output(print(tr)), collapse = "\n"),
-        sep = "\n"
-      )
-      warning(msg, call. = FALSE)
-    }
-  }
 
-  list(from = tr[["from"]],
-       to   = tr[["to"]],
-       beta_0 = beta_0,
-       beta_q = beta_q,
-       beta_pp = beta_pp,
-       beta_pq = beta_pq,
-       beta_qq = beta_qq,
-       prob = pexpr,
-       mean_error = mean_error,
-       max_error = max_error,
-       max_rel_error = max_rel_error)
+    return( c(mean_error = mean_error, max_error = max_error,
+              max_rel_error = max_rel_error) )
 }
 
-
-
-
-
+warn_on_large_errors <- function(tr, errors, max_tol) {
+  if ( any(errors > max_tol) ) {
+    msg <- paste(
+      "Residual error in computed probabilities",
+      paste0("  max error: ", format(errors["max_error"], digits = 3)),
+      paste0("  max rel error: ", format(errors["max_rel_error"], digits = 3)),
+      "Problematic probability expression: ",
+      paste(utils::capture.output(print(tr)), collapse = "\n"),
+      sep = "\n"
+    )
+    warning(msg, call. = FALSE)
+  }
+}
 
 fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
 
@@ -357,7 +574,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     ps <- ps[-test_set, , drop = FALSE]
     qs <- qs[-test_set, , drop = FALSE]
 
-    ys <- sapply(seq.int(nrow(ps)), function(i) { yfun(ps[i, ], qs[i, ]) })
+    ys <- purrr::map_dbl(seq.int(nrow(ps)), function(i) { yfun(ps[i, ], qs[i, ]) })
 
     coefs <- matrix(rep(0, nrow(vals)), ncol = 1)
     colnames(coefs) <- "coef"
@@ -377,7 +594,7 @@ fitprod2 <- function(yfun, state_names, epsilon, tr, parms) {
     final_mat <- cbind(vals, coefs)
 
     ypred <- quick_pred_cpp(coefs, ps_test, qs_test, vals)
-    ys_test <- sapply(seq.int(nrow(ps_test)), function(i) {
+    ys_test <- purrr::map_dbl(seq.int(nrow(ps_test)), function(i) {
       yfun(ps_test[i, ], qs_test[i, ])
     })
 
@@ -512,7 +729,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
     ps <- ps[-test_set, , drop = FALSE]
 
     # We use this instead of apply because we need to preserve column names for yfun
-    ys <- sapply(seq.int(nrow(ps)), function(i) yfun(ps[i, ]))
+    ys <- purrr::map_dbl(seq.int(nrow(ps)), function(i) yfun(ps[i, ]))
 
     coefs <- matrix(rep(0, nrow(vals)), ncol = 1)
     colnames(coefs) <- "coef"
@@ -545,7 +762,7 @@ fitprod <- function(yfun, state_names, epsilon, tr, parms,
 
     # Try to turn off coefficients and see if the max_abs_error changes
     ypred <- quick_pred_cpp(coefs, ps_test, ps_test, vals)
-    ys_test <- sapply(seq.int(nrow(ps_test)), function(i) yfun(ps_test[i, ]))
+    ys_test <- purrr::map_dbl(seq.int(nrow(ps_test)), function(i) yfun(ps_test[i, ]))
 
     new_max_abs_error <- max(abs(ys_test - ypred))
 
@@ -663,17 +880,15 @@ primes <- c(2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 
 7691, 7699, 7703, 7717, 7723, 7727, 7741, 7753, 7757, 7759, 7789, 7793, 7817, 7823, 7829,
 7841, 7853, 7867, 7873, 7877, 7879, 7883, 7901, 7907, 7919)
 
-dummy_beta_q <- data.frame(from = character(0), 
-                           to = character(0), 
-                           state_1 = character(0), 
+dummy_beta_q <- data.frame(state_1 = character(0),
                            qs = integer(0), 
                            coef = numeric(0))
 
 dummy_beta_pp <- dummy_beta_pq <- dummy_beta_qq <- 
-  data.frame(from = character(0), 
-             to = character(0), 
-             state_1 = character(0), 
+  data.frame(state_1 = character(0),
              state_2 = character(0), 
              expo_1 = integer(0), 
              expo_2 = integer(0), 
              coef = numeric(0))
+
+dummy_fromto_cols <- data.frame(from = character(0), to = character(0))

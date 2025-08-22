@@ -49,6 +49,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// transition_ll
+arma::mat transition_ll(const arma::Mat<ushort>& from_mat, const arma::Mat<ushort>& to_mat, const arma::cube& tprobs);
+RcppExport SEXP _chouca_transition_ll(SEXP from_matSEXP, SEXP to_matSEXP, SEXP tprobsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::Mat<ushort>& >::type from_mat(from_matSEXP);
+    Rcpp::traits::input_parameter< const arma::Mat<ushort>& >::type to_mat(to_matSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type tprobs(tprobsSEXP);
+    rcpp_result_gen = Rcpp::wrap(transition_ll(from_mat, to_mat, tprobs));
+    return rcpp_result_gen;
+END_RCPP
+}
 // generate_all_qs
 arma::umat generate_all_qs(arma::uword nb, arma::uword ns, arma::uword filter, arma::uword line_cap);
 RcppExport SEXP _chouca_generate_all_qs(SEXP nbSEXP, SEXP nsSEXP, SEXP filterSEXP, SEXP line_capSEXP) {
@@ -98,6 +111,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_chouca_camodel_cpp_engine", (DL_FUNC) &_chouca_camodel_cpp_engine, 1},
     {"_chouca_local_dens_col", (DL_FUNC) &_chouca_local_dens_col, 5},
     {"_chouca_get_transition_probas_cpp", (DL_FUNC) &_chouca_get_transition_probas_cpp, 2},
+    {"_chouca_transition_ll", (DL_FUNC) &_chouca_transition_ll, 3},
     {"_chouca_generate_all_qs", (DL_FUNC) &_chouca_generate_all_qs, 4},
     {"_chouca_quick_pred_cpp", (DL_FUNC) &_chouca_quick_pred_cpp, 4},
     {"_chouca_get_cell_qvec", (DL_FUNC) &_chouca_get_cell_qvec, 6},

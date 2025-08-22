@@ -325,17 +325,23 @@ run_camodel <- function(mod, initmat, times,
   initmat <- as.integer(factor(as.character(initmat), levels = mod[["states"]])) - 1
   dim(initmat) <- d
 
+  # Pack all betas decribing transitions into a single table
+  # If a model has been built with camodel_mat(), then there is no description of
+  # transitions in transitions_parsed, only the betas tables are present and they are
+  # already packed. In this case we just need to extract them, which is what
+  # pack_betas() does internally.
+  betas_packed <- pack_betas(mod[["transitions_parsed"]])
+
   # Prepare data for internal representation with states as integers, and take substeps
   # into account by dividing probabilities
-  betas <- adjust_states_and_probs(mod[c("beta_0", "beta_q", "beta_pp",
-                                         "beta_qq", "beta_pq")],
-                                   mod[["states"]],
-                                   control[["substeps"]])
+  betas_packed <- adjust_states_and_probs(betas_packed,
+                                          mod[["states"]],
+                                          control[["substeps"]])
 
   # Make the transition matrix (ns*ns matrix with TRUE when there is a transition).
   # This improves performance most of the time because transition matrices are often
   # quite sparse.
-  transition_mat <- make_transition_matrix(mod[["states"]], betas)
+  transition_mat <- make_transition_matrix(mod[["states"]], betas_packed)
 
   # Make sure the center cell in the kernel is set to 0/FALSE
   kern <- adjust_kernel(mod[["kernel"]])
@@ -346,7 +352,7 @@ run_camodel <- function(mod, initmat, times,
                           "neighbors",
                           "normfun",
                           "xpoints", "fixed_neighborhood")],
-                    betas,
+                    betas_packed,
                     list(init     = initmat,
                          times    = times,
                          nstates  = ns,
