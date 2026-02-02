@@ -24,49 +24,33 @@ split_tabs <- function(ctrl) {
   return(ctrl)
 }
 
-# Construct the matrix of from/to states. This matrix holds TRUE when a transition
-# from this state to another exists, FALSE otherwise.
-make_transition_matrix <- function(states, betas_list) {
-
-  transition_mat <- matrix(FALSE, nrow = length(states), ncol = length(states))
-  colnames(transition_mat) <- rownames(transition_mat) <- states
-  all_transitions <- lapply(betas_list, function(o) unique(o[ ,c("from", "to")]))
-  all_transitions <- unique(do.call(rbind, all_transitions))
-
-  # Mind the +1 because states are coded from 0 to (ns-1) at this stage
-  if ( nrow(all_transitions) > 0 ) {
-    for ( i in seq.int(nrow(all_transitions)) ) {
-      transition_mat[ all_transitions[i, "from"] + 1,
-                      all_transitions[i, "to"]   + 1 ] <- TRUE
-    }
-  }
-
-  return(transition_mat)
-}
-
 # Convert betas tables so that they store states as integers, and take the number
 # of substeps into account. This function takes the list of betas tables, and returns
 # the same list, transformed.
 adjust_states_and_probs <- function(betas_list, states, substeps) {
 
-  fix <- function(x) {
-    as.integer(factor(as.character(x), levels = states)) - 1
-  }
+  # Make lookup table
+  lookup <- seq_along(states) - 1
+  names(lookup) <- states
 
-  lapply(betas_list, function(tab) {
+  purrr::map(betas_list, function(tab) {
+
+    # Convert references to state to internal representation
+    tab[ ,"from"] <- lookup[ tab[ ,"from"] ]
+    tab[ ,"to"] <- lookup[ tab[ ,"to"] ]
+
+    if ( "state_1" %in% colnames(tab) ) {
+      tab[ ,"state_1"] <- lookup[ tab[ ,"state_1"] ]
+    }
+    if ( "state_2" %in% colnames(tab) ) {
+      tab[ ,"state_2"] <- lookup[ tab[ ,"state_2"] ]
+    }
 
     # Order factors so that it is more cache friendly, i.e. state 0 comes first in the
     # table, etc.
-    tab <- ord_by_state(tab, states)
-
-    # Convert references to state to internal representation
-    tab[ ,"from"] <- fix(tab[ ,"from"])
-    tab[ ,"to"] <- fix(tab[ ,"to"])
-    if ( "state_1" %in% colnames(tab) ) {
-      tab[ ,"state_1"] <- fix(tab[ ,"state_1"])
-    }
-    if ( "state_2" %in% colnames(tab) ) {
-      tab[ ,"state_2"] <- fix(tab[ ,"state_2"])
+    if ( nrow(tab) > 0 ) {
+      ord <- order(tab[ ,"from"], tab[ ,"to"])
+      tab <- tab[ord, ]
     }
 
     # We divide all probabilities by the number of substeps
@@ -74,14 +58,6 @@ adjust_states_and_probs <- function(betas_list, states, substeps) {
 
     as.matrix(tab)
   })
-}
-
-ord_by_state <- function(tbl, states) {
-  ord <- with(tbl, order(factor(from, levels = states),
-                         factor(to, levels = states)))
-  tbl <- tbl[ord, ]
-  row.names(tbl) <- NULL
-  tbl
 }
 
 # Make sure the kernel holds a zero or FALSE value at its center

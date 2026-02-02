@@ -336,7 +336,7 @@ camodel <- function(...,
   xpoints <- get_q_npoints(wrap, kernel, fixed_neighborhood)
 
   transitions_parsed <- lapply(transitions, parse_transition, states, parms, xpoints,
-                               epsilon, check_model)
+                               epsilon, check_model, get_bounds(normfun))
 
 
   # Extract mean/max errors
@@ -370,8 +370,8 @@ camodel <- function(...,
 #'
 #' @param to The state to which the transition is defined
 #'
-#' @param prob a one-sided formula describing the probability of transition between the two
-#'  states (see Details section for more information).
+#' @param prob a one-sided formula describing the probability of transition between the
+#'  two states (see Details section for more information).
 #'
 #'@export
 transition <- function(from, to, prob) {
@@ -415,11 +415,11 @@ transition <- function(from, to, prob) {
 #'   around at the edges (the top/leftmost cells will be considered neighbors
 #'   of the bottom/rightmost cells)
 #'
-#' @param fixed_neighborhood When not using wrapping around the edges (\code{wrap = TRUE},
-#'   the number of neighbors per cell is variable, which can slow down the simulation.
-#'   Set this option to \code{TRUE} to consider that the number of neighbors is always
-#'   four or eight, regardless of the position of the cell in the landscape, at the cost
-#'   of approximate dynamics on the edge of the landscape.
+#' @param fixed_neighborhood When not using wrapping around the edges
+#'   (\code{wrap = TRUE}, the number of neighbors per cell is variable, which can slow
+#'   down the simulation. Set this option to \code{TRUE} to consider that the number of
+#'   neighbors is always four or eight, regardless of the position of the cell in the
+#'   landscape, at the cost of approximate dynamics on the edge of the landscape.
 #'
 #' @param check_model A check of the model definition is done to make sure there
 #'   are no issues with it (e.g. probabilities outside the [1,0] interval, or an
@@ -536,7 +536,8 @@ update.ca_model <- function(object,
     # already
     transitions_parsed <- reparse_transitions(object,
                                               parms,
-                                              check_type = check_model)
+                                              check_type = check_model,
+                                              pbounds = get_bounds(normfun))
 
     # Extract mean/max errors with new parameters
     max_error <- purrr::map_dbl(transitions_parsed,
@@ -623,4 +624,15 @@ get_q_npoints <- function(wrap, kernel, fixed_neighborhood) {
   return(xpoints)
 }
 
-
+# Get the expected bounds for probabilities given the normalization function
+get_bounds <- function(normfun) {
+  if ( normfun == "identity" ) {
+    c(0, Inf)
+  } else if ( normfun == "identity_strict" ) {
+    c(0, 1)
+  } else if ( normfun == "softmax" ) {
+    c(-Inf, Inf)
+  } else {
+    stop(sprintf("Unknown normalization function: %s", normfun))
+  }
+}

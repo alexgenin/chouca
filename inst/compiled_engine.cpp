@@ -84,7 +84,7 @@ constexpr uword NB_KERNEL_MAXN = __NB_KERNEL_MAXN__;
 constexpr bool NB_KERNEL[__NB_KERNEL_NROW__][__NB_KERNEL_NCOL__] = __NB_KERNEL__;
 
 // Transition matrix (true when transition can be done, false when not)
-constexpr bool transition_matrix[NS][NS] = __TMATRIX_ARRAY__;
+constexpr bool TRANS_MAT[NS][NS] = __TMATRIX_ARRAY__;
 
 // 5*2 because we have 5 packed tables of coefficients, each of which needing 2
 // (where to start, and where to stop for this transition).
@@ -448,6 +448,12 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
           // making an approximation and may never consider a given transition.
           u_state new_cell_state = from;
 
+          // Rcpp::Rcout << "from: " << (int) from << " ptrans: ";
+          // for ( u_state k=0; k<NS; k++ ) {
+            // Rcpp::Rcout << ptrans[k] << " ";
+          // }
+          // Rcpp::Rcout << "\n";
+
           // Note the signedness so that the loop does NOT wrap around
           for (s_state k = (NS - 1); k >= 0; k--) {
 #if PRECOMPUTE_TRANS_PROBAS
@@ -457,7 +463,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             new_cell_state = rn < ptrans[k] ? k : new_cell_state;
 #endif
           }
-
           if ( new_cell_state != from ) {
             new_ps[new_cell_state]++;
             new_ps[from]--;
@@ -468,22 +473,6 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             adjust_local_density(new_qs, i, j, from, new_cell_state);
 #endif
           }
-
-          // Generate an interrupt for gdb
-          // std::raise(SIGINT);
-          // if ( current_t == 0 && i == 0 && j == 0 && from == 0 ) {
-          //   Rcpp::Rcout <<
-          //     "t=" << current_t << " " <<
-          //     "ptrans[0]:" << ptrans[0] << " " <<
-          //     "ptrans[1]:" << ptrans[1] << " " <<
-          //     "rn: " << rn << " " <<
-          //     "old_mat[0][0]:" << (int) old_mat[0][0] << " " <<
-          //     "new_mat[0][0]:" << (int) new_mat[0][0] << " " <<
-          //     "ps:" << (int) old_ps[0] << "/" << (int) old_ps[1] << " " <<
-          //     "qs_next:" << (int) old_qs[0][1][0] << "/" << (int) old_qs[0][1][1] << " " <<
-          //     "\n";
-          // }
-
 
         } // end of loop on j (columns)
 #if USE_OMP

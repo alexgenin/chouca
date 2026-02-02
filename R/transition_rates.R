@@ -3,7 +3,7 @@
 # iteration given a model.
 #
 
-next_state_probs <- function(model, mat) {
+next_state_probs <- function(model, mat, log = FALSE) {
 
   # Convert mat to internal representation
   d <- dim(mat)
@@ -19,5 +19,24 @@ next_state_probs <- function(model, mat) {
   # Split tabs for cpp code that cannot handle mixed-type values in a single table
   model <- split_tabs(model)
 
-  get_transition_probas_cpp(mat, model)
+  # Make the transition matrix (ns*ns matrix with TRUE when there is a transition).
+  # This improves performance most of the time because transition matrices are often
+  # quite sparse.
+  # TODO: factorize code with run_camodel()
+  transition_mat <- matrix(FALSE, model[["nstates"]], model[["nstates"]])
+  diag(transition_mat) <- TRUE
+  colnames(transition_mat) <- rownames(transition_mat) <- model[["states"]]
+  for ( tr in model[["transitions"]] ) {
+    transition_mat[tr[["from"]], tr[["to"]]] <- TRUE
+  }
+  model[["transition_matrix"]] <- transition_mat
+
+  # Handle the normalization function argument before passing to cpp
+  if ( model[["normfun"]] == "identity" ) {
+    model[["normfun"]] <- 0
+  } else if ( model[["normfun"]] == "softmax" ) {
+    model[["normfun"]] <- 1
+  }
+
+  get_transition_probas_cpp(mat, model, return_log = log)
 }

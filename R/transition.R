@@ -15,7 +15,7 @@ ERROR_MAX <- 0.001 # error limit to produce a warning
 # very much an internal function. 
 # 
 parse_transition <- function(tr, state_names, parms, xpoints, epsilon, 
-                             check_model) {
+                             check_model, pbounds) {
 
   if ( ! inherits(tr, "camodel_transition") ) {
     m <- paste("The transition definition has not been defined using transition().",
@@ -44,12 +44,20 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
       stop(m)
     }
 
-    if ( prob < 0 ) {
-      m <- paste0("Transition probabilities may go below zero. ", 
-                  "Problematic transition:\n",
-                  "  ", tr[["from"]], " -> ", tr[["to"]])
-      warn <<- c(warn, m)
-    }
+      if ( prob < pbounds[1] ) {
+        m <- paste0(sprintf("Transition probabilities may go below %s. ", pbounds[1]),
+                    "Problematic transition:\n",
+                    "  ", tr[["from"]], " -> ", tr[["to"]])
+        warn <<- c(warn, m)
+      }
+
+
+      if ( prob > pbounds[2] ) {
+        m <- paste0(sprintf("Transition probabilities may go above %s. ", pbounds[2]),
+                    "Problematic transition:\n",
+                    "  ", tr[["from"]], " -> ", tr[["to"]])
+        warn <<- c(warn, m)
+      }
 
     prob
   }
@@ -190,7 +198,7 @@ parse_transition <- function(tr, state_names, parms, xpoints, epsilon,
 
 
 
-reparse_transitions <- function(mod, parms, check_type) {
+reparse_transitions <- function(mod, parms, check_type, pbounds) {
   # Need this to make sure parms is evaluated right now and corresponds to
   # the passed argument
   force(parms)
@@ -225,8 +233,16 @@ reparse_transitions <- function(mod, parms, check_type) {
         stop(m)
       }
 
-      if ( prob < 0 ) {
-        m <- paste0("Transition probabilities may go below zero. ",
+      if ( prob < pbounds[1] ) {
+        m <- paste0(sprintf("Transition probabilities may go below %s. ", pbounds[1]),
+                    "Problematic transition:\n",
+                    "  ", tr[["from"]], " -> ", tr[["to"]])
+        warn <<- c(warn, m)
+      }
+
+
+      if ( prob > pbounds[2] ) {
+        m <- paste0(sprintf("Transition probabilities may go above %s. ", pbounds[2]),
                     "Problematic transition:\n",
                     "  ", tr[["from"]], " -> ", tr[["to"]])
         warn <<- c(warn, m)
@@ -471,8 +487,9 @@ check_transition <- function(check_type, xpoints, state_names, p_eval_fun,
     # Compute the errors in probability reconstruction
     mean_error <- mean(abs(p_refs - p_preds))
     max_error  <- max(abs(p_refs - p_preds))
-    max_rel_error <- max(ifelse((p_refs - p_preds) != 0,
-                                abs((p_refs - p_preds)/p_refs), 0))
+    max_rel_error <- max(ifelse(abs(p_refs - p_preds) > 1e-16 & p_refs > 0,
+                                abs((p_refs - p_preds) / p_refs),
+                                0))
 
     return( c(mean_error = mean_error, max_error = max_error,
               max_rel_error = max_rel_error) )

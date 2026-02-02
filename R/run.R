@@ -341,7 +341,12 @@ run_camodel <- function(mod, initmat, times,
   # Make the transition matrix (ns*ns matrix with TRUE when there is a transition).
   # This improves performance most of the time because transition matrices are often
   # quite sparse.
-  transition_mat <- make_transition_matrix(mod[["states"]], betas_packed)
+  transition_mat <- matrix(FALSE, mod[["nstates"]], mod[["nstates"]])
+  diag(transition_mat) <- TRUE # There is always the possibility of self-transition
+  colnames(transition_mat) <- rownames(transition_mat) <- mod[["states"]]
+  for ( tr in mod[["transitions"]] ) {
+    transition_mat[tr[["from"]], tr[["to"]]] <- TRUE
+  }
 
   # Make sure the center cell in the kernel is set to 0/FALSE
   kern <- adjust_kernel(mod[["kernel"]])

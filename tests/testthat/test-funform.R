@@ -197,7 +197,7 @@ expect_true({
 expect_warning({ 
   m <- mkmod(transition(from = "0",to = "+", 
                         ~ 1.1 + sin_approx(-p["0"]*q["+"] * pi / 1.2, 0)))
-}, regexp = "Transition probabilities may go below zero")
+}, regexp = "Transition probabilities may go below 0")
 
 
 # We expect to recover the first two terms of the Mac Laurin series for sin

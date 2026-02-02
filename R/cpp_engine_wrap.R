@@ -6,5 +6,12 @@
 
 camodel_cpp_engine_wrap <- function(ctrl) { 
   ctrl <- split_tabs(ctrl)
+
+  if ( ctrl[["normfun"]] == "identity" ) {
+    ctrl[["normfun"]] <- 0
+  } else if ( ctrl[["normfun"]] == "softmax" ) {
+    ctrl[["normfun"]] <- 1
+  }
+
   camodel_cpp_engine(ctrl)
 }

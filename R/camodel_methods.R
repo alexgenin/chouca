@@ -19,10 +19,11 @@ print.ca_model <- function(x, ...) {
   }
   
   cat0("")
-  cat0("Neighborhood kernel: ", nrow(x[["neighbors"]]), "x", ncol(x[["neighbors"]]), 
-         " (", sum(x[["neighbors"]]), " counted)")
+  cat0("Neighborhood kernel: ", nrow(x[["kernel"]]), "x", ncol(x[["kernel"]]),
+         " (", sum(x[["kernel"]]), " total)")
   
   cat0("Wrap: ", x[["wrap"]])
+  cat0("Normalization: ", x[["normfun"]])
   
   cat0("Max error: ", format(max(x[["max_error"]])), " (", 
        ifelse(max(x[["max_error"]]) < ERROR_MAX, # defined in transition.R

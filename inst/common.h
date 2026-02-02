@@ -378,7 +378,13 @@ void compute_rate(pfloat tprob_line[NS],
     // probability is set to zero above, otherwise tprob_line contains undefined or
     // wrong values. This adds a branch but it is usally worth it, especially with
     // very sparse models.
-    if ( ! transition_matrix[from][to] ) {
+    if ( ! TRANS_MAT[from][to] ) {
+      to++;
+      continue;
+    }
+
+    // The transition to self is defined implicitly, skip
+    if ( to == from ) {
       to++;
       continue;
     }
@@ -500,30 +506,49 @@ void compute_rate(pfloat tprob_line[NS],
   // Normalize probabilities if needed
   //
   // Softmax transforms all probabilities to exp(P_i) / sum(exp(P_i)). This
-  // allows typically for whatever sign of P_i
+  // allows typically for whatever sign in P_i
   // TODO: check that this compiles into AVX instructions
-  // TODO: what to do of the transition to self?
   if ( NORMFUN == NORMF_SOFTMAX ) {
-    double sum_exp = 0;
-    tprob_line[0] = exp(tprob_line[0]);
-    sum_exp += tprob_line[0];
-    for ( u_state i=1; i < NS; i++ ) {
-      // NOTE: we compute the cumsum at the same time here
-      double this_exp = exp(tprob_line[i]);
-      tprob_line[i] += tprob_line[i-1] + this_exp;
-      sum_exp += this_exp;
+
+    // Convention value
+    tprob_line[from] = 0;
+
+    double exp_total = 0;
+    for ( u_state to=0; to < NS; to++ ) {
+      // TRANS_MAT is true for self-transition, so this will lead to tprob_line[from]
+      // being set to exp(0.0) = 1.0
+      tprob_line[to] = ( double ) TRANS_MAT[from][to] * exp(tprob_line[to]);
+      exp_total += tprob_line[to];
     }
-    for ( u_state i=0; i < NS; i++ ) {
-      tprob_line[i] /= sum_exp;
+
+    // defining the self transition above means that exp(pi1+ pi2+ ...+ piN) = 1 because
+    // the sum of probabilities is zero. This means we can just take the exponential
+    // as the Z normalisation constant is 1.
+    // We take the exponential of all probabilities of states we
+    // Rcpp::Rcout << "from: " << (int) from << " ptrans: ";
+    // for ( u_state k=0; k<NS; k++ ) {
+      // Rcpp::Rcout << tprob_line[k] << " ";
+    // }
+    // Rcpp::Rcout << "\n";
+
+    for ( u_state to=0; to < NS; to++ ) {
+      tprob_line[to] /= exp_total;
     }
+
   }
 
-  // Compute cumsum of probabilities. This is already by using a while loop above,
-  // instead of computing the rate of transition to every state, then computing the
-  // cumsum separately.
-  // for ( u_state k=1; k<NS; k++ ) {
-  //  tprob_line[k] += tprob_line[k-1];
-  // }
+  // Compute cumsum of probabilities. This is already done by using a while loop above
+  // when there is no normalization function, instead of computing the rate of transition
+  // to every state, then computing the cumsum separately like we do here.
+  if ( NORMFUN == NORMF_SOFTMAX ) {
+    for ( u_state k = 1; k < NS; k++ ) {
+      tprob_line[k] += tprob_line[k-1];
+    }
+    // Rescale to 0-1.
+    for ( u_state k = 0; k < NS; k++ ) {
+      tprob_line[k] /= tprob_line[NS-1];
+    }
+  }
 
 }
 

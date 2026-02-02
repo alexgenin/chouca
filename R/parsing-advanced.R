@@ -298,7 +298,7 @@ camodel_mat <- function(beta_0 = NULL,
                                        to = all_states,
                                        stringsAsFactors = FALSE),
                            coef = as.vector(beta_0))
-  beta_0_tab <- beta_0_tab[beta_0_tab[ ,"coef"] >= epsilon, ]
+  beta_0_tab <- beta_0_tab[abs(beta_0_tab[ ,"coef"]) >= epsilon, ]
 
   # Handle beta_p component
   # TODO: this is very inefficient
@@ -354,24 +354,35 @@ camodel_mat <- function(beta_0 = NULL,
 #     beta_q_tab[ ,"from"] <- factor(beta_q_tab[ ,"from"], levels = all_states)
 #     beta_q_tab[ ,"to"] <- factor(beta_q_tab[ ,"to"], levels = all_states)
   } else {
-    data.frame(dummy_fromto_cols, dummy_beta_qq) # defined in transition.R
+    beta_qq_tab <- data.frame(dummy_fromto_cols, dummy_beta_qq) # defined in transition.R
   }
 
   # Build transitions
   if ( build_transitions ) {
     transitions <- list()
+
     for ( from in seq.int(ns) ) {
       for ( to in seq.int(ns) ) {
         str <- c()
         if ( abs(beta_0[from, to]) > 0 ) {
-          str <- c(as.character(beta_0[from, to]))
+          str <- c(str, sprintf("beta_0['%s','%s']",
+                                all_states[from], all_states[to]))
         }
-        if ( any(abs(beta_p[from, to, ]) > 0) ) {
-          str <- c(str, format_coefs(beta_p[from, to, ], all_states, "p"))
+        for ( coef in seq.int(ns) ) {
+          if ( abs(beta_p[from, to, coef]) > 0) {
+            str <- c(str, sprintf("beta_p['%s','%s','%s']*p['%s']",
+                                  all_states[from], all_states[to], all_states[coef],
+                                  all_states[coef]))
+          }
         }
-        if ( any(abs(beta_q[from, to, ]) > 0) ) {
-          str <- c(str, format_coefs(beta_q[from, to, ], all_states, "q"))
+        for ( coef in seq.int(ns) ) {
+          if ( abs(beta_q[from, to, coef]) > 0) {
+            str <- c(str, sprintf("beta_q['%s','%s','%s']*q['%s']",
+                                  all_states[from], all_states[to], all_states[coef],
+                                  all_states[coef]))
+          }
         }
+
         if ( length(str) > 0 ) {
           str <- paste0("~ ", paste0(str, collapse = " + "))
           transitions <- append(transitions,
@@ -397,13 +408,13 @@ camodel_mat <- function(beta_0 = NULL,
     ),
     nstates = ns,
     states = factor(all_states, levels = all_states),
-    parms = list(),
+    parms = list(beta_0 = beta_0, beta_p = beta_p, beta_q = beta_q),
     wrap = wrap,
     neighbors = neighbors,
     normfun = normfun,
     kernel = build_neighbor_kernel(neighbors),
     epsilon = epsilon,
-    xpoints = get_q_npoints(wrap, neighbors, fixed_neighborhood), # unused, but for completion
+    xpoints = get_q_npoints(wrap, neighbors, fixed_neighborhood),
     max_error = rep(0, sum(trmat)),
     max_rel_error = rep(0, sum(trmat)),
     fixed_neighborhood = fixed_neighborhood

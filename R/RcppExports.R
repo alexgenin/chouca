@@ -9,8 +9,8 @@ local_dens_col <- function(m, nstates, j, wrap, kernel) {
     .Call(`_chouca_local_dens_col`, m, nstates, j, wrap, kernel)
 }
 
-get_transition_probas_cpp <- function(mat, ctrl) {
-    .Call(`_chouca_get_transition_probas_cpp`, mat, ctrl)
+get_transition_probas_cpp <- function(mat, ctrl, return_log = FALSE) {
+    .Call(`_chouca_get_transition_probas_cpp`, mat, ctrl, return_log)
 }
 
 transition_ll <- function(from_mat, to_mat, tprobs) {

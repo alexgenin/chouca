@@ -6,6 +6,7 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
+#include "constants.h"
 #include "helpers.h"
 
 // Some typedefs for better legibility. ushort typically contains an integer
@@ -38,7 +39,8 @@ arma::Mat<arma::uword> local_dens_col(const arma::Mat<unsigned short>& m,
 // Get the transition probabilities as a 3D matrix
 //[[Rcpp::export]]
 arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
-                                     Rcpp::List& ctrl) {
+                                     Rcpp::List& ctrl,
+                                     const bool return_log = false) {
 
   arma::uword nr = mat.n_rows;
   arma::uword nc = mat.n_cols;
@@ -50,6 +52,7 @@ arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
   const bool wrap = ctrl["wrap"];
   // Number of samples for qs
   const ushort xpoints = ctrl["xpoints"];
+  const ushort normfun = ctrl["normfun"];
 
   // Extract things from list. Here we need to split arrays between ints and doubles, as
   // they cannot be hold by the same array in c++ (but in R it is somewhat possible)
@@ -59,10 +62,13 @@ arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
   const arma::Mat<double> beta_q_vals = ctrl["beta_q_vals"];
   const arma::Mat<ushort> beta_pp_index = ctrl["beta_pp_index"];
   const arma::Mat<double> beta_pp_vals = ctrl["beta_pp_vals"];
-  const arma::Mat<ushort> beta_pq_index = ctrl["beta_pq_index"];
-  const arma::Mat<double> beta_pq_vals = ctrl["beta_pq_vals"];
   const arma::Mat<ushort> beta_qq_index = ctrl["beta_qq_index"];
   const arma::Mat<double> beta_qq_vals = ctrl["beta_qq_vals"];
+  const arma::Mat<ushort> beta_pq_index = ctrl["beta_pq_index"];
+  const arma::Mat<double> beta_pq_vals = ctrl["beta_pq_vals"];
+
+  // Extract transition matrix from modl
+  const arma::Mat<ushort> transition_matrix = ctrl["transition_matrix"];
 
   // Initialize vector with counts of cells in each state in the landscape
   arma::Col<int> ps(ns);
@@ -128,8 +134,9 @@ arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
 
         // pp
         for (arma::uword k = 0; k < beta_pp_index.n_rows; k++) {
-            const double p1 = ps[beta_pp_index(k, _state_1)] / ncells;
-            const double p2 = ps[beta_pp_index(k, _state_2)] / ncells;
+
+            const double p1 = (double) ps[beta_pp_index(k, _state_1)] / ncells;
+            const double p2 = (double) ps[beta_pp_index(k, _state_2)] / ncells;
 
             ptrans(i, j, to) +=
               (beta_pp_index(k, _from) == from) * // zero when other transition than
@@ -154,7 +161,8 @@ arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
 
         // pq
         for (arma::uword k = 0; k < beta_pq_index.n_rows; k++) {
-            const double p1 = ps[beta_pq_index(k, _state_1)] / ncells;
+
+            const double p1 = (double) ps[beta_pq_index(k, _state_1)] / ncells;
             const double q1 = (double) qs(i, beta_pq_index(k, _state_2)) / total_nb;
 
             ptrans(i, j, to) +=
@@ -168,17 +176,64 @@ arma::cube get_transition_probas_cpp(arma::Mat<ushort>& mat,
         // ptrans(i, j, to) = ptrans(i, j, to) < 0.0 ? 0.0 : ptrans(i, j, to);
       }
 
-    }
-  }
+      // Transform and normalize the rate vector if asked for it. Note that ptrans(from)
+      // has been set to zero already
+      if ( normfun == NORMF_SOFTMAX ) {
+        // The self transition is zero here, so it is correct and it will count
+        // as exp(0.0) = 1.0 in Z
+        double Z = 0;
+        for ( ushort to=0; to<ns; to++ ) {
+          if ( transition_matrix(from, to) > 0 ) {
+            Z += exp( ptrans(i, j, to) );
+          }
+        }
 
-    return ptrans;
+        if ( return_log ) {
+
+          // We need to set to -Inf the values the transitions that will never happen
+          for ( ushort to=0; to<ns; to++ ) {
+            if ( transition_matrix(from, to) == 0 ) {
+              ptrans(i, j, to) = R_NegInf;
+            }
+          }
+
+          // no need to exp' here
+          ptrans.tube(i, j) -= log( Z );
+
+        } else {
+
+          // We need to exp-transform all probabilities with transitions
+          for ( ushort to=0; to<ns; to++ ) {
+            if ( transition_matrix(from, to) > 0 ) {
+              ptrans(i, j, to) = exp( ptrans(i, j, to) );
+            }
+          }
+
+          ptrans.tube(i, j) /= Z;
+        }
+      }
+
+      if ( normfun == NORMF_IDENTITY ) {
+        // ptrans(from) is zero now
+        ptrans(i, j, from) = 1 - arma::accu(ptrans.tube(i, j));
+        if ( return_log ) {
+          ptrans.tube(i, j) = log( ptrans.tube(i, j) );
+        }
+      }
+
+    } // end of loop on rows (i)
+  } // end of loop on cols (j)
+
+
+  return ptrans;
 }
+
 
 // This is a transitional function to speed things up, but it will go away
 //[[Rcpp::export]]
 arma::mat transition_ll(const arma::Mat<ushort>& from_mat,
-                     const arma::Mat<ushort>& to_mat,
-                     const arma::cube& tprobs) {
+                        const arma::Mat<ushort>& to_mat,
+                        const arma::cube& tprobs) {
   // from/to mat in R integer form
 
   arma::uword nr = from_mat.n_rows;
@@ -203,9 +258,12 @@ arma::mat transition_ll(const arma::Mat<ushort>& from_mat,
 
   for ( arma::uword i=0; i<nr; i++ ) {
     for ( arma::uword j=0; j<nc; j++ ) {
-      ll(i, j) = ( from_mat(i, j) == to_mat(i, j) ) ?
-                   1 - accu(tprobs.tube(i, j)) :
-                   tprobs(i, j, to_mat(i, j) - 1); // take into account R form
+      // Need the -1 to adjust for R factor indexing
+      ll(i, j) = tprobs(i, j, to_mat(i, j) - 1);
+
+      // tnorm( from_mat(i, j) == to_mat(i, j) ) ?
+                   // 1 - accu(tprobs.tube(i, j)) :
+                   // tprobs(i, j, to_mat(i, j) - 1); // take into account R form
     }
   }
 

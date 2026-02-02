@@ -6,6 +6,7 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 #include <RcppArmadillo.h>
 
+#include "constants.h"
 #include "helpers.h"
 
 //
@@ -20,6 +21,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
   const ushort ns = ctrl["nstates"];
   const arma::uword substeps = ctrl["substeps"];
   const arma::Col<arma::uword> times = ctrl["times"];
+  const ushort normfun = ctrl["normfun"];
   
   const arma::Mat<ushort> transition_mat = ctrl["transition_mat"];
   
@@ -145,6 +147,11 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
           // Get current state
           ushort from = omat(i, j);
           
+          // If we never get out of this state, go to next cell
+          if ( arma::accu(transition_mat.row(from)) == 0 ) {
+            continue; // go to next cell
+          }
+
           // Compute probability transitions
           for (ushort to = 0; to < ns; to++) {
 
@@ -181,8 +188,8 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
 
             // pp
             for (arma::uword k = 0; k < beta_pp_index.n_rows; k++) {
-                const double p1 = ps[beta_pp_index(k, _state_1)] / ncells;
-                const double p2 = ps[beta_pp_index(k, _state_2)] / ncells;
+                const double p1 = (double) ps[beta_pp_index(k, _state_1)] / ncells;
+                const double p2 = (double) ps[beta_pp_index(k, _state_2)] / ncells;
 
                 ptrans(to) +=
                   (beta_pp_index(k, _from) == from) * // zero when other transition than
@@ -207,7 +214,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
 
             // pq
             for (arma::uword k = 0; k < beta_pq_index.n_rows; k++) {
-                const double p1 = ps[beta_pq_index(k, _state_1)] / ncells;
+                const double p1 = (double) ps[beta_pq_index(k, _state_1)] / ncells;
                 const double q1 = (double) qs(i, beta_pq_index(k, _state_2)) / total_nb;
 
                 ptrans(to) +=
@@ -218,7 +225,7 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
                   pow(q1, beta_pq_index(k, _expo_2));
             }
 
-            ptrans(to) = ptrans(to) < 0.0 ? 0.0 : ptrans(to);
+            // ptrans(to) = ptrans(to) < 0.0 ? 0.0 : ptrans(to);
 
             // NOTE: it seems like a good idea to cap probabilities to 1, but it
             // is really not. The fact that things are above 1 should be handled
@@ -230,23 +237,49 @@ void camodel_cpp_engine(const Rcpp::List ctrl) {
             // ptrans(to) = ptrans(to) > 1.0 ? 1.0 : ptrans(to);
           }
 
-          // Check if we actually transition. We compute the cumulative sum of 
-          // probabilities, then draw a random number (here 'rn'), to see if the 
-          // transition occurs or not. 
-          // 
+          // Transform and normalize the rate vector if asked for it
+          if ( normfun == NORMF_SOFTMAX ) {
+            // elementwise arma function
+            // Rcpp::Rcout << "ptrans_before:\n" << ptrans << "\n";
+            for ( ushort to=0; to<ns; to++ ) {
+              ptrans(to) = transition_mat(from, to) ? exp( ptrans(to) ) : 0;
+            }
+            ptrans /= arma::accu(ptrans);
+            if ( from == 0 ) {
+              Rcpp::Rcout << "ptrans:\n" << ptrans << "\n";
+              // Rcpp::Rcout << "a to b: " << ptrans(2) << "\n";
+            }
+          }
+
+          // Check if we actually transition. We compute the cumulative sum of
+          // probabilities, then draw a random number (here 'rn'), to see if the
+          // transition occurs or not.
+          //
           // 0 |-----p0-------(p0+p1)------(p0+p1+p2)------| 1
           //               ^ p0 < rn < (p0+p1) => p1 wins
           //                                           ^ rn > everything => no transition
           //       ^ 0 < rn < p0 => p0 wins
           // Of course the sum of probabilities must be lower than one, otherwise we are
           // making an approximation and may never consider a given transition.
-          // 
+          //
           // ptrans = cumsum(ptrans); // alternative code, but slower because it needs
           //                          // a copy of the vector
           for (ushort k = 1; k < ns; k++) {
             ptrans(k) += ptrans(k - 1);
           }
-          
+
+          // Normalize to 0-1 if needed
+          // if ( normfun != NORMF_IDENTITY ) {
+            // Rcpp::Rcout << ptrans << "\n";
+            // for (ushort k = 0; k < ns; k++) {
+              // ptrans(k) /= ptrans(ns-1);
+            // }
+            // Rcpp::Rcout << "after:" << "\n";
+            // Rcpp::Rcout << ptrans << "\n";
+          // }
+
+          // This works if not softmax, but otherwise it does not? TODO
+          // It assumes implicitly that the last segment is for no transition
           ushort new_cell_state = from;
           double rn = Rf_runif(0, 1);
           for (signed short k = (ns - 1); k >= 0; k--) {
