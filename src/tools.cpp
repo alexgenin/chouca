@@ -78,7 +78,7 @@ arma::vec get_cell_qvec(const arma::Mat<unsigned short>& m,
       if ( wrap ) { 
         const ushort state = m( (nr + i + o_r) % nr, 
                                 (nc + j + o_c) % nc ); 
-        qs(state) += kernel(o_r + kernel_semiheight, 
+        qs(state) += kernel(o_r + kernel_semiheight,
                                o_c + kernel_semiwidth); 
         
       } else { 

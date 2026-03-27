@@ -421,8 +421,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
 
           u_state from = old_mat[i][j];
 
-#if PRECOMPUTE_TRANS_PROBAS
-#else
+#if ! PRECOMPUTE_TRANS_PROBAS
           // Normalized local densities to proportions
           const u_nbcount qs_total = number_of_neighbors(i, j);
 
@@ -463,6 +462,7 @@ void aaa__FPREFIX__camodel_compiled_engine(const arma::Mat<ushort> all_qs_arma,
             new_cell_state = rn < ptrans[k] ? k : new_cell_state;
 #endif
           }
+
           if ( new_cell_state != from ) {
             new_ps[new_cell_state]++;
             new_ps[from]--;

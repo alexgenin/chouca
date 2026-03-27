@@ -347,7 +347,8 @@ inline void adjust_nb_plines(u_pline pline[NR][NC],
         // we are in the matrix
         const u_xyint i_changed = i + o_r;
         const u_xyint j_changed = j + o_c;
-        if ( i_changed > 0 && j_changed > 0 && i_changed < NR && j_changed < NC ) {
+        if ( i_changed > 0  && j_changed > 0 &&
+             i_changed < NR && j_changed < NC ) {
           pline[i_changed][j_changed] +=
             adj * NB_KERNEL[o_r + KERNEL_SEMIHEIGHT][o_c + KERNEL_SEMIWIDTH];
         }

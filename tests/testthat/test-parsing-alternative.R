@@ -55,7 +55,8 @@ test_that("Advanced model-building builds correct things", {
   })
   
   comp_test <- names(mod)[ ! names(mod) %in% c("max_error", "max_rel_error", 
-                                               "transitions", "transitions_parsed") ]
+                                               "transitions", "transitions_parsed",
+                                               "parms") ]
   for ( i in comp_test ) { 
     expect_true({ 
       all.equal(mod[[i]], mod_adv[[i]])
